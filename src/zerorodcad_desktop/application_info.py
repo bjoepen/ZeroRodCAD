@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 APP_NAME = "ZeroRodCAD Desktop"
-APP_VERSION = "0.12.0"
-APP_BUILD = "012"
+APP_VERSION = "0.14.0"
+APP_BUILD = "014"
 ORGANIZATION_NAME = "ZeroRodCAD"
 ORGANIZATION_DOMAIN = "zerorodcad.local"
 PROJECT_EXTENSION = ".zerorod"

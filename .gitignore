@@ -18,3 +18,5 @@ exports/*
 release/
 *.dmg
 *.icns
+.venv-packaging/
+build/reports/

@@ -25,21 +25,24 @@ def _distribution_version(name: str) -> str:
 
 def collect_diagnostics() -> tuple[DiagnosticItem, ...]:
     executable = Path(sys.executable)
-    items = [
+    home = Path.home()
+    return (
         DiagnosticItem("Platform", platform.platform()),
         DiagnosticItem("Machine", platform.machine()),
         DiagnosticItem("Python", platform.python_version()),
         DiagnosticItem("Executable", str(executable)),
-        DiagnosticItem("Frozen application", "yes" if getattr(sys, "frozen", False) else "no"),
+        DiagnosticItem(
+            "Frozen application",
+            "yes" if getattr(sys, "frozen", False) else "no",
+        ),
         DiagnosticItem("CadQuery", _distribution_version("cadquery")),
         DiagnosticItem("PySide6", _distribution_version("PySide6")),
         DiagnosticItem(
             "Writable home directory",
-            str(Path.home()),
-            Path.home().exists() and os_access_writable(Path.home()),
+            str(home),
+            home.exists() and os_access_writable(home),
         ),
-    ]
-    return tuple(items)
+    )
 
 
 def os_access_writable(path: Path) -> bool:

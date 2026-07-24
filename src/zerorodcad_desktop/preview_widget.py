@@ -10,7 +10,7 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen, QPolygonF, QWheelEvent
 from PySide6.QtWidgets import QWidget
 
-from zerorodcad.preview import Line3D, Point3D, PreviewMesh, PreviewScene
+from zerorodcad.preview_data import Line3D, Point3D, PreviewMesh, PreviewScene
 
 
 @dataclass(frozen=True)

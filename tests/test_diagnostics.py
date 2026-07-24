@@ -4,8 +4,8 @@ from zerorodcad_desktop.diagnostics import collect_diagnostics, diagnostics_as_t
 
 def test_application_metadata():
     assert APP_NAME == "ZeroRodCAD Desktop"
-    assert APP_VERSION == "0.12.0"
-    assert APP_BUILD == "012"
+    assert APP_VERSION == "0.14.0"
+    assert APP_BUILD == "014"
 
 
 def test_diagnostics_have_core_items():

@@ -1,37 +1,24 @@
-# GitHub Workflow
-
-## Publish Build 012
+# GitHub Workflow – Build 014
 
 ```bash
 source .venv/bin/activate
-python -m pip install -e ".[dev,desktop,packaging]"
 
-ruff check .
-ruff format --check .
+ruff check . --fix
+ruff format
 pytest -v
 pre-commit run --all-files
-```
 
-Review:
-
-```bash
 git status
 git diff
-```
 
-Commit:
-
-```bash
 git add .
-git commit -m "build(012): add native macOS application foundation"
+git commit -m "build(014): restore preview and stabilize macOS runtime"
 git push origin main
 ```
 
-## Recommended tag after local `.app` validation
+Tag only after source and packaged previews both pass:
 
 ```bash
-git tag -a v0.12.0 -m "ZeroRodCAD Desktop 0.12.0"
-git push origin v0.12.0
+git tag -a v0.14.0 -m "ZeroRodCAD Desktop 0.14.0"
+git push origin v0.14.0
 ```
-
-Create a GitHub release only after the packaged application has passed the documented macOS validation.

@@ -2,29 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 import cadquery as cq
 
 from .model import build_body, build_rod
 from .parameters import ZeroRodParameters
-
-Point3D = tuple[float, float, float]
-Triangle = tuple[int, int, int]
-Line3D = tuple[Point3D, Point3D]
-
-
-@dataclass(frozen=True)
-class PreviewMesh:
-    name: str
-    vertices: tuple[Point3D, ...]
-    triangles: tuple[Triangle, ...]
-
-
-@dataclass(frozen=True)
-class PreviewScene:
-    meshes: tuple[PreviewMesh, ...]
-    lines: dict[str, tuple[Line3D, ...]] = field(default_factory=dict)
+from .preview_data import Line3D, Point3D, PreviewMesh, PreviewScene
 
 
 def _vector_tuple(vector: cq.Vector) -> Point3D:
@@ -42,7 +24,7 @@ def tessellate_workplane(
         raise ValueError(f"Preview object '{name}' contains no solid.")
 
     all_vertices: list[Point3D] = []
-    all_triangles: list[Triangle] = []
+    all_triangles: list[tuple[int, int, int]] = []
 
     for solid in solids:
         vertices, triangles = solid.tessellate(tolerance, angular_tolerance)

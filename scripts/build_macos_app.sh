@@ -9,27 +9,26 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
-if [[ ! -d ".venv" ]]; then
-  echo "No .venv found. Run scripts/bootstrap_macos.sh first."
-  exit 1
+PACKAGING_VENV="${PACKAGING_VENV:-.venv-packaging}"
+MODE="${1:-release}"
+
+if [[ ! -x "$PACKAGING_VENV/bin/python" ]]; then
+  ./scripts/create_packaging_venv.sh
 fi
 
-source .venv/bin/activate
-python -m pip install -e ".[dev,desktop,packaging]"
-
-"$ROOT_DIR/scripts/create_macos_icon.sh"
-
+source "$PACKAGING_VENV/bin/activate"
+./scripts/create_macos_icon.sh
 rm -rf build dist
-pyinstaller --noconfirm --clean packaging/macos/ZeroRodCAD.spec
 
-APP_PATH="$ROOT_DIR/dist/ZeroRodCAD Desktop.app"
+if [[ "$MODE" == "debug" ]]; then
+  pyinstaller --noconfirm --clean packaging/macos/ZeroRodCAD-Debug.spec
+  APP_PATH="$ROOT_DIR/dist/ZeroRodCAD Desktop Debug.app"
+else
+  pyinstaller --noconfirm --clean packaging/macos/ZeroRodCAD.spec
+  APP_PATH="$ROOT_DIR/dist/ZeroRodCAD Desktop.app"
+fi
 
 echo
-echo "Application created:"
-echo "  $APP_PATH"
-echo
-echo "Run diagnostics:"
-echo "  \"$APP_PATH/Contents/MacOS/ZeroRodCAD Desktop\" --diagnose"
-echo
-echo "Open the app:"
-echo "  open \"$APP_PATH\""
+echo "Application created: $APP_PATH"
+du -sh "$APP_PATH"
+./scripts/report_macos_bundle.sh "$APP_PATH"

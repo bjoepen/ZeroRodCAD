@@ -1,12 +1,9 @@
-"""Validated geometry export."""
+"""Export service for STL, STEP and the engineering report."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from cadquery import exporters
-
-from .model import build_assembly, build_body
 from .parameters import ZeroRodParameters
 from .report import save_report
 from .validation import validate_parameters
@@ -15,40 +12,35 @@ from .validation import validate_parameters
 def export_project(
     output_directory: str | Path,
     parameters: ZeroRodParameters,
-    *,
-    export_stl: bool = True,
-    export_step: bool = True,
-    export_report: bool = True,
-) -> list[Path]:
-    validation = validate_parameters(parameters, check_geometry=True)
-    if not validation.is_valid:
-        raise ValueError("Export blocked: " + " | ".join(validation.errors))
+) -> tuple[Path, ...]:
+    validation = validate_parameters(parameters)
+    if not validation.ok:
+        messages = "\n".join(validation.errors)
+        raise ValueError(f"Project validation failed:\n{messages}")
 
-    output = Path(output_directory)
-    output.mkdir(parents=True, exist_ok=True)
-    slug = _slugify(parameters.project_name)
-    created: list[Path] = []
+    # Deliberately lazy: importing CadQuery/OCP during application startup made
+    # packaged builds fragile and delayed the first window.
+    from cadquery import exporters
 
-    body = build_body(parameters)
+    from .model import build_assembly, build_body
 
-    if export_stl:
-        path = output / f"{slug}.stl"
-        exporters.export(body, str(path))
-        created.append(path)
+    directory = Path(output_directory)
+    directory.mkdir(parents=True, exist_ok=True)
 
-    if export_step:
-        path = output / f"{slug}.step"
-        build_assembly(parameters).save(str(path))
-        created.append(path)
+    safe_name = _safe_name(parameters.project_name)
+    body_path = directory / f"{safe_name}-body.stl"
+    assembly_path = directory / f"{safe_name}-assembly.step"
+    report_path = directory / f"{safe_name}-report.md"
 
-    if export_report:
-        path = output / f"{slug}-instrument-report.md"
-        save_report(path, parameters)
-        created.append(path)
+    exporters.export(build_body(parameters), str(body_path))
+    exporters.export(build_assembly(parameters), str(assembly_path))
+    save_report(report_path, parameters)
 
-    return created
+    return body_path, assembly_path, report_path
 
 
-def _slugify(value: str) -> str:
-    safe = "".join(character.lower() if character.isalnum() else "-" for character in value)
-    return "-".join(part for part in safe.split("-") if part) or "zerorod"
+def _safe_name(value: str) -> str:
+    cleaned = "".join(
+        character.lower() if character.isalnum() else "-" for character in value.strip()
+    )
+    return "-".join(part for part in cleaned.split("-") if part) or "zerorod"

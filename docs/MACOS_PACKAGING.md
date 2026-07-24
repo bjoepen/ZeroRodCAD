@@ -1,80 +1,67 @@
-# macOS Packaging Guide
+# macOS Packaging – Build 013
 
-## Prerequisites
+## Mandatory clean environment
 
-- macOS
-- working ZeroRodCAD virtual environment
-- CadQuery and PySide6 installed
-- PyInstaller installed through the `packaging` extra
+Do not package from the development `.venv`.
 
 ```bash
-source .venv/bin/activate
-python -m pip install -e ".[dev,desktop,packaging]"
+make packaging-venv
 ```
 
-## Build
+PyInstaller can collect modules that are present in its active environment. The clean packaging environment is therefore part of the engineering standard.
+
+## Diagnostic sequence
+
+### 1. Build console-debug app
 
 ```bash
-./scripts/build_macos_app.sh
+make macos-debug
 ```
 
-The script:
-
-1. verifies macOS,
-2. activates `.venv`,
-3. creates the `.icns` icon,
-4. clears old build products,
-5. runs PyInstaller,
-6. writes the application to `dist/`.
-
-## Verify
+### 2. Run diagnostics
 
 ```bash
-./scripts/verify_macos_app.sh
+"dist/ZeroRodCAD Desktop Debug.app/Contents/MacOS/ZeroRodCAD Desktop" --diagnose
 ```
 
-Verify manually:
-
-- launch the app,
-- open the example project,
-- rotate and zoom the preview,
-- change body depth,
-- export STL and STEP,
-- close and reopen the app,
-- drag a `.zerorod` file onto the app,
-- inspect exported files independently.
-
-## Release ZIP
+### 3. Run startup smoke test
 
 ```bash
-./scripts/package_macos_release.sh
+QT_QPA_PLATFORM=offscreen "dist/ZeroRodCAD Desktop Debug.app/Contents/MacOS/ZeroRodCAD Desktop" --startup-test
 ```
 
-The `ditto` command preserves macOS metadata.
+Expected:
 
-## Signing
+```text
+STARTUP_OK
+```
 
-Unsigned local builds can be tested on the build Mac. Distribution to other users should use an Apple Developer ID.
-
-Example structure:
+### 4. Build release app
 
 ```bash
-codesign   --deep   --force   --options runtime   --sign "Developer ID Application: YOUR NAME (TEAMID)"   "dist/ZeroRodCAD Desktop.app"
+make macos-app
 ```
 
-The exact signing identity and entitlements depend on the owner's Apple Developer account.
+### 5. Verify release app
 
-## Notarization
+```bash
+make macos-verify
+```
 
-After signing, create a ZIP and submit it with `notarytool`.
+## Size report
 
-Do not store Apple credentials in the repository. Use a Keychain profile or GitHub repository secrets.
+The build writes:
 
-## Universal build
+```text
+build/reports/macos-bundle-size.txt
+```
 
-A universal release should be produced and tested for both:
+The default budget is 800,000 KB. Override only with an explicit engineering decision:
 
-- Apple Silicon (`arm64`)
-- Intel (`x86_64`)
+```bash
+ZERORODCAD_APP_SIZE_BUDGET_KB=900000 make macos-app
+```
 
-CadQuery/OCP binary availability must be verified independently for both architectures.
+## Why the application is still substantial
+
+CadQuery relies on Open Cascade/OCP, a full solid-modeling kernel. PySide6 also supplies native Qt frameworks. The goal is therefore not an unrealistically tiny bundle, but a controlled bundle without unrelated WebEngine, QML, multimedia, notebook or plotting payloads.

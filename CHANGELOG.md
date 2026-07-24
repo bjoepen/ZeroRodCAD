@@ -1,57 +1,25 @@
 # Changelog
 
-## Build 012 – Native macOS Application Foundation
+## Build 014 – Preview Recovery
 
-### Added
+### Fixed
 
-- PyInstaller macOS application specification.
-- Native `.app` bundle metadata.
-- `.zerorod` file-type declaration and UTI.
-- 1024 × 1024 ZeroRodCAD application icon.
-- macOS icon-set generation script.
-- macOS `.app` build script.
-- Packaged-application verification script.
-- Release ZIP packaging script.
-- About dialog.
-- Runtime diagnostics dialog.
-- `--diagnose` command-line mode.
-- Drag-and-drop opening of `.zerorod` files.
-- Remembered project and export directory.
-- Native Help menu.
-- Packaging, signing and release documentation.
+- Restored the preview worker's `completed` signal contract.
+- Removed the accidental GUI-startup dependency on `zerorodcad.preview`.
+- Added renderer-independent preview data structures.
+- Logged full preview tracebacks to the application log.
+- Corrected stale Build 012 diagnostics test expectations.
+- Corrected Ruff import ordering.
+- Fixed macOS verification error 141.
 
-### Changed
+### Packaging
 
-- Package version updated to 0.12.0.
-- Main window title now reads application metadata centrally.
-- Packaging dependencies moved to the optional `packaging` extra.
+- Retained VTK because the current CadQuery runtime imports `vtkmodules`.
+- Reverted unsafe VTK, CasADi and llvmlite pruning.
+- Increased the temporary bundle budget to 1.2 GB while a verified lean CAD runtime is investigated.
+- Continued excluding unrelated Qt modules and development tooling.
 
 ### Compatibility
 
 - `.zerorod` project format remains version 1.
-- No ZeroRod geometry parameters changed.
-- Build 010 and Build 011 project files remain compatible.
-
-### Not included
-
-- Apple Developer ID signing.
-- Apple notarization credentials.
-- A prebuilt universal application bundle.
-
-These tasks require the repository owner's Apple environment and credentials.
-
-## Build 011.2 – Formatter Compliance
-
-- Canonical Ruff formatting.
-
-## Build 011.1 – Quality Gate
-
-- Ruff fixes and automated pre-commit checks.
-
-## Build 011 – Interactive Design Workspace
-
-- Interactive preview and live validation.
-
-## Build 010 – Desktop Foundation
-
-- Initial GitHub repository and desktop interface.
+- No geometry parameters changed.

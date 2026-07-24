@@ -1,7 +1,8 @@
-"""Build 011 interactive design workspace."""
+"""Build 014 stable desktop workspace."""
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, QSignalBlocker, QThreadPool, QTimer, QUrl
@@ -35,7 +36,7 @@ from zerorodcad.report import build_report
 from zerorodcad.validation import ValidationResult, validate_parameters
 
 from .about_dialog import AboutDialog
-from .application_info import APP_NAME
+from .application_info import APP_NAME, APP_VERSION
 from .diagnostics_dialog import DiagnosticsDialog
 from .preview_widget import PreviewWidget
 from .workers import PreviewJob
@@ -52,7 +53,7 @@ class MainWindow(QMainWindow):
         self._generation = 0
         self._thread_pool = QThreadPool.globalInstance()
 
-        self.setWindowTitle("ZeroRodCAD Desktop 0.11.2")
+        self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
         self.resize(1240, 780)
 
         self._build_actions()
@@ -318,8 +319,14 @@ class MainWindow(QMainWindow):
     def _preview_failed(self, generation: int, traceback_text: str) -> None:
         if generation != self._generation:
             return
-        self.preview.set_error("Preview generation failed.\n\n" + traceback_text)
-        self.statusBar().showMessage("Preview generation failed")
+        logging.getLogger(__name__).error(
+            "Preview generation failed\n%s",
+            traceback_text,
+        )
+        self.preview.set_error(
+            "Preview generation failed. Details were written to the application log."
+        )
+        self.statusBar().showMessage("Preview generation failed — see Diagnostics")
 
     def _show_validation_status(self, validation: ValidationResult) -> None:
         if validation.errors:

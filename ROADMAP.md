@@ -1,48 +1,24 @@
 # Roadmap
 
-## Build 010 – Desktop Foundation
+## Completed
 
-- [x] Engine and GUI separation
-- [x] Project format
-- [x] Validation and exports
-- [x] GitHub repository foundation
+- [x] Build 010 – Desktop foundation
+- [x] Build 011 – Interactive design workspace
+- [x] Build 012 – macOS application foundation
+- [x] Build 013 – packaging diagnostics
+- [x] Build 014 – preview recovery and runtime stabilization
 
-## Build 011 – Interactive Design Workspace
+## Build 015 – Lean CAD Runtime Investigation
 
-- [x] Interactive preview
-- [x] Rotate and zoom
-- [x] Live validation
-- [x] Visibility controls
-
-## Build 011.1 / 011.2 – Quality Gates
-
-- [x] Ruff compliance
-- [x] Pre-commit hooks
-- [x] Canonical formatting
-
-## Build 012 – Native macOS Application Foundation
-
-- [x] Application icon
-- [x] Native metadata
-- [x] `.zerorod` file declaration
-- [x] `.app` build script
-- [x] Release ZIP workflow
-- [x] Runtime diagnostics
-- [x] About and Help menus
-- [ ] Developer ID signing
-- [ ] Apple notarization
-- [ ] Universal Intel/Apple Silicon release
-
-## Build 013 – Engineering Inspection Tools
-
-- [ ] Section plane
-- [ ] Tangent-point markers
-- [ ] Measurement overlays
-- [ ] Wall-thickness indicators
-- [ ] Screenshot export
+- [ ] Validate a VTK-free OCP/CAD stack separately
+- [ ] Compare Python 3.12/3.13 packaging environments
+- [ ] Verify preview tessellation
+- [ ] Verify STL and STEP export
+- [ ] Measure application size
+- [ ] Adopt only after functional equivalence is proven
 
 ## Later
 
-- [ ] Preset library
-- [ ] Multiple zero-fret systems
-- [ ] Linux and Windows packages
+- [ ] Engineering inspection tools
+- [ ] Apple signing and notarization
+- [ ] Universal release
