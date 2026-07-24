@@ -2,194 +2,127 @@
 
 > **Engineering the Perfect String Path**
 
-**ZeroRodCAD Desktop** is an open-source engineering project for designing parametric zero-fret and string-guide systems for Cigar Box Guitars and related string instruments.
+**ZeroRodCAD Desktop** is an open-source engineering application for designing parametric zero-fret and string-guide systems for Cigar Box Guitars and related string instruments.
 
-Instead of modifying CAD models manually, ZeroRodCAD generates the complete geometry from engineering parameters. The application validates the design and exports manufacturing-ready STL and STEP files together with an engineering report.
+Instead of modifying CAD geometry manually, users describe the instrument through measurable parameters. ZeroRodCAD calculates the resulting geometry, checks the design and exports STL, STEP and a Markdown instrument report.
 
-The long-term vision is a native desktop application that enables makers, luthiers and instrument builders to design custom zero-fret systems without requiring CAD experience.
+## Current build
 
----
+**Build 011.2 — Formatter Compliance**
 
-## Why ZeroRodCAD?
+Build 011.2 retains the interactive workspace and quality gate while applying the canonical Ruff formatting:
 
-Traditional CAD workflows require manual modelling for every design change.
+- all Ruff findings from Build 011 resolved,
+- strict sequence checks for related parameter collections,
+- pre-commit hooks for linting, formatting and repository hygiene,
+- live recalculation after parameter changes,
+- grouped parameter editor,
+- interactive 3D preview without an additional rendering dependency,
+- drag to rotate,
+- mouse wheel to zoom,
+- body, rod and virtual-string visibility controls,
+- rendered validation and report view,
+- asynchronous preview generation,
+- stale calculation protection,
+- STL and STEP export,
+- human-readable `.zerorod` project files.
 
-ZeroRodCAD takes a different approach.
+The 3D preview is intended for design inspection. Manufacturing files remain the authoritative geometry.
 
-The instrument is described by engineering parameters rather than geometry.
+## Default reference model
 
-Examples include:
+| Parameter | Value |
+|---|---:|
+| Body width | 38.00 mm |
+| Body depth | 9.00 mm |
+| Fretboard height | 6.90 mm |
+| Rod diameter | 3.00 mm |
+| Groove diameter | 2.94 mm |
+| String count | 3 |
+| String gauges | .036 / .026 / .017 in |
+| String spacing | 10.00 mm |
+| String inlet height | 2.80 mm |
 
-- Body dimensions
-- Rod diameter
-- Groove diameter
-- Number of strings
-- String gauges
-- String spacing
-- Entry geometry
-- Safety clearances
-
-The software calculates the resulting geometry automatically.
-
----
-
-## Current Features
-
-- Parametric CadQuery geometry engine
-- Variable string count
-- Variable string gauges
-- Tangential string-channel calculation
-- Automatic engineering validation
-- Human-readable project files (`.zerorod`)
-- STL export
-- STEP export
-- Markdown engineering reports
-- Desktop application (Build 010 Foundation)
-- Automated unit tests
-- GitHub Actions CI
-
----
-
-## Planned Features
-
-- Interactive 3D viewport
-- Live parameter updates
-- Native macOS application
-- Preset library
-- Multiple zero-fret systems
-- Additional instrument types
-- Automatic wall-thickness analysis
-- Printability checks
-- Multi-language interface
-
----
-
-# Engineering Philosophy
-
-ZeroRodCAD follows five simple principles.
-
-1. **Parametric First**
-   
-   Geometry is generated from parameters.
-
-2. **Instrument First**
-   
-   Every design decision must improve the instrument rather than the CAD model.
-
-3. **Prototype Driven**
-   
-   Physical prototypes are used to validate every important engineering change.
-
-4. **Transparent Engineering**
-   
-   Every design decision is documented.
-
-5. **Open Source**
-   
-   Improvements should benefit the entire maker community.
-
----
-
-# Repository Structure
-
-```text
-ZeroRodCAD-Desktop/
-│
-├── src/
-│   ├── zerorodcad/
-│   └── zerorodcad_desktop/
-│
-├── docs/
-├── examples/
-├── tests/
-├── scripts/
-├── exports/
-└── .github/
-```
-
----
-
-# Quick Start
-
-Clone the repository
+## Quick start on macOS
 
 ```bash
-git clone https://github.com/<YOUR_ACCOUNT>/ZeroRodCAD-Desktop.git
+git clone <YOUR-GITHUB-REPOSITORY-URL>
 cd ZeroRodCAD-Desktop
-```
 
-Create a virtual environment
-
-```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-```
 
-Install dependencies
-
-```bash
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip setuptools wheel
 python -m pip install -e ".[dev,desktop]"
-```
 
-Run the tests
-
-```bash
 pytest -v
-```
-
-Start the desktop application
-
-```bash
 zerorodcad-desktop
 ```
 
----
+Existing Build 010 users can update in place:
 
-# Roadmap
+```bash
+git pull
+source .venv/bin/activate
+python -m pip install -e ".[dev,desktop]"
+pytest -v
+zerorodcad-desktop
+```
 
-| Build | Status | Description              |
-| ----- | ------ | ------------------------ |
-| 010   | ✅      | Desktop Foundation       |
-| 011   | ⬜      | Interactive 3D Preview   |
-| 012   | ⬜      | Native macOS Application |
-| 013   | ⬜      | Preset Library           |
-| 014   | ⬜      | Multi-Instrument Support |
-| 1.0   | ⬜      | First Stable Release     |
+Detailed instructions: [`docs/INSTALL_MACOS.md`](docs/INSTALL_MACOS.md)
 
----
+## Desktop controls
 
-# Contributing
+- Change a parameter: the report updates immediately and the model is rebuilt after a short delay.
+- Drag inside the preview: rotate the model.
+- Mouse wheel: zoom.
+- Reset View: restore the default camera.
+- Toggle Body, Rod and Strings independently.
+- Open and save `.zerorod` projects from the File menu.
+- Export STL, STEP and the instrument report from the toolbar or File menu.
 
-Contributions are welcome.
+## Repository layout
 
-Please read
+```text
+ZeroRodCAD-Desktop/
+├── src/
+│   ├── zerorodcad/
+│   └── zerorodcad_desktop/
+├── tests/
+├── docs/
+├── examples/
+├── exports/
+├── scripts/
+└── .github/
+```
 
-- CONTRIBUTING.md
-- CODE_OF_CONDUCT.md
+## Engineering philosophy
 
-before opening a Pull Request.
+1. **Parametric first** — geometry is generated from parameters.
+2. **Instrument first** — design decisions serve the instrument.
+3. **Prototype driven** — important changes require physical validation.
+4. **Transparent engineering** — changes and evidence are documented.
+5. **Open source** — improvements benefit the maker community.
 
-Engineering changes should always include validation information.
+## Project status
 
----
+The project is under active development. The interactive preview has been implemented without adding PyVista or VTK, keeping the installation compact and compatible with the existing CadQuery/PySide6 environment.
 
-# License
+## License
 
-Released under the MIT License.
+MIT License. See [`LICENSE`](LICENSE).
 
----
 
-## Project Status
+## Pre-commit quality gate
 
-**Current Build**
+Install once:
 
-> **Build 010 — Desktop Foundation**
+```bash
+pre-commit install
+```
 
-The engineering core is under active development.
+Run all checks:
 
-The long-term objective is to transform instrument design from manual CAD modelling into reproducible engineering.
-
----
-
-*"ZeroRodCAD transforms instrument design from manual CAD modeling into reproducible engineering."*
+```bash
+pre-commit run --all-files
+```

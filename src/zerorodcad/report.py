@@ -36,12 +36,11 @@ def build_report(p: ZeroRodParameters) -> str:
             p.string_gauges_inch,
             p.string_diameters_mm,
             p.string_heights_over_fretboard,
+            strict=True,
         ),
         start=1,
     ):
-        lines.append(
-            f"| {index} | {gauge:.3f} in | {diameter:.3f} mm | {height:.3f} mm |"
-        )
+        lines.append(f"| {index} | {gauge:.3f} in | {diameter:.3f} mm | {height:.3f} mm |")
 
     lines.extend(["", "## Validation", ""])
     if validation.errors:

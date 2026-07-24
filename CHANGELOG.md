@@ -1,23 +1,39 @@
 # Changelog
 
-## Build 010 – Desktop Foundation
+## Build 011.2 – Formatter Compliance
+
+### Fixed
+
+- Applied the exact Ruff formatter output to all six reported files.
+- Removed the leading blank line in `zerorodcad_desktop/__init__.py`.
+- Normalized line wrapping in parameter, preview, report and desktop modules.
+
+### Compatibility
+
+- No geometry parameters changed.
+- `.zerorod` project format remains version 1.
+- Existing Build 010, 011 and 011.1 projects remain compatible.
+
+## Build 011.1 – Quality Gate
+
+### Fixed
+
+- Removed unnecessary quotes from `ZeroRodParameters.from_dict()`.
+- Added `strict=True` to related `zip()` operations.
+- Moved `Iterable` to `collections.abc`.
+- Resolved all four Ruff findings reported against Build 011.
 
 ### Added
 
-- GitHub-ready repository structure.
-- Generalized CadQuery engine for variable string counts.
-- JSON-based `.zerorod` project files.
-- Validation service with errors, warnings and calculated values.
-- STL, STEP and report exports.
-- PySide6 desktop interface.
-- macOS installation guide.
-- GitHub Actions test workflow.
-- Issue and pull-request templates.
-- Example project for a three-string Open-G CBG.
+- Pre-commit configuration.
+- Ruff lint and format hooks.
+- JSON, TOML and YAML checks.
+- Trailing-whitespace and end-of-file checks.
+- Large-file protection.
+- Upgrade and validation instructions.
 
-### Known limitations
+### Compatibility
 
-- No interactive 3D viewport yet.
-- Geometry export requires a local CadQuery installation.
-- macOS `.app` packaging is planned for Build 012.
-- Physical validation remains mandatory before instrument use.
+- No geometry parameter changes.
+- `.zerorod` project format remains version 1.
+- Existing Build 010 and 011 project files remain compatible.

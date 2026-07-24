@@ -19,9 +19,7 @@ class ZeroRodParameters:
     rod_center_z_offset: float = -0.75
     groove_front_clearance: float = 0.01
 
-    string_gauges_inch: tuple[float, ...] = field(
-        default_factory=lambda: (0.036, 0.026, 0.017)
-    )
+    string_gauges_inch: tuple[float, ...] = field(default_factory=lambda: (0.036, 0.026, 0.017))
     string_spacing: float = 10.0
     string_inlet_y: float = 0.0
     string_inlet_z: float = 2.80
@@ -134,7 +132,7 @@ class ZeroRodParameters:
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ZeroRodParameters":
+    def from_dict(cls, data: dict[str, Any]) -> ZeroRodParameters:
         cleaned = dict(data)
         if "string_gauges_inch" in cleaned:
             cleaned["string_gauges_inch"] = tuple(float(v) for v in cleaned["string_gauges_inch"])

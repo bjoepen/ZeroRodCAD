@@ -1,21 +1,52 @@
 # Architecture
 
 ```text
-PySide6 desktop UI
+PySide6 desktop workspace
         │
-        ▼
-Project and validation services
+        ├── live parameter editor
+        ├── rendered report
+        └── interactive preview
+                 │
+                 ▼
+        background scene builder
+                 │
+                 ▼
+CadQuery geometry and tessellation
         │
-        ▼
-ZeroRodCAD parameter model
-        │
-        ▼
-CadQuery geometry engine
-        │
-        ▼
-STL / STEP / Markdown report
+        ├── manufacturing export
+        └── plain preview scene data
 ```
 
-The user interface does not construct geometry directly. It creates a `ZeroRodParameters` object and calls the same validation and export services used by the CLI.
+## Separation of responsibilities
 
-This separation allows future front ends without duplicating engineering logic.
+### Engine
+
+The `zerorodcad` package owns:
+
+- parameters,
+- geometry,
+- validation,
+- project files,
+- reports,
+- STL and STEP export.
+
+### Desktop
+
+The `zerorodcad_desktop` package owns:
+
+- widgets,
+- user interaction,
+- background preview jobs,
+- visualization,
+- file dialogs.
+
+### Preview scene
+
+The engine converts CadQuery solids into plain Python structures:
+
+- vertices,
+- triangle indices,
+- line segments,
+- layer names.
+
+The preview widget never modifies engineering geometry.

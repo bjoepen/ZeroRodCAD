@@ -1,23 +1,29 @@
-"""Build 010 desktop window without the Build 011 3D viewport."""
+"""Build 011 interactive design workspace."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSignalBlocker, QThreadPool, QTimer
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSpinBox,
-    QDoubleSpinBox,
-    QTextEdit,
+    QSplitter,
+    QTabWidget,
+    QTextBrowser,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -26,123 +32,299 @@ from zerorodcad.export import export_project
 from zerorodcad.parameters import ZeroRodParameters
 from zerorodcad.project import load_project, save_project
 from zerorodcad.report import build_report
-from zerorodcad.validation import validate_parameters
+from zerorodcad.validation import ValidationResult, validate_parameters
+
+from .preview_widget import PreviewWidget
+from .workers import PreviewJob
 
 
 class MainWindow(QMainWindow):
+    PREVIEW_DELAY_MS = 280
+
     def __init__(self) -> None:
         super().__init__()
         self.current_path: Path | None = None
-        self.setWindowTitle("ZeroRodCAD Desktop 0.10")
-        self.resize(980, 680)
+        self._generation = 0
+        self._thread_pool = QThreadPool.globalInstance()
+
+        self.setWindowTitle("ZeroRodCAD Desktop 0.11.2")
+        self.resize(1240, 780)
+
+        self._build_actions()
         self._build_ui()
-        self._build_menu()
+        self._build_menu_and_toolbar()
+        self._connect_live_updates()
+
+        self._preview_timer = QTimer(self)
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.timeout.connect(self._start_preview_build)
+
         self._load_parameters(ZeroRodParameters())
-        self.recalculate()
+        self._update_workspace()
+
+    def _build_actions(self) -> None:
+        self.new_action = QAction("New", self)
+        self.new_action.setShortcut("Ctrl+N")
+        self.new_action.triggered.connect(self.new_project)
+
+        self.open_action = QAction("Open…", self)
+        self.open_action.setShortcut("Ctrl+O")
+        self.open_action.triggered.connect(self.open_project)
+
+        self.save_action = QAction("Save", self)
+        self.save_action.setShortcut("Ctrl+S")
+        self.save_action.triggered.connect(self.save_current_project)
+
+        self.save_as_action = QAction("Save As…", self)
+        self.save_as_action.setShortcut("Ctrl+Shift+S")
+        self.save_as_action.triggered.connect(self.save_project_as)
+
+        self.export_action = QAction("Export STL / STEP…", self)
+        self.export_action.triggered.connect(self.export_files)
+
+        self.quit_action = QAction("Quit", self)
+        self.quit_action.setShortcut("Ctrl+Q")
+        self.quit_action.triggered.connect(self.close)
 
     def _build_ui(self) -> None:
-        central = QWidget()
-        root = QHBoxLayout(central)
+        splitter = QSplitter()
+        splitter.addWidget(self._build_parameter_sidebar())
+        splitter.addWidget(self._build_workspace())
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([380, 860])
+        self.setCentralWidget(splitter)
 
-        form_widget = QWidget()
-        form = QFormLayout(form_widget)
-
+    def _build_parameter_sidebar(self) -> QWidget:
         self.project_name = QLineEdit()
+
         self.body_width = self._double(38.0, 10.0, 200.0)
         self.body_depth = self._double(9.0, 5.0, 30.0)
         self.fretboard_height = self._double(6.90, 1.0, 30.0, decimals=2)
+
         self.rod_diameter = self._double(3.0, 0.5, 10.0)
         self.groove_diameter = self._double(2.94, 0.3, 10.0, decimals=2)
+        self.channel_clearance = self._double(0.05, 0.0, 2.0, decimals=2)
+
         self.string_count = QSpinBox()
         self.string_count.setRange(1, 12)
         self.string_count.valueChanged.connect(self._sync_gauge_fields)
+        self.gauges = QLineEdit()
+        self.gauges.setPlaceholderText("0.036, 0.026, 0.017")
         self.string_spacing = self._double(10.0, 1.0, 30.0)
         self.string_inlet_z = self._double(2.8, 0.0, 20.0)
         self.channel_diameter = self._double(1.15, 0.2, 5.0)
-        self.channel_clearance = self._double(0.05, 0.0, 2.0, decimals=2)
-        self.gauges = QLineEdit()
-        self.gauges.setPlaceholderText("0.036, 0.026, 0.017")
 
-        form.addRow("Project name", self.project_name)
-        form.addRow("Body width [mm]", self.body_width)
-        form.addRow("Body depth [mm]", self.body_depth)
-        form.addRow("Fretboard height [mm]", self.fretboard_height)
-        form.addRow("Rod diameter [mm]", self.rod_diameter)
-        form.addRow("Groove diameter [mm]", self.groove_diameter)
-        form.addRow("String count", self.string_count)
-        form.addRow("String gauges [inch]", self.gauges)
-        form.addRow("String spacing [mm]", self.string_spacing)
-        form.addRow("String inlet Z [mm]", self.string_inlet_z)
-        form.addRow("Channel diameter [mm]", self.channel_diameter)
-        form.addRow("Rod clearance [mm]", self.channel_clearance)
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.addWidget(QLabel("<h2>ZeroRod parameters</h2>"))
 
-        buttons = QHBoxLayout()
-        recalc = QPushButton("Calculate model")
-        recalc.clicked.connect(self.recalculate)
-        export = QPushButton("Export STL / STEP")
-        export.clicked.connect(self.export_files)
-        buttons.addWidget(recalc)
-        buttons.addWidget(export)
+        project_group = QGroupBox("Project")
+        project_form = QFormLayout(project_group)
+        project_form.addRow("Name", self.project_name)
+        layout.addWidget(project_group)
 
-        left = QVBoxLayout()
-        left.addWidget(QLabel("<h2>ZeroRod parameters</h2>"))
-        left.addWidget(form_widget)
-        left.addLayout(buttons)
-        left.addStretch()
+        body_group = QGroupBox("Body and reference")
+        body_form = QFormLayout(body_group)
+        body_form.addRow("Width [mm]", self.body_width)
+        body_form.addRow("Depth [mm]", self.body_depth)
+        body_form.addRow("Fretboard height [mm]", self.fretboard_height)
+        layout.addWidget(body_group)
 
-        left_widget = QWidget()
-        left_widget.setLayout(left)
+        rod_group = QGroupBox("Rod and groove")
+        rod_form = QFormLayout(rod_group)
+        rod_form.addRow("Rod diameter [mm]", self.rod_diameter)
+        rod_form.addRow("Groove diameter [mm]", self.groove_diameter)
+        rod_form.addRow("Rod clearance [mm]", self.channel_clearance)
+        layout.addWidget(rod_group)
 
-        self.results = QTextEdit()
-        self.results.setReadOnly(True)
-        self.results.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        strings_group = QGroupBox("Strings and channels")
+        strings_form = QFormLayout(strings_group)
+        strings_form.addRow("String count", self.string_count)
+        strings_form.addRow("Gauges [inch]", self.gauges)
+        strings_form.addRow("Spacing [mm]", self.string_spacing)
+        strings_form.addRow("Inlet Z [mm]", self.string_inlet_z)
+        strings_form.addRow("Channel Ø [mm]", self.channel_diameter)
+        layout.addWidget(strings_group)
 
-        right = QVBoxLayout()
-        right.addWidget(QLabel("<h2>Calculation and validation</h2>"))
-        right.addWidget(self.results)
-        right_widget = QWidget()
-        right_widget.setLayout(right)
+        export_button = QPushButton("Export STL / STEP")
+        export_button.clicked.connect(self.export_files)
+        layout.addWidget(export_button)
+        layout.addStretch()
 
-        root.addWidget(left_widget, 1)
-        root.addWidget(right_widget, 1)
-        self.setCentralWidget(central)
-        self.statusBar().showMessage("Build 010 – desktop foundation")
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content)
+        scroll.setMinimumWidth(350)
+        return scroll
 
-    def _build_menu(self) -> None:
+    def _build_workspace(self) -> QWidget:
+        workspace = QWidget()
+        layout = QVBoxLayout(workspace)
+
+        self.status_banner = QLabel()
+        self.status_banner.setMinimumHeight(42)
+        self.status_banner.setContentsMargins(14, 8, 14, 8)
+        layout.addWidget(self.status_banner)
+
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self._build_preview_tab(), "3D Preview")
+
+        self.report = QTextBrowser()
+        self.report.setOpenExternalLinks(False)
+        self.tabs.addTab(self.report, "Instrument Report")
+        layout.addWidget(self.tabs)
+
+        return workspace
+
+    def _build_preview_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+
+        controls = QHBoxLayout()
+        self.body_toggle = QCheckBox("Body")
+        self.body_toggle.setChecked(True)
+        self.rod_toggle = QCheckBox("Rod")
+        self.rod_toggle.setChecked(True)
+        self.strings_toggle = QCheckBox("Strings")
+        self.strings_toggle.setChecked(True)
+        reset_button = QPushButton("Reset View")
+
+        controls.addWidget(self.body_toggle)
+        controls.addWidget(self.rod_toggle)
+        controls.addWidget(self.strings_toggle)
+        controls.addStretch()
+
+        self.preview = PreviewWidget()
+        reset_button.clicked.connect(self.preview.reset_view)
+        controls.addWidget(reset_button)
+
+        self.body_toggle.toggled.connect(
+            lambda value: self.preview.set_layer_visibility(body=value)
+        )
+        self.rod_toggle.toggled.connect(lambda value: self.preview.set_layer_visibility(rod=value))
+        self.strings_toggle.toggled.connect(
+            lambda value: self.preview.set_layer_visibility(strings=value)
+        )
+
+        layout.addLayout(controls)
+        layout.addWidget(self.preview)
+        return widget
+
+    def _build_menu_and_toolbar(self) -> None:
         file_menu = self.menuBar().addMenu("&File")
-
-        new_action = QAction("New", self)
-        new_action.setShortcut("Ctrl+N")
-        new_action.triggered.connect(self.new_project)
-
-        open_action = QAction("Open…", self)
-        open_action.setShortcut("Ctrl+O")
-        open_action.triggered.connect(self.open_project)
-
-        save_action = QAction("Save", self)
-        save_action.setShortcut("Ctrl+S")
-        save_action.triggered.connect(self.save_current_project)
-
-        save_as_action = QAction("Save As…", self)
-        save_as_action.setShortcut("Ctrl+Shift+S")
-        save_as_action.triggered.connect(self.save_project_as)
-
-        export_action = QAction("Export STL / STEP…", self)
-        export_action.triggered.connect(self.export_files)
-
-        quit_action = QAction("Quit", self)
-        quit_action.setShortcut("Ctrl+Q")
-        quit_action.triggered.connect(self.close)
-
         for action in (
-            new_action,
-            open_action,
-            save_action,
-            save_as_action,
-            export_action,
-            quit_action,
+            self.new_action,
+            self.open_action,
+            self.save_action,
+            self.save_as_action,
+            self.export_action,
+            self.quit_action,
         ):
             file_menu.addAction(action)
+
+        toolbar = QToolBar("Project")
+        toolbar.setMovable(False)
+        toolbar.addAction(self.new_action)
+        toolbar.addAction(self.open_action)
+        toolbar.addAction(self.save_action)
+        toolbar.addSeparator()
+        toolbar.addAction(self.export_action)
+        self.addToolBar(toolbar)
+
+    def _connect_live_updates(self) -> None:
+        self.project_name.textChanged.connect(self._schedule_update)
+        self.gauges.textChanged.connect(self._schedule_update)
+
+        for widget in (
+            self.body_width,
+            self.body_depth,
+            self.fretboard_height,
+            self.rod_diameter,
+            self.groove_diameter,
+            self.string_count,
+            self.string_spacing,
+            self.string_inlet_z,
+            self.channel_diameter,
+            self.channel_clearance,
+        ):
+            widget.valueChanged.connect(self._schedule_update)
+
+    def _schedule_update(self, *args) -> None:
+        self._update_report_only()
+        self._preview_timer.start(self.PREVIEW_DELAY_MS)
+
+    def _update_workspace(self) -> None:
+        self._update_report_only()
+        self._preview_timer.start(0)
+
+    def _update_report_only(self) -> None:
+        try:
+            parameters = self._parameters()
+            validation = validate_parameters(parameters)
+            self.report.setMarkdown(build_report(parameters))
+            self._show_validation_status(validation)
+            if not validation.is_valid:
+                self.preview.clear_scene("Correct the validation errors to rebuild the preview.")
+        except Exception as exc:
+            self.report.setHtml(f"<h2>Input error</h2><p>{self._escape(str(exc))}</p>")
+            self._show_input_error(str(exc))
+            self.preview.clear_scene("Correct the input values to rebuild the preview.")
+
+    def _start_preview_build(self) -> None:
+        try:
+            parameters = self._parameters()
+            validation = validate_parameters(parameters)
+            if not validation.is_valid:
+                return
+        except Exception:
+            return
+
+        self._generation += 1
+        generation = self._generation
+        self.statusBar().showMessage("Building preview…")
+
+        job = PreviewJob(generation, parameters)
+        job.signals.completed.connect(self._preview_completed)
+        job.signals.failed.connect(self._preview_failed)
+        self._thread_pool.start(job)
+
+    def _preview_completed(self, generation: int, scene: object) -> None:
+        if generation != self._generation:
+            return
+        self.preview.set_scene(scene)
+        self.statusBar().showMessage("Preview up to date")
+
+    def _preview_failed(self, generation: int, traceback_text: str) -> None:
+        if generation != self._generation:
+            return
+        self.preview.set_error("Preview generation failed.\n\n" + traceback_text)
+        self.statusBar().showMessage("Preview generation failed")
+
+    def _show_validation_status(self, validation: ValidationResult) -> None:
+        if validation.errors:
+            text = "● Invalid design — " + validation.errors[0]
+            background = "#fce8e6"
+            foreground = "#9c1c13"
+        elif validation.warnings:
+            text = "● Valid with warning — " + validation.warnings[0]
+            background = "#fff4ce"
+            foreground = "#725200"
+        else:
+            text = "● Valid design — all parameter checks passed"
+            background = "#e6f4ea"
+            foreground = "#176b35"
+
+        self.status_banner.setText(text)
+        self.status_banner.setStyleSheet(
+            f"background:{background}; color:{foreground};border-radius:6px; font-weight:600;"
+        )
+
+    def _show_input_error(self, message: str) -> None:
+        self.status_banner.setText("● Input error — " + message)
+        self.status_banner.setStyleSheet(
+            "background:#fce8e6; color:#9c1c13;border-radius:6px; font-weight:600;"
+        )
 
     @staticmethod
     def _double(
@@ -166,7 +348,8 @@ class MainWindow(QMainWindow):
             values.extend([0.020] * (count - len(values)))
         else:
             values = values[:count]
-        self.gauges.setText(", ".join(f"{value:.3f}" for value in values))
+        with QSignalBlocker(self.gauges):
+            self.gauges.setText(", ".join(f"{value:.3f}" for value in values))
 
     def _parse_gauges(self, *, allow_mismatch: bool = False) -> list[float]:
         try:
@@ -198,6 +381,21 @@ class MainWindow(QMainWindow):
         )
 
     def _load_parameters(self, p: ZeroRodParameters) -> None:
+        widgets = (
+            self.project_name,
+            self.body_width,
+            self.body_depth,
+            self.fretboard_height,
+            self.rod_diameter,
+            self.groove_diameter,
+            self.string_count,
+            self.gauges,
+            self.string_spacing,
+            self.string_inlet_z,
+            self.channel_diameter,
+            self.channel_clearance,
+        )
+        blockers = [QSignalBlocker(widget) for widget in widgets]
         self.project_name.setText(p.project_name)
         self.body_width.setValue(p.body_width)
         self.body_depth.setValue(p.body_depth)
@@ -210,25 +408,12 @@ class MainWindow(QMainWindow):
         self.string_inlet_z.setValue(p.string_inlet_z)
         self.channel_diameter.setValue(p.channel_diameter)
         self.channel_clearance.setValue(p.channel_rod_clearance)
-
-    def recalculate(self) -> None:
-        try:
-            parameters = self._parameters()
-            validation = validate_parameters(parameters)
-            report = build_report(parameters)
-            self.results.setPlainText(report)
-            if validation.is_valid:
-                self.statusBar().showMessage("Parameters calculated successfully")
-            else:
-                self.statusBar().showMessage("Validation errors found")
-        except Exception as exc:
-            self.results.setPlainText(f"ERROR\n\n{exc}")
-            self.statusBar().showMessage("Input error")
+        del blockers
 
     def new_project(self) -> None:
         self.current_path = None
         self._load_parameters(ZeroRodParameters())
-        self.recalculate()
+        self._update_workspace()
 
     def open_project(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(
@@ -243,7 +428,7 @@ class MainWindow(QMainWindow):
             parameters = load_project(filename)
             self.current_path = Path(filename)
             self._load_parameters(parameters)
-            self.recalculate()
+            self._update_workspace()
         except Exception as exc:
             QMessageBox.critical(self, "Open failed", str(exc))
 
@@ -285,3 +470,7 @@ class MainWindow(QMainWindow):
             )
         except Exception as exc:
             QMessageBox.critical(self, "Export failed", str(exc))
+
+    @staticmethod
+    def _escape(text: str) -> str:
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

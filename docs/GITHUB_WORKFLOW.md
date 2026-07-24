@@ -1,33 +1,18 @@
 # GitHub Workflow
 
-## Initial publication
+## Publish Build 011.2
 
 ```bash
-git init
-git add .
-git commit -m "build(010): establish desktop foundation"
-git branch -M main
-git remote add origin <YOUR-GITHUB-REPOSITORY-URL>
-git push -u origin main
-```
-
-## Development build
-
-```bash
-git checkout main
-git pull
-git checkout -b build/011-3d-preview
-```
-
-After development:
-
-```bash
+source .venv/bin/activate
+python -m pip install -e ".[dev,desktop]"
+pre-commit install
+ruff check .
+ruff format --check .
+pytest -v
+pre-commit run --all-files
 git status
 git diff
-pytest -v
 git add .
-git commit -m "build(011): add interactive 3d preview"
-git push -u origin build/011-3d-preview
+git commit -m "build(011.2): apply canonical Ruff formatting"
+git push origin main
 ```
-
-Create a pull request, review tests and changes, then merge to `main`.
