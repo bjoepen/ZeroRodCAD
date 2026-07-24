@@ -3,19 +3,20 @@
 ## Completed
 
 - [x] Build 010 – Desktop foundation
-- [x] Build 011 – Interactive design workspace
+- [x] Build 011 – Interactive workspace
 - [x] Build 012 – macOS application foundation
-- [x] Build 013 – packaging diagnostics
-- [x] Build 014 – preview recovery and runtime stabilization
+- [x] Build 013 – Packaging diagnostics
+- [x] Build 014 – Preview recovery
+- [x] Build 015 – Lean runtime audit
 
-## Build 015 – Lean CAD Runtime Investigation
+## Next decision
 
-- [ ] Validate a VTK-free OCP/CAD stack separately
-- [ ] Compare Python 3.12/3.13 packaging environments
-- [ ] Verify preview tessellation
-- [ ] Verify STL and STEP export
-- [ ] Measure application size
-- [ ] Adopt only after functional equivalence is proven
+Build 015 reports determine whether the next step is:
+
+1. targeted dependency pruning,
+2. migration to a leaner supported CadQuery/OCP stack,
+3. acceptance of the measured runtime size,
+4. split architecture with a separate CAD worker.
 
 ## Later
 

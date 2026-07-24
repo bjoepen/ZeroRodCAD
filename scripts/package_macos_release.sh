@@ -6,7 +6,7 @@ cd "$ROOT_DIR"
 
 APP_PATH="$ROOT_DIR/dist/ZeroRodCAD Desktop.app"
 RELEASE_DIR="$ROOT_DIR/release"
-ARCHIVE="$RELEASE_DIR/ZeroRodCAD-Desktop-0.14.0-macOS.zip"
+ARCHIVE="$RELEASE_DIR/ZeroRodCAD-Desktop-0.15.0-macOS.zip"
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "Application not found. Run scripts/build_macos_app.sh first."

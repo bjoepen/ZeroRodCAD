@@ -1,23 +1,53 @@
 # Changelog
 
-## Build 014 – Preview Recovery
+## Build 017 – Sprint 1: Repository Cleanup
 
-### Fixed
+### Added
 
-- Restored the preview worker's `completed` signal contract.
-- Removed the accidental GUI-startup dependency on `zerorodcad.preview`.
-- Added renderer-independent preview data structures.
-- Logged full preview tracebacks to the application log.
-- Corrected stale Build 012 diagnostics test expectations.
-- Corrected Ruff import ordering.
-- Fixed macOS verification error 141.
+- Comprehensive `.gitignore`.
+- `.gitattributes` with consistent LF handling.
+- Documentation index and purpose-based documentation structure.
 
-### Packaging
+### Removed
 
-- Retained VTK because the current CadQuery runtime imports `vtkmodules`.
-- Reverted unsafe VTK, CasADi and llvmlite pruning.
-- Increased the temporary bundle budget to 1.2 GB while a verified lean CAD runtime is investigated.
-- Continued excluding unrelated Qt modules and development tooling.
+- macOS archive metadata.
+- Python caches and generated package metadata.
+- Generated export directory from version control.
+
+### Changed
+
+- Historical build notes moved to `docs/releases/`.
+- Upgrade notes moved to `docs/upgrades/`.
+- Operational documentation moved to `docs/guides/`.
+- Architecture and project-format documents moved to `docs/reference/`.
+
+## Build 015 – Lean Runtime Audit
+
+### Added
+
+- Minimal packaging requirements file.
+- Separate dependency-audit requirements file.
+- Runtime import probe.
+- `pipdeptree` text and JSON reports.
+- Installed-distribution size report.
+- PyInstaller warning and cross-reference report collection.
+- Application framework size summary.
+- Suspect dependency report.
+- Headless preview-engine validation.
+- Packaging file tests.
+
+### Packaging changes
+
+- CasADi explicitly excluded.
+- llvmlite explicitly excluded.
+- Numba explicitly excluded.
+- VTK retained.
+- OCP retained.
+- Clean packaging environment remains mandatory.
+
+### Engineering policy
+
+Dependencies are no longer removed solely because they are large. Removal requires a successful startup, preview, STL and STEP validation sequence.
 
 ### Compatibility
 

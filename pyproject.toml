@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zerorodcad-desktop"
-version = "0.14.0"
+version = "0.15.0"
 description = "Parametric ZeroRod generator with CadQuery and PySide6"
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.13,<3.14"
 license = {text = "MIT"}
 authors = [
   {name = "ZeroRodCAD contributors"}
@@ -28,6 +28,7 @@ dev = [
   "pytest-cov>=5,<7",
   "ruff>=0.6,<1",
   "pre-commit>=3.8,<5",
+  "pipdeptree>=2.23,<3",
 ]
 
 [project.scripts]

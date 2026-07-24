@@ -4,8 +4,8 @@ from zerorodcad_desktop.startup import log_directory
 
 
 def test_build_metadata():
-    assert APP_BUILD == "014"
-    assert APP_VERSION == "0.14.0"
+    assert APP_BUILD == "015"
+    assert APP_VERSION == "0.15.0"
 
 
 def test_startup_test_argument():

@@ -17,18 +17,35 @@ if [[ ! -x "$PACKAGING_VENV/bin/python" ]]; then
 fi
 
 source "$PACKAGING_VENV/bin/activate"
+
+python scripts/runtime_import_probe.py
 ./scripts/create_macos_icon.sh
+
 rm -rf build dist
 
 if [[ "$MODE" == "debug" ]]; then
-  pyinstaller --noconfirm --clean packaging/macos/ZeroRodCAD-Debug.spec
+  pyinstaller \
+    --noconfirm \
+    --clean \
+    --log-level INFO \
+    packaging/macos/ZeroRodCAD-Debug.spec
   APP_PATH="$ROOT_DIR/dist/ZeroRodCAD Desktop Debug.app"
 else
-  pyinstaller --noconfirm --clean packaging/macos/ZeroRodCAD.spec
+  pyinstaller \
+    --noconfirm \
+    --clean \
+    --log-level INFO \
+    packaging/macos/ZeroRodCAD.spec
   APP_PATH="$ROOT_DIR/dist/ZeroRodCAD Desktop.app"
 fi
 
 echo
-echo "Application created: $APP_PATH"
+echo "Application created:"
+echo "  $APP_PATH"
 du -sh "$APP_PATH"
-./scripts/report_macos_bundle.sh "$APP_PATH"
+
+if [[ "$MODE" == "release" ]]; then
+  ./scripts/report_macos_bundle.sh "$APP_PATH"
+  ./scripts/report_suspect_dependencies.sh "$APP_PATH"
+  ./scripts/analyze_pyinstaller_build.sh
+fi

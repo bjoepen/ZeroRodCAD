@@ -1,22 +1,65 @@
-.venv/
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+__MACOSX/
+
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
+*$py.class
 .pytest_cache/
+.mypy_cache/
+.pyright/
 .ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
-dist/
-build/
+coverage.xml
+
+# Python packaging metadata
 *.egg-info/
-.DS_Store
-exports/*
-!exports/.gitkeep
-*.stl
-*.step
-*.stp
-*.zerorod~
+.eggs/
+
+# Virtual environments
+.venv/
+.venv-*/
+venv/
+env/
+ENV/
+
+# Build, packaging and release output
+build/
+dist/
 release/
+exports/
+*.app/
 *.dmg
-*.icns
-.venv-packaging/
-build/reports/
+*.pkg
+
+# Generated reports and logs
+*.log
+build-reports/
+
+# Local environment and editor configuration
+.env
+.env.*
+!.env.example
+.python-version
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Locally created archives
+*.zip
+*.7z
+*.rar

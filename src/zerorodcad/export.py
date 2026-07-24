@@ -14,7 +14,7 @@ def export_project(
     parameters: ZeroRodParameters,
 ) -> tuple[Path, ...]:
     validation = validate_parameters(parameters)
-    if not validation.ok:
+    if not validation.is_valid:
         messages = "\n".join(validation.errors)
         raise ValueError(f"Project validation failed:\n{messages}")
 
@@ -33,7 +33,10 @@ def export_project(
     report_path = directory / f"{safe_name}-report.md"
 
     exporters.export(build_body(parameters), str(body_path))
-    exporters.export(build_assembly(parameters), str(assembly_path))
+
+    assembly = build_assembly(parameters)
+    assembly.export(str(assembly_path))
+
     save_report(report_path, parameters)
 
     return body_path, assembly_path, report_path

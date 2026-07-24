@@ -24,7 +24,7 @@ find "$APP_PATH" -type f -print0 \
   du -sh "$APP_PATH"
   echo
   echo "Largest files:"
-  sed -n '1,40p' "$ALL_FILES"
+  sed -n '1,50p' "$ALL_FILES"
 } | tee "$REPORT"
 
 SIZE_KB="$(du -sk "$APP_PATH" | awk '{print $1}')"
@@ -32,10 +32,10 @@ BUDGET_KB="${ZERORODCAD_APP_SIZE_BUDGET_KB:-1200000}"
 
 if (( SIZE_KB > BUDGET_KB )); then
   echo
-  echo "ERROR: bundle exceeds temporary compatibility budget."
+  echo "ERROR: bundle exceeds compatibility budget."
   echo "Measured: ${SIZE_KB} KB; budget: ${BUDGET_KB} KB."
   exit 1
 fi
 
 echo
-echo "Bundle size recorded. Build 014 prioritizes working CAD and preview functionality."
+echo "Bundle size recorded."

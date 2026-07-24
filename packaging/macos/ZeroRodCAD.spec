@@ -13,6 +13,8 @@ excluded_modules = [
     "pandas",
     "pytest",
     "tkinter",
+    "llvmlite",
+    "numba",
     "PySide6.Qt3DAnimation",
     "PySide6.Qt3DCore",
     "PySide6.Qt3DExtras",
@@ -59,8 +61,8 @@ info_plist = {
     "CFBundleName": "ZeroRodCAD Desktop",
     "CFBundleDisplayName": "ZeroRodCAD Desktop",
     "CFBundleIdentifier": "de.beblog.zerorodcad",
-    "CFBundleShortVersionString": "0.14.0",
-    "CFBundleVersion": "014",
+    "CFBundleShortVersionString": "0.15.0",
+    "CFBundleVersion": "015",
     "NSHighResolutionCapable": True,
     "CFBundleDocumentTypes": [
         {
@@ -88,6 +90,7 @@ analysis = Analysis(
         "cadquery",
         "cadquery.exporters",
         "cadquery.occ_impl",
+	"casadi",
         "vtkmodules.vtkCommonCore",
         "vtkmodules.vtkCommonDataModel",
     ],

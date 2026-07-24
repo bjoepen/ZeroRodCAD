@@ -4,63 +4,63 @@
 
 ## Current build
 
-**Build 014 — Preview Recovery**
+**Build 017 — Repository Cleanup & Optimization**
 
-Build 014 restores the 3D preview and stabilizes the macOS application before any further size optimization.
+The application and 3D preview remain functionally stable. Build 017 begins by removing generated resources, simplifying the repository and preparing a smaller, evidence-based macOS bundle.
 
-## Corrected defects
+## Build 017 – Sprint 1
 
-- Preview worker signal mismatch fixed: `completed` is used consistently.
-- GUI preview types moved into `preview_data.py`.
-- Opening the main window no longer imports CadQuery/OCP through the preview widget.
-- CadQuery is loaded only inside the background preview worker or export operation.
-- Preview failures are written to the application log.
-- Build metadata tests updated to 0.14.0 / Build 014.
-- Ruff import ordering corrected.
-- `make macos-verify` error 141 corrected.
-- VTK is retained because the current CadQuery stack imports `vtkmodules` during normal shape operation.
+- generated macOS and Python metadata removed,
+- comprehensive `.gitignore` added,
+- `.gitattributes` added for consistent line endings,
+- documentation reorganized by purpose,
+- generated exports removed from version control,
+- source, tests, packaging specifications and examples preserved.
 
-## Important packaging decision
+See [the documentation index](docs/README.md) and the
+[Sprint 1 release note](docs/releases/BUILD-017-SPRINT-1.md).
 
-Build 014 deliberately does **not** remove VTK from the application bundle. Removing it before migrating to a verified VTK-free CAD stack can break CadQuery import, tessellation and therefore the 3D preview.
-
-The large application size is recorded as an open engineering issue rather than being “fixed” by deleting required runtime libraries.
-
-## Clean validation
+## Clean workflow
 
 ```bash
 rm -rf build dist release .venv-packaging
-
-source .venv/bin/activate
-python -m pip install -e ".[dev,desktop]"
-
-ruff check . --fix
-ruff format
-pytest -v
-pre-commit run --all-files
-
-zerorodcad-desktop
-```
-
-The source application must show the preview before packaging proceeds.
-
-Then:
-
-```bash
 make packaging-venv
+make dependency-audit
 make macos-debug
 make macos-app
 make macos-verify
 ```
 
-## Diagnostics
+## Generated reports
+
+```text
+build/reports/dependencies/
+build/reports/pyinstaller/
+build/reports/macos-bundle-size.txt
+build/reports/macos-bundle-all-files.txt
+build/reports/suspect-dependencies.txt
+```
+
+## Development quality gate
 
 ```bash
-cat ~/Library/Logs/ZeroRodCAD/zerorodcad.log
+source .venv/bin/activate
+make quality
 ```
+
+## Engineering rule
+
+A dependency may only be removed from the bundle after all of the following pass:
+
+- application startup,
+- 3D preview generation,
+- parameter-driven preview rebuild,
+- STL export,
+- STEP export,
+- independent inspection of both exports.
 
 ## Compatibility
 
 - project format remains version 1,
 - no geometry parameters changed,
-- Build 010–013 projects remain compatible.
+- projects from Builds 010–014 remain compatible.

@@ -12,7 +12,12 @@ rm -rf "$PACKAGING_VENV"
 source "$PACKAGING_VENV/bin/activate"
 
 python -m pip install --upgrade pip setuptools wheel
-python -m pip install -e ".[desktop,packaging]"
+python -m pip install -r packaging/macos/requirements-build.txt
 
-echo "Clean packaging environment created: $PACKAGING_VENV"
+echo
+echo "Clean packaging environment created:"
+echo "  $PACKAGING_VENV"
+echo
 python -m pip list
+echo
+python scripts/runtime_import_probe.py

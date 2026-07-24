@@ -1,4 +1,4 @@
-.PHONY: setup test lint format quality app diagnose startup-test example hooks packaging-venv macos-app macos-debug macos-verify macos-release
+.PHONY: setup test lint format quality app diagnose startup-test example hooks packaging-venv dependency-audit preview-verify macos-app macos-debug macos-verify macos-release
 
 setup:
 	python3 -m venv .venv
@@ -37,6 +37,12 @@ example:
 
 packaging-venv:
 	./scripts/create_packaging_venv.sh
+
+dependency-audit:
+	./scripts/audit_dependencies.sh
+
+preview-verify:
+	python scripts/verify_preview_engine.py
 
 macos-app:
 	./scripts/build_macos_app.sh release
