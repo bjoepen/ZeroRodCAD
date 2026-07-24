@@ -1,12 +1,21 @@
 {
-  "build": "011.2",
-  "version": "0.11.2",
+  "build": "012",
+  "version": "0.12.0",
   "package_type": "complete GitHub repository",
-  "base": "Build 011.1",
-  "change_scope": "formatting only",
-  "geometry_parameters_changed": false,
+  "base": "Build 011.2",
   "project_format_version": 1,
+  "geometry_parameters_changed": false,
+  "major_features": [
+    "macOS PyInstaller packaging",
+    "native application metadata",
+    "application icon",
+    ".zerorod file declaration",
+    "runtime diagnostics",
+    "drag-and-drop project opening",
+    "release scripts"
+  ],
   "syntax_checked_python_files": [
+    "tests/test_diagnostics.py",
     "tests/test_validation.py",
     "tests/test_parameters.py",
     "tests/test_geometry.py",
@@ -22,13 +31,30 @@
     "src/zerorodcad/model.py",
     "src/zerorodcad/preview.py",
     "src/zerorodcad/cli.py",
+    "src/zerorodcad_desktop/diagnostics.py",
+    "src/zerorodcad_desktop/diagnostics_dialog.py",
     "src/zerorodcad_desktop/app.py",
     "src/zerorodcad_desktop/workers.py",
     "src/zerorodcad_desktop/__init__.py",
     "src/zerorodcad_desktop/preview_widget.py",
+    "src/zerorodcad_desktop/about_dialog.py",
+    "src/zerorodcad_desktop/application_info.py",
     "src/zerorodcad_desktop/main_window.py"
   ],
   "syntax_errors": [],
-  "ruff_format_executed_in_generation_environment": false,
-  "note": "Exact formatter changes were applied from the user-provided Ruff output; local ruff verification remains required."
+  "not_executed_in_generation_environment": [
+    "ruff",
+    "pytest with CadQuery and PySide6",
+    "macOS .app build",
+    "codesign",
+    "notarization"
+  ],
+  "required_local_validation": [
+    "ruff check .",
+    "ruff format --check .",
+    "pytest -v",
+    "pre-commit run --all-files",
+    "./scripts/build_macos_app.sh",
+    "./scripts/verify_macos_app.sh"
+  ]
 }

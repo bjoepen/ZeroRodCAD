@@ -4,125 +4,95 @@
 
 **ZeroRodCAD Desktop** is an open-source engineering application for designing parametric zero-fret and string-guide systems for Cigar Box Guitars and related string instruments.
 
-Instead of modifying CAD geometry manually, users describe the instrument through measurable parameters. ZeroRodCAD calculates the resulting geometry, checks the design and exports STL, STEP and a Markdown instrument report.
-
 ## Current build
 
-**Build 011.2 — Formatter Compliance**
+**Build 012 — Native macOS Application Foundation**
 
-Build 011.2 retains the interactive workspace and quality gate while applying the canonical Ruff formatting:
+Build 012 adds the complete repository infrastructure needed to produce a real macOS `.app` bundle:
 
-- all Ruff findings from Build 011 resolved,
-- strict sequence checks for related parameter collections,
-- pre-commit hooks for linting, formatting and repository hygiene,
-- live recalculation after parameter changes,
-- grouped parameter editor,
-- interactive 3D preview without an additional rendering dependency,
-- drag to rotate,
-- mouse wheel to zoom,
-- body, rod and virtual-string visibility controls,
-- rendered validation and report view,
-- asynchronous preview generation,
-- stale calculation protection,
-- STL and STEP export,
-- human-readable `.zerorod` project files.
+- PyInstaller macOS specification,
+- native application metadata,
+- `.zerorod` file-type declaration,
+- macOS application icon,
+- build, verification and release scripts,
+- About and Diagnostics dialogs,
+- `--diagnose` command-line mode,
+- drag-and-drop opening of `.zerorod` projects,
+- remembered project/export directory,
+- native Help menu,
+- packaging and release documentation.
 
-The 3D preview is intended for design inspection. Manufacturing files remain the authoritative geometry.
+The source application remains directly runnable with:
 
-## Default reference model
+```bash
+zerorodcad-desktop
+```
 
-| Parameter | Value |
-|---|---:|
-| Body width | 38.00 mm |
-| Body depth | 9.00 mm |
-| Fretboard height | 6.90 mm |
-| Rod diameter | 3.00 mm |
-| Groove diameter | 2.94 mm |
-| String count | 3 |
-| String gauges | .036 / .026 / .017 in |
-| String spacing | 10.00 mm |
-| String inlet height | 2.80 mm |
+The packaged application is built locally on macOS because macOS bundles must be created and verified on macOS.
 
-## Quick start on macOS
+## Quick start
 
 ```bash
 git clone <YOUR-GITHUB-REPOSITORY-URL>
 cd ZeroRodCAD-Desktop
 
-python3.12 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 
 python -m pip install --upgrade pip setuptools wheel
-python -m pip install -e ".[dev,desktop]"
+python -m pip install -e ".[dev,desktop,packaging]"
 
-pytest -v
+pre-commit install
+make quality
 zerorodcad-desktop
 ```
 
-Existing Build 010 users can update in place:
+## Build the `.app`
 
 ```bash
-git pull
-source .venv/bin/activate
-python -m pip install -e ".[dev,desktop]"
-pytest -v
-zerorodcad-desktop
+./scripts/build_macos_app.sh
 ```
 
-Detailed instructions: [`docs/INSTALL_MACOS.md`](docs/INSTALL_MACOS.md)
-
-## Desktop controls
-
-- Change a parameter: the report updates immediately and the model is rebuilt after a short delay.
-- Drag inside the preview: rotate the model.
-- Mouse wheel: zoom.
-- Reset View: restore the default camera.
-- Toggle Body, Rod and Strings independently.
-- Open and save `.zerorod` projects from the File menu.
-- Export STL, STEP and the instrument report from the toolbar or File menu.
-
-## Repository layout
+Result:
 
 ```text
-ZeroRodCAD-Desktop/
-├── src/
-│   ├── zerorodcad/
-│   └── zerorodcad_desktop/
-├── tests/
-├── docs/
-├── examples/
-├── exports/
-├── scripts/
-└── .github/
+dist/ZeroRodCAD Desktop.app
 ```
 
-## Engineering philosophy
+Verify it:
 
-1. **Parametric first** — geometry is generated from parameters.
-2. **Instrument first** — design decisions serve the instrument.
-3. **Prototype driven** — important changes require physical validation.
-4. **Transparent engineering** — changes and evidence are documented.
-5. **Open source** — improvements benefit the maker community.
+```bash
+./scripts/verify_macos_app.sh
+```
 
-## Project status
+Create a distributable ZIP:
 
-The project is under active development. The interactive preview has been implemented without adding PyVista or VTK, keeping the installation compact and compatible with the existing CadQuery/PySide6 environment.
+```bash
+./scripts/package_macos_release.sh
+```
+
+Result:
+
+```text
+release/ZeroRodCAD-Desktop-0.12.0-macOS.zip
+```
+
+## Desktop features
+
+- interactive 3D preview,
+- live validation,
+- STL and STEP export,
+- `.zerorod` project files,
+- drag-and-drop project opening,
+- native macOS menus,
+- runtime diagnostics,
+- About dialog,
+- remembered file locations.
+
+## Engineering notice
+
+The interactive preview is an inspection aid. STL, STEP, slicer inspection, dimensional measurement and a physical prototype remain mandatory before use.
 
 ## License
 
 MIT License. See [`LICENSE`](LICENSE).
-
-
-## Pre-commit quality gate
-
-Install once:
-
-```bash
-pre-commit install
-```
-
-Run all checks:
-
-```bash
-pre-commit run --all-files
-```

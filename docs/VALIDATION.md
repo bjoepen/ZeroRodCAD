@@ -1,32 +1,50 @@
 # Validation
 
-## Automated
+## Source quality gate
 
 ```bash
+ruff check .
+ruff format --check .
 pytest -v
+pre-commit run --all-files
 ```
 
-Tests cover:
+## Source application
 
-- centered string positions,
-- variable string counts,
-- tangent calculation,
-- project file round-trip,
-- parameter errors,
-- one valid body solid,
-- channel and rod non-intersection.
+```bash
+zerorodcad-desktop
+zerorodcad-desktop --diagnose
+```
 
-## Required local review
+## Packaged application
 
-Before release:
+```bash
+./scripts/build_macos_app.sh
+./scripts/verify_macos_app.sh
+```
 
-1. Run all tests.
-2. Export the example project.
-3. Open the STEP assembly in a CAD viewer.
-4. Import the STL into a slicer without automatic repair.
-5. Inspect all channel layers.
-6. Print a prototype.
-7. Measure critical dimensions.
-8. Document the result.
+## Required functional checks
 
-No release may claim physical validation until this process is complete.
+1. Open the example `.zerorod` project.
+2. Confirm the preview appears.
+3. Rotate and zoom.
+4. Change body depth.
+5. Confirm asynchronous rebuild.
+6. Export STL.
+7. Export STEP.
+8. Open both files independently.
+9. Drag a project onto the app.
+10. Confirm the last directory is remembered.
+
+## Release evidence
+
+Store:
+
+- Terminal output,
+- diagnostics output,
+- screenshot of the packaged app,
+- STEP viewer screenshot,
+- slicer screenshot,
+- prototype measurements.
+
+No packaged release should be described as validated until this evidence exists.

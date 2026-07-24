@@ -15,3 +15,6 @@ exports/*
 *.step
 *.stp
 *.zerorod~
+release/
+*.dmg
+*.icns

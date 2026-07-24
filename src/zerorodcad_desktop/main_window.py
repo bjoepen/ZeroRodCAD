@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QSignalBlocker, QThreadPool, QTimer
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QSettings, QSignalBlocker, QThreadPool, QTimer, QUrl
+from PySide6.QtGui import QAction, QDesktopServices, QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QDoubleSpinBox,
@@ -34,6 +34,9 @@ from zerorodcad.project import load_project, save_project
 from zerorodcad.report import build_report
 from zerorodcad.validation import ValidationResult, validate_parameters
 
+from .about_dialog import AboutDialog
+from .application_info import APP_NAME
+from .diagnostics_dialog import DiagnosticsDialog
 from .preview_widget import PreviewWidget
 from .workers import PreviewJob
 
@@ -44,6 +47,8 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.current_path: Path | None = None
+        self.settings = QSettings()
+        self.setAcceptDrops(True)
         self._generation = 0
         self._thread_pool = QThreadPool.globalInstance()
 
@@ -85,6 +90,15 @@ class MainWindow(QMainWindow):
         self.quit_action = QAction("Quit", self)
         self.quit_action.setShortcut("Ctrl+Q")
         self.quit_action.triggered.connect(self.close)
+
+        self.about_action = QAction(f"About {APP_NAME}", self)
+        self.about_action.triggered.connect(self.show_about_dialog)
+
+        self.diagnostics_action = QAction("Diagnostics…", self)
+        self.diagnostics_action.triggered.connect(self.show_diagnostics_dialog)
+
+        self.documentation_action = QAction("Open Documentation", self)
+        self.documentation_action.triggered.connect(self.open_local_documentation)
 
     def _build_ui(self) -> None:
         splitter = QSplitter()
@@ -222,6 +236,12 @@ class MainWindow(QMainWindow):
             self.quit_action,
         ):
             file_menu.addAction(action)
+
+        help_menu = self.menuBar().addMenu("&Help")
+        help_menu.addAction(self.documentation_action)
+        help_menu.addAction(self.diagnostics_action)
+        help_menu.addSeparator()
+        help_menu.addAction(self.about_action)
 
         toolbar = QToolBar("Project")
         toolbar.setMovable(False)
@@ -419,18 +439,12 @@ class MainWindow(QMainWindow):
         filename, _ = QFileDialog.getOpenFileName(
             self,
             "Open ZeroRodCAD project",
-            "",
+            self._dialog_directory(),
             "ZeroRodCAD Project (*.zerorod)",
         )
         if not filename:
             return
-        try:
-            parameters = load_project(filename)
-            self.current_path = Path(filename)
-            self._load_parameters(parameters)
-            self._update_workspace()
-        except Exception as exc:
-            QMessageBox.critical(self, "Open failed", str(exc))
+        self._open_project_path(Path(filename))
 
     def save_current_project(self) -> None:
         if self.current_path is None:
@@ -446,22 +460,31 @@ class MainWindow(QMainWindow):
         filename, _ = QFileDialog.getSaveFileName(
             self,
             "Save ZeroRodCAD project",
-            f"{self.project_name.text().strip() or 'project'}.zerorod",
+            str(
+                Path(self._dialog_directory())
+                / f"{self.project_name.text().strip() or 'project'}.zerorod"
+            ),
             "ZeroRodCAD Project (*.zerorod)",
         )
         if not filename:
             return
         try:
             self.current_path = save_project(filename, self._parameters())
+            self._remember_directory(self.current_path.parent)
             self.statusBar().showMessage(f"Saved {self.current_path.name}")
         except Exception as exc:
             QMessageBox.critical(self, "Save failed", str(exc))
 
     def export_files(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Select export directory")
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select export directory",
+            self._dialog_directory(),
+        )
         if not directory:
             return
         try:
+            self._remember_directory(Path(directory))
             created = export_project(directory, self._parameters())
             QMessageBox.information(
                 self,
@@ -470,6 +493,54 @@ class MainWindow(QMainWindow):
             )
         except Exception as exc:
             QMessageBox.critical(self, "Export failed", str(exc))
+
+    def show_about_dialog(self) -> None:
+        AboutDialog(self).exec()
+
+    def show_diagnostics_dialog(self) -> None:
+        DiagnosticsDialog(self).exec()
+
+    def open_local_documentation(self) -> None:
+        repository_root = Path(__file__).resolve().parents[2]
+        documentation = repository_root / "docs" / "INSTALL_MACOS.md"
+        if documentation.exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(documentation)))
+            return
+        QMessageBox.information(
+            self,
+            "Documentation",
+            "The source documentation is not included at this application location.",
+        )
+
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+        urls = event.mimeData().urls()
+        if any(Path(url.toLocalFile()).suffix.lower() == ".zerorod" for url in urls):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent) -> None:
+        for url in event.mimeData().urls():
+            path = Path(url.toLocalFile())
+            if path.suffix.lower() != ".zerorod":
+                continue
+            self._open_project_path(path)
+            event.acceptProposedAction()
+            return
+
+    def _open_project_path(self, path: Path) -> None:
+        try:
+            parameters = load_project(path)
+            self.current_path = path
+            self._remember_directory(path.parent)
+            self._load_parameters(parameters)
+            self._update_workspace()
+        except Exception as exc:
+            QMessageBox.critical(self, "Open failed", str(exc))
+
+    def _dialog_directory(self) -> str:
+        return self.settings.value("paths/last_directory", str(Path.home()), type=str)
+
+    def _remember_directory(self, directory: Path) -> None:
+        self.settings.setValue("paths/last_directory", str(directory))
 
     @staticmethod
     def _escape(text: str) -> str:
