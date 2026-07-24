@@ -1,0 +1,26 @@
+{
+  "build": "010",
+  "version": "0.10.0",
+  "package_type": "complete repository",
+  "requires": "Python 3.11 or 3.12",
+  "syntax_checked_python_files": [
+    "tests/test_validation.py",
+    "tests/test_parameters.py",
+    "tests/test_project.py",
+    "tests/test_geometry.py",
+    "src/zerorodcad_desktop/__init__.py",
+    "src/zerorodcad_desktop/app.py",
+    "src/zerorodcad_desktop/main_window.py",
+    "src/zerorodcad/geometry.py",
+    "src/zerorodcad/cli.py",
+    "src/zerorodcad/__init__.py",
+    "src/zerorodcad/report.py",
+    "src/zerorodcad/validation.py",
+    "src/zerorodcad/parameters.py",
+    "src/zerorodcad/project.py",
+    "src/zerorodcad/model.py",
+    "src/zerorodcad/export.py"
+  ],
+  "cadquery_executed": false,
+  "gui_executed": false
+}

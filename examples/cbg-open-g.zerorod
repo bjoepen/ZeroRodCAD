@@ -1,0 +1,26 @@
+{
+  "format": "ZeroRodCAD Project",
+  "version": 1,
+  "parameters": {
+    "project_name": "CBG Open G",
+    "body_width": 38.0,
+    "body_depth": 9.0,
+    "fretboard_height": 6.9,
+    "rod_diameter": 3.0,
+    "groove_diameter": 2.94,
+    "rod_center_z_offset": -0.75,
+    "groove_front_clearance": 0.01,
+    "string_gauges_inch": [
+      0.036,
+      0.026,
+      0.017
+    ],
+    "string_spacing": 10.0,
+    "string_inlet_y": 0.0,
+    "string_inlet_z": 2.8,
+    "channel_diameter": 1.15,
+    "channel_overrun_at_inlet": 0.8,
+    "channel_rod_clearance": 0.05,
+    "minimum_wall": 1.2
+  }
+}
