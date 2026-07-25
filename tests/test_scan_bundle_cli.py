@@ -34,8 +34,8 @@ def test_direct_script_execution_from_repository_root(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, result.stderr
-    assert (output_dir / "scanner2-report.md").is_file()
-    assert (output_dir / "scanner2-inventory.json").is_file()
+    assert (output_dir / "scanner2" / "scanner2-report.md").is_file()
+    assert (output_dir / "scanner2" / "scanner2-inventory.json").is_file()
 
 
 def test_module_execution_reports_version() -> None:
@@ -49,4 +49,4 @@ def test_module_execution_reports_version() -> None:
     )
 
     assert result.returncode == 0
-    assert "019.1a" in result.stdout
+    assert "019.2" in result.stdout
