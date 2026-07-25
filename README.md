@@ -1,51 +1,19 @@
-# ZeroRodCAD Desktop – Build 018 / Phase 5 – Final Corrected
+# ZeroRodCAD Build 019.1 – Scanner 2.0
 
-Dieses Paket startet Phase 5 der macOS-Bundle-Optimierung.
+Dieses Paket ist ein Repository-Overlay für den bereits integrierten Build 018.
+Es enthält den vollständigen Scanner 2.0 einschließlich Cache, Bundle-Datenbank,
+Filtern, Report-Ausgabe, Tests und Integrationsanleitung.
 
-## Inhalt
-
-- versionierter Bundle Analyzer
-- SHA256-Duplikaterkennung
-- Mach-O-Abhängigkeitsprüfung über `otool`
-- nicht-destruktiver Deduplizierungsplan
-- ECR
-- Baseline
-- Workflow
-- Tests
-
-## Ausführung
+Start:
 
 ```bash
-python3 -m tools.bundle_analyzer \
-  "dist/ZeroRodCAD Desktop.app" \
-  --plan
+python3 tools/scan_bundle.py "dist/ZeroRodCAD Desktop.app"
 ```
 
-Danach:
+Anleitung: `docs/BUILD-019.1-ANLEITUNG.md`
 
-```bash
-open build/reports/phase5-bundle-deduplication/phase5-deduplication-plan.md
-```
-
-## Sicherheitsgrenze
-
-Build 018 Phase 5.1 löscht und verändert keine Datei im App-Bundle.
-
-## Commit-Vorschlag
+Commit:
 
 ```text
-build(018): add phase 5 bundle deduplication analyzer
+build(019.1): implement scanner 2.0 bundle index and cache
 ```
-
-## Git-Befehle
-
-```bash
-git status
-git add tools/bundle_analyzer tests docs README.md
-git commit -m "build(018): add phase 5 bundle deduplication analyzer"
-git push -u origin build-018-phase5-bundle-deduplication
-```
-
-## Korrekturstatus
-
-Diese Datei ist die verbindliche, korrigierte Build-018-Auslieferung. Sie ersetzt die vorherige ZIP vollständig.
