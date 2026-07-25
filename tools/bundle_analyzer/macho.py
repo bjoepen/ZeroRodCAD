@@ -148,3 +148,85 @@ def build_dependency_graph(
         external_dependencies=external,
         reverse_edges={key: tuple(sorted(set(values))) for key, values in reverse.items()},
     )
+
+
+def write_macho_reports(
+    binaries: Iterable[MachOBinary],
+    graph: DependencyGraph,
+    output_dir: Path,
+) -> tuple[Path, Path, Path, Path]:
+    """Write JSON, Markdown, DOT, and unresolved-dependency reports."""
+
+    import json
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    items = tuple(binaries)
+    json_path = output_dir / "macho-dependencies.json"
+    markdown_path = output_dir / "macho-dependencies.md"
+    dot_path = output_dir / "macho-dependencies.dot"
+    unresolved_path = output_dir / "macho-unresolved.md"
+
+    payload = {
+        "binaries": [
+            {
+                "relative_path": item.relative_path,
+                "macho_id": item.macho_id,
+                "raw_dependencies": list(item.raw_dependencies),
+                "resolved_dependencies": list(graph.edges.get(item.relative_path, ())),
+                "external_dependencies": list(
+                    graph.external_dependencies.get(item.relative_path, ())
+                ),
+            }
+            for item in items
+        ],
+        "reverse_edges": {key: list(values) for key, values in sorted(graph.reverse_edges.items())},
+    }
+    json_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    markdown_lines = [
+        "# Mach-O Dependency Report",
+        "",
+        f"- Mach-O binaries: **{len(items)}**",
+        f"- Internal edges: **{sum(len(values) for values in graph.edges.values())}**",
+        "- External or unresolved dependencies: "
+        f"**{sum(len(values) for values in graph.external_dependencies.values())}**",
+        "",
+        "## Dependencies",
+        "",
+    ]
+    for item in sorted(items, key=lambda value: value.relative_path.casefold()):
+        markdown_lines.extend([f"### `{item.relative_path}`", ""])
+        targets = graph.edges.get(item.relative_path, ())
+        if targets:
+            markdown_lines.extend(f"- `{target}`" for target in targets)
+        else:
+            markdown_lines.append("- _No internal dependencies_ ")
+        markdown_lines.append("")
+    markdown_path.write_text("\n".join(markdown_lines), encoding="utf-8")
+
+    dot_lines = ["digraph macho_dependencies {", "  rankdir=LR;"]
+    for source, targets in sorted(graph.edges.items()):
+        if not targets:
+            dot_lines.append(f'  "{source}";')
+        for target in targets:
+            dot_lines.append(f'  "{source}" -> "{target}";')
+    dot_lines.append("}")
+    dot_path.write_text("\n".join(dot_lines) + "\n", encoding="utf-8")
+
+    unresolved_lines = ["# Unresolved Mach-O Dependencies", ""]
+    unresolved_found = False
+    for source, dependencies in sorted(graph.external_dependencies.items()):
+        if not dependencies:
+            continue
+        unresolved_found = True
+        unresolved_lines.extend([f"## `{source}`", ""])
+        unresolved_lines.extend(f"- `{dependency}`" for dependency in dependencies)
+        unresolved_lines.append("")
+    if not unresolved_found:
+        unresolved_lines.extend(["_No unresolved dependencies._", ""])
+    unresolved_path.write_text("\n".join(unresolved_lines), encoding="utf-8")
+
+    return json_path, markdown_path, dot_path, unresolved_path

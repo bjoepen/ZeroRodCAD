@@ -22,19 +22,19 @@ from tools.bundle_analyzer.scanner2 import (  # noqa: E402
     write_scanner_reports,
 )
 
-BUILD_VERSION = "019.2"
+BUILD_VERSION = "019.3-M4"
 LOGGER = logging.getLogger("zerorodcad.scanner2")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=("ZeroRodCAD Build 019.2 – Scanner 2.0 with Mach-O dependency analysis")
+        description=("ZeroRodCAD Build 019.3 M3 – Scanner 2.0 with dead-library analysis")
     )
     parser.add_argument("app_bundle", type=Path, help="Path to the macOS .app bundle")
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("build/reports/build-019.2"),
+        default=Path("build/reports/build-019.3-m3"),
         help="Directory for Markdown and JSON reports",
     )
     parser.add_argument(
@@ -70,6 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--macho-dependencies",
         action="store_true",
         help="Analyze Mach-O dependencies with otool and write graph reports",
+    )
+    parser.add_argument(
+        "--dead-libraries",
+        action="store_true",
+        help="Analyze unused libraries and write JSON and Markdown reports",
     )
     verbosity = parser.add_mutually_exclusive_group()
     verbosity.add_argument("--verbose", action="store_true", help="Enable detailed logging")
@@ -112,16 +117,30 @@ def main(argv: list[str] | None = None) -> int:
             scan_filter=scan_filter,
         )
         report_paths = list(write_scanner_reports(database, args.output_dir / "scanner2"))
-        if args.macho_dependencies:
-            from tools.bundle_analyzer.macho import (
-                MachOAnalyzer,
-                build_dependency_graph,
-                write_macho_reports,
-            )
+        if args.macho_dependencies or args.dead_libraries:
+            from tools.bundle_analyzer.macho import MachOAnalyzer, build_dependency_graph
 
             binaries = MachOAnalyzer().analyze(database)
             graph = build_dependency_graph(binaries, bundle_root=database.root)
-            report_paths.extend(write_macho_reports(binaries, graph, args.output_dir / "macho"))
+
+            if args.macho_dependencies:
+                from tools.bundle_analyzer.macho import write_macho_reports
+
+                report_paths.extend(write_macho_reports(binaries, graph, args.output_dir / "macho"))
+
+            if args.dead_libraries:
+                from tools.bundle_analyzer.deadlibs import (
+                    DeadLibraryAnalyzer,
+                    write_dead_library_reports,
+                )
+
+                result = DeadLibraryAnalyzer().analyze(database, graph)
+                report_paths.extend(
+                    write_dead_library_reports(
+                        result,
+                        args.output_dir / "dead-libraries",
+                    )
+                )
     except (OSError, ValueError) as exc:
         LOGGER.error("Scan fehlgeschlagen: %s", exc)
         return 2
