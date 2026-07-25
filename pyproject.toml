@@ -39,7 +39,7 @@ zerorodcad-desktop = "zerorodcad_desktop.app:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
 testpaths = ["tests"]
 addopts = "-ra"
 
