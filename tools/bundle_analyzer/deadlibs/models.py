@@ -8,43 +8,40 @@ from pathlib import Path
 
 
 class ConfidenceLevel(StrEnum):
-    """Technical confidence assigned to an analysis finding."""
-
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
 
 
 class FindingCategory(StrEnum):
-    """Machine-readable classification of a library finding."""
-
+    FRAMEWORK = "framework"
+    DYLIB = "dylib"
+    PYTHON_PACKAGE = "python-package"
+    RESOURCE = "resource"
+    DUPLICATE = "duplicate"
+    REFERENCED = "referenced"
     UNUSED = "unused"
     POSSIBLY_UNUSED = "possibly-unused"
-    REFERENCED = "referenced"
 
 
 class Recommendation(StrEnum):
-    """User-facing action derived from evidence and confidence."""
-
     SAFE_REMOVE = "safe-remove"
     REVIEW = "review"
     KEEP = "keep"
 
 
 class ReferenceKind(StrEnum):
-    """Supported kinds of references to a bundled library."""
-
     MACHO = "macho"
+    MACHO_DEPENDENCY = "macho-dependency"
     PYTHON_IMPORT = "python-import"
     PLUGIN_MANIFEST = "plugin-manifest"
     DYNAMIC_LOAD = "dynamic-load"
+    DYNAMIC_LOAD_HINT = "dynamic-load-hint"
     UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True, slots=True)
 class Reference:
-    """A single piece of evidence that a library is used."""
-
     source: str
     target: str
     kind: ReferenceKind
@@ -53,8 +50,6 @@ class Reference:
 
 @dataclass(slots=True)
 class UsageRecord:
-    """Aggregated usage evidence for one logical library unit."""
-
     library_id: str
     references: list[Reference] = field(default_factory=list)
     unresolved_hints: list[str] = field(default_factory=list)
@@ -63,14 +58,25 @@ class UsageRecord:
     def is_referenced(self) -> bool:
         return bool(self.references)
 
+    @property
+    def dynamic_hints(self) -> tuple[Reference, ...]:
+        dynamic_kinds = {ReferenceKind.DYNAMIC_LOAD, ReferenceKind.DYNAMIC_LOAD_HINT}
+        return tuple(reference for reference in self.references if reference.kind in dynamic_kinds)
+
+    @property
+    def static_references(self) -> tuple[Reference, ...]:
+        dynamic_kinds = {ReferenceKind.DYNAMIC_LOAD, ReferenceKind.DYNAMIC_LOAD_HINT}
+        return tuple(
+            reference for reference in self.references if reference.kind not in dynamic_kinds
+        )
+
 
 @dataclass(slots=True)
 class LibraryUnit:
-    """Logical library assembled from one or more bundle paths."""
-
     identifier: str
     paths: list[Path] = field(default_factory=list)
     size_bytes: int = 0
+    category: FindingCategory = FindingCategory.DYLIB
 
     def __post_init__(self) -> None:
         if not self.identifier.strip():
@@ -82,8 +88,6 @@ class LibraryUnit:
 
 @dataclass(slots=True)
 class DeadLibraryFinding:
-    """Analysis result for one logical library unit."""
-
     library: LibraryUnit
     usage: UsageRecord
     confidence: ConfidenceLevel
@@ -94,9 +98,9 @@ class DeadLibraryFinding:
 
 @dataclass(slots=True)
 class DeadLibraryAnalysisResult:
-    """Complete dead-library analysis result."""
-
     findings: list[DeadLibraryFinding] = field(default_factory=list)
+    bundle_root: Path | None = None
+    total_bundle_size_bytes: int = 0
 
     @property
     def removable_findings(self) -> list[DeadLibraryFinding]:
@@ -109,3 +113,9 @@ class DeadLibraryAnalysisResult:
     @property
     def potential_savings_bytes(self) -> int:
         return sum(finding.library.size_bytes for finding in self.removable_findings)
+
+    @property
+    def used_findings(self) -> list[DeadLibraryFinding]:
+        return [
+            finding for finding in self.findings if finding.recommendation is Recommendation.KEEP
+        ]
