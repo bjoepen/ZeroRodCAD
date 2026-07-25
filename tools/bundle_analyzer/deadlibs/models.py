@@ -94,6 +94,7 @@ class DeadLibraryFinding:
     category: FindingCategory
     recommendation: Recommendation
     reasons: list[str] = field(default_factory=list)
+    risk_score: int | None = None
 
 
 @dataclass(slots=True)
