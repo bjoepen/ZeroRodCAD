@@ -22,21 +22,19 @@ from tools.bundle_analyzer.scanner2 import (  # noqa: E402
     write_scanner_reports,
 )
 
-BUILD_VERSION = "019.1a"
+BUILD_VERSION = "019.2"
 LOGGER = logging.getLogger("zerorodcad.scanner2")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=(
-            "ZeroRodCAD Build 019.1a – Scanner 2.0 stabilization and repository integration"
-        )
+        description=("ZeroRodCAD Build 019.2 – Scanner 2.0 with Mach-O dependency analysis")
     )
     parser.add_argument("app_bundle", type=Path, help="Path to the macOS .app bundle")
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("build/reports/build-019.1-scanner2"),
+        default=Path("build/reports/build-019.2"),
         help="Directory for Markdown and JSON reports",
     )
     parser.add_argument(
@@ -67,6 +65,11 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[section.value for section in BundleSection],
         default=[],
         help="Exclude a bundle section; may be supplied repeatedly",
+    )
+    parser.add_argument(
+        "--macho-dependencies",
+        action="store_true",
+        help="Analyze Mach-O dependencies with otool and write graph reports",
     )
     verbosity = parser.add_mutually_exclusive_group()
     verbosity.add_argument("--verbose", action="store_true", help="Enable detailed logging")
@@ -108,7 +111,17 @@ def main(argv: list[str] | None = None) -> int:
             use_cache=not args.no_cache,
             scan_filter=scan_filter,
         )
-        report_paths = write_scanner_reports(database, args.output_dir)
+        report_paths = list(write_scanner_reports(database, args.output_dir / "scanner2"))
+        if args.macho_dependencies:
+            from tools.bundle_analyzer.macho import (
+                MachOAnalyzer,
+                build_dependency_graph,
+                write_macho_reports,
+            )
+
+            binaries = MachOAnalyzer().analyze(database)
+            graph = build_dependency_graph(binaries, bundle_root=database.root)
+            report_paths.extend(write_macho_reports(binaries, graph, args.output_dir / "macho"))
     except (OSError, ValueError) as exc:
         LOGGER.error("Scan fehlgeschlagen: %s", exc)
         return 2
