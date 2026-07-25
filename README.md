@@ -1,66 +1,51 @@
-# ZeroRodCAD Desktop
+# ZeroRodCAD Desktop – Build 018 / Phase 5 – Final Corrected
 
-> **Engineering the Perfect String Path**
+Dieses Paket startet Phase 5 der macOS-Bundle-Optimierung.
 
-## Current build
+## Inhalt
 
-**Build 017 — Repository Cleanup & Optimization**
+- versionierter Bundle Analyzer
+- SHA256-Duplikaterkennung
+- Mach-O-Abhängigkeitsprüfung über `otool`
+- nicht-destruktiver Deduplizierungsplan
+- ECR
+- Baseline
+- Workflow
+- Tests
 
-The application and 3D preview remain functionally stable. Build 017 begins by removing generated resources, simplifying the repository and preparing a smaller, evidence-based macOS bundle.
-
-## Build 017 – Sprint 1
-
-- generated macOS and Python metadata removed,
-- comprehensive `.gitignore` added,
-- `.gitattributes` added for consistent line endings,
-- documentation reorganized by purpose,
-- generated exports removed from version control,
-- source, tests, packaging specifications and examples preserved.
-
-See [the documentation index](docs/README.md) and the
-[Sprint 1 release note](docs/releases/BUILD-017-SPRINT-1.md).
-
-## Clean workflow
+## Ausführung
 
 ```bash
-rm -rf build dist release .venv-packaging
-make packaging-venv
-make dependency-audit
-make macos-debug
-make macos-app
-make macos-verify
+python3 -m tools.bundle_analyzer \
+  "dist/ZeroRodCAD Desktop.app" \
+  --plan
 ```
 
-## Generated reports
+Danach:
+
+```bash
+open build/reports/phase5-bundle-deduplication/phase5-deduplication-plan.md
+```
+
+## Sicherheitsgrenze
+
+Build 018 Phase 5.1 löscht und verändert keine Datei im App-Bundle.
+
+## Commit-Vorschlag
 
 ```text
-build/reports/dependencies/
-build/reports/pyinstaller/
-build/reports/macos-bundle-size.txt
-build/reports/macos-bundle-all-files.txt
-build/reports/suspect-dependencies.txt
+build(018): add phase 5 bundle deduplication analyzer
 ```
 
-## Development quality gate
+## Git-Befehle
 
 ```bash
-source .venv/bin/activate
-make quality
+git status
+git add tools/bundle_analyzer tests docs README.md
+git commit -m "build(018): add phase 5 bundle deduplication analyzer"
+git push -u origin build-018-phase5-bundle-deduplication
 ```
 
-## Engineering rule
+## Korrekturstatus
 
-A dependency may only be removed from the bundle after all of the following pass:
-
-- application startup,
-- 3D preview generation,
-- parameter-driven preview rebuild,
-- STL export,
-- STEP export,
-- independent inspection of both exports.
-
-## Compatibility
-
-- project format remains version 1,
-- no geometry parameters changed,
-- projects from Builds 010–014 remain compatible.
+Diese Datei ist die verbindliche, korrigierte Build-018-Auslieferung. Sie ersetzt die vorherige ZIP vollständig.
