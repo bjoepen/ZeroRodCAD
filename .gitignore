@@ -17,6 +17,7 @@ __pycache__/
 .coverage.*
 htmlcov/
 coverage.xml
+.cache/bundle-analyzer/
 
 # Python packaging metadata
 *.egg-info/

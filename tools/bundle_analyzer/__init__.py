@@ -1,3 +1,1 @@
-"""ZeroRodCAD macOS bundle analysis and deduplication planning tools."""
-
-__version__ = "0.1.0"
+"""Bundle analysis utilities used by ZeroRodCAD development builds."""

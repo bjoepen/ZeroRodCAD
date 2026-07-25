@@ -80,5 +80,5 @@ def test_invalid_bundle_is_rejected(tmp_path: Path) -> None:
 def test_cache_is_valid_json(tmp_path: Path) -> None:
     Scanner().scan(make_bundle(tmp_path), cache_dir=tmp_path / "cache")
     payload = json.loads((tmp_path / "cache" / "scanner2-cache.json").read_text())
-    assert payload["version"] == 1
+    assert payload["version"] == 2
     assert len(payload["entries"]) == 5

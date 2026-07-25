@@ -1,19 +1,18 @@
-# ZeroRodCAD Build 019.1 – Scanner 2.0
+# ZeroRodCAD Build 019.1a
 
-Dieses Paket ist ein Repository-Overlay für den bereits integrierten Build 018.
-Es enthält den vollständigen Scanner 2.0 einschließlich Cache, Bundle-Datenbank,
-Filtern, Report-Ausgabe, Tests und Integrationsanleitung.
+Scanner 2.0 – Stabilisierung & Repository Integration.
 
-Start:
+## Einstieg
 
 ```bash
-python3 tools/scan_bundle.py "dist/ZeroRodCAD Desktop.app"
+bash scripts/bootstrap-dev.sh
+source .venv/bin/activate
+python tools/scan_bundle.py "dist/ZeroRodCAD Desktop.app"
+bash scripts/validate-build0191a.sh
 ```
 
-Anleitung: `docs/BUILD-019.1-ANLEITUNG.md`
-
-Commit:
+Die verbindliche Anleitung befindet sich unter:
 
 ```text
-build(019.1): implement scanner 2.0 bundle index and cache
+docs/BUILD-019.1a-ANLEITUNG.md
 ```

@@ -7,7 +7,7 @@ from typing import Any
 
 from .models import FileFingerprint
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 
 @dataclass(slots=True)

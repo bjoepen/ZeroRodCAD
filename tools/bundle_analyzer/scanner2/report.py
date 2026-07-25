@@ -17,7 +17,10 @@ def human_size(value: int) -> str:
     return f"{value} B"
 
 
-def write_scanner_reports(database: BundleDatabase, output_dir: Path) -> None:
+def write_scanner_reports(
+    database: BundleDatabase,
+    output_dir: Path,
+) -> tuple[Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     statistics = database.statistics
 
@@ -43,13 +46,14 @@ def write_scanner_reports(database: BundleDatabase, output_dir: Path) -> None:
             for item in database.files
         ],
     }
-    (output_dir / "scanner2-inventory.json").write_text(
+    inventory_path = output_dir / "scanner2-inventory.json"
+    inventory_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
     lines = [
-        "# Build 019.1 – Scanner 2.0 Report",
+        "# Build 019.1a – Scanner 2.0 Report",
         "",
         f"- Bundle: `{database.root}`",
         f"- Dateien: **{statistics.file_count}**",
@@ -75,7 +79,9 @@ def write_scanner_reports(database: BundleDatabase, output_dir: Path) -> None:
             "",
         ]
     )
-    (output_dir / "scanner2-report.md").write_text(
+    markdown_path = output_dir / "scanner2-report.md"
+    markdown_path.write_text(
         "\n".join(lines),
         encoding="utf-8",
     )
+    return markdown_path, inventory_path
