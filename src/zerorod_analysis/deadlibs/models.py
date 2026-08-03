@@ -5,6 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..advisor import Advice, BundleHealth
+    from ..macho import DependencyGraph, MachOBinary
+    from ..scanner import BundleDatabase
 
 
 class ConfidenceLevel(StrEnum):
@@ -102,6 +108,11 @@ class DeadLibraryAnalysisResult:
     findings: list[DeadLibraryFinding] = field(default_factory=list)
     bundle_root: Path | None = None
     total_bundle_size_bytes: int = 0
+    database: BundleDatabase | None = None
+    macho_binaries: tuple[MachOBinary, ...] | None = None
+    dependency_graph: DependencyGraph | None = None
+    advisor_results: tuple[Advice, ...] | None = None
+    bundle_health: BundleHealth | None = None
 
     @property
     def removable_findings(self) -> list[DeadLibraryFinding]:

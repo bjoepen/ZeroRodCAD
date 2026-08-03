@@ -1,3 +1,17 @@
+# Build 020 M3 — Unified Report Engine
+
+- Unified JSON, Markdown, and DOT generation behind one explicit renderer registry.
+- Added safe path validation, collision detection, and atomic UTF-8 writes.
+- Routed public and legacy report writers through the engine without changing report filenames.
+- Updated Scanner CLI release metadata to Build 020-M3.
+
+# Build 020 M2 — Analysis Pipeline Architecture
+
+- Added the internal Scanner, Mach-O, dead-library, and advisor pipeline with a shared context.
+- Routed `analyze_bundle()` through the pipeline without changing its signature or runtime result.
+- Added typed stage diagnostics, predecessor checks, single-execution and cache tests.
+- Preserved the four-function public API, CLI behavior, report formats, and compatibility imports.
+
 # Changelog – Build 019.2.1
 
 ## Behoben

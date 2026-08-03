@@ -19,3 +19,17 @@ from zerorod_analysis import (
 
 All subpackages and data types are implementation details. They remain importable where needed
 for internal code and compatibility, but they are not added to `zerorod_analysis.__all__`.
+
+## M2 pipeline compatibility
+
+Build 020 M2 routes `analyze_bundle()` through the internal `AnalysisPipeline`. Its signature,
+defaults, runtime result (`DeadLibraryAnalysisResult`, internally aliased as `AnalysisResult`), and
+errors from the underlying analyzers remain compatible. Pipeline classes and stages are not
+top-level exports. Report contents and filenames are unchanged.
+
+## M3 report compatibility
+
+Build 020 M3 routes `generate_reports()` through the internal `ReportEngine` and routes
+`generate_action_plan()` through its shared Markdown renderer. The public signature and five
+established report files remain unchanged. Reporting consumes only the completed `AnalysisResult`;
+`calculate_bundle_health()` remains a pure data function and `analyze_bundle()` writes no files.
