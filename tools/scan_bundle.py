@@ -14,7 +14,7 @@ if __package__ in {None, ""}:
     if root_text not in sys.path:
         sys.path.insert(0, root_text)
 
-from tools.bundle_analyzer.scanner2 import (  # noqa: E402
+from zerorod_analysis.scanner import (  # noqa: E402
     BundleSection,
     ScanFilter,
     Scanner,
@@ -118,18 +118,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         report_paths = list(write_scanner_reports(database, args.output_dir / "scanner2"))
         if args.macho_dependencies or args.dead_libraries:
-            from tools.bundle_analyzer.macho import MachOAnalyzer, build_dependency_graph
+            from zerorod_analysis.macho import MachOAnalyzer, build_dependency_graph
 
             binaries = MachOAnalyzer().analyze(database)
             graph = build_dependency_graph(binaries, bundle_root=database.root)
 
             if args.macho_dependencies:
-                from tools.bundle_analyzer.macho import write_macho_reports
+                from zerorod_analysis.macho import write_macho_reports
 
                 report_paths.extend(write_macho_reports(binaries, graph, args.output_dir / "macho"))
 
             if args.dead_libraries:
-                from tools.bundle_analyzer.deadlibs import (
+                from zerorod_analysis.deadlibs import (
                     DeadLibraryAnalyzer,
                     write_dead_library_reports,
                 )
