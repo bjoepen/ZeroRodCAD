@@ -47,6 +47,7 @@ addopts = "-ra"
 target-version = "py311"
 line-length = 100
 src = ["src", "tests"]
+extend-exclude = ["docs/discovery/BUILD-021-M1-RUNTIME-TRACE-DISCOVERY.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

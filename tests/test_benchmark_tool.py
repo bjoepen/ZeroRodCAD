@@ -85,4 +85,4 @@ def test_benchmark_cli_reports_invalid_bundle(tmp_path: Path) -> None:
 
 
 def test_benchmark_version_is_centralized() -> None:
-    assert "020-M4" in benchmark_version()
+    assert "021-M1" in benchmark_version()

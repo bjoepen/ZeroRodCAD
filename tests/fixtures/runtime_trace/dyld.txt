@@ -1,0 +1,3 @@
+dyld[410]: loaded: /System/Library/Frameworks/AppKit.framework/Versions/C/AppKit
+dyld[410]: loaded: /usr/lib/libobjc.A.dylib
+unrelated diagnostic line
