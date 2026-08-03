@@ -7,12 +7,11 @@ from pathlib import Path
 from .advisor import BundleHealth, BundleHealthEvaluator
 from .deadlibs import (
     DeadLibraryAnalysisResult,
-    DeadLibraryAnalyzer,
     optimization_plan_markdown,
     write_dead_library_reports,
 )
-from .macho import MachOAnalyzer, build_dependency_graph
-from .scanner import ScanFilter, Scanner
+from .pipeline import AnalysisPipeline, AnalysisResult, PipelineContext
+from .scanner import ScanFilter
 
 
 def analyze_bundle(
@@ -21,18 +20,16 @@ def analyze_bundle(
     cache_dir: str | Path = Path(".cache/bundle-analyzer"),
     use_cache: bool = True,
     scan_filter: ScanFilter | None = None,
-) -> DeadLibraryAnalysisResult:
+) -> AnalysisResult:
     """Analyze a macOS application bundle without modifying it."""
 
-    database = Scanner().scan(
-        Path(app_bundle),
+    context = PipelineContext(
+        bundle_path=Path(app_bundle),
         cache_dir=Path(cache_dir),
         use_cache=use_cache,
         scan_filter=scan_filter,
     )
-    binaries = MachOAnalyzer().analyze(database)
-    graph = build_dependency_graph(binaries, bundle_root=database.root)
-    return DeadLibraryAnalyzer().analyze(database, graph)
+    return AnalysisPipeline.default().run(context)
 
 
 def generate_reports(
