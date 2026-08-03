@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..advisor import Advice, BundleHealth
     from ..macho import DependencyGraph, MachOBinary
+    from ..metrics import PipelineMetrics
     from ..scanner import BundleDatabase
 
 
@@ -113,6 +114,7 @@ class DeadLibraryAnalysisResult:
     dependency_graph: DependencyGraph | None = None
     advisor_results: tuple[Advice, ...] | None = None
     bundle_health: BundleHealth | None = None
+    analysis_metrics: PipelineMetrics | None = None
 
     @property
     def removable_findings(self) -> list[DeadLibraryFinding]:

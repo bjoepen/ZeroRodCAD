@@ -12,6 +12,8 @@ class AnalysisError(Exception):
 class PipelineError(AnalysisError):
     """Base exception for pipeline orchestration failures."""
 
+    metrics: object | None = None
+
 
 class MissingStageResultError(PipelineError):
     """Raised when a stage's required predecessor result is absent."""
@@ -29,8 +31,15 @@ class MissingStageResultError(PipelineError):
 class StageExecutionError(PipelineError):
     """Add stage and bundle context to an underlying execution failure."""
 
-    def __init__(self, stage_name: str, bundle_path: Path, cause: Exception) -> None:
+    def __init__(
+        self,
+        stage_name: str,
+        bundle_path: Path,
+        cause: Exception,
+        metrics: object | None = None,
+    ) -> None:
         self.stage_name = stage_name
         self.bundle_path = bundle_path
         self.cause = cause
+        self.metrics = metrics
         super().__init__(f"Stage '{stage_name}' failed for '{bundle_path}': {cause}")

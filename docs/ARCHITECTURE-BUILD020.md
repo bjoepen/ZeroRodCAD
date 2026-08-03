@@ -1,4 +1,4 @@
-# Build 020 M1 Architecture
+# Build 020 Architecture
 
 Build 020 M1 extracts the bundle analyzer from the development-tool namespace into the
 standalone `zerorod_analysis` package. The extraction does not change analysis algorithms,
@@ -19,8 +19,16 @@ logic, and finally report generation. Internal modules never import from `tools`
 The legacy package contains compatibility wrappers only. They re-export the objects from the
 new package, preserving object identity and every established import path.
 
-## Release gate
+## Final architecture
 
-The milestone is a release candidate only after pytest, compileall, Ruff check and formatting,
-and all pre-commit hooks pass on the complete repository. User validation is still required
-before declaring it final.
+```text
+analyze_bundle -> AnalysisPipeline -> AnalysisResult + PipelineMetrics
+generate_reports -> ReportEngine -> JSON / Markdown / DOT + ReportMetrics
+```
+
+The pipeline order is Scanner, Mach-O, Dead Library, Advisor. Each stage and selected renderer runs
+once. Metrics belong to one run and do not change analysis or report content. Reporting remains
+outside the pipeline and never modifies the application bundle.
+
+Build metadata is defined only in `build_metadata.py`. Scanner 2.0's versioned cache remains the
+only persistent cache. The internal benchmark uses temporary cache and report directories.

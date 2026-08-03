@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from zerorod_analysis.build_metadata import BUILD_ID
+
 
 def make_bundle(tmp_path: Path) -> Path:
     bundle = tmp_path / "CLI.app"
@@ -49,7 +51,7 @@ def test_module_execution_reports_version() -> None:
     )
 
     assert result.returncode == 0
-    assert "020-M3" in result.stdout
+    assert BUILD_ID in result.stdout
 
 
 def test_dead_library_option_writes_all_reports(tmp_path: Path) -> None:
