@@ -41,4 +41,9 @@ class AnalysisPipeline:
         if context.dead_library_result is None:
             final_stage = self.stage_names[-1] if self.stages else "pipeline"
             raise MissingStageResultError(final_stage, context.bundle_path, "dead_library_result")
+        context.dead_library_result.database = context.database
+        context.dead_library_result.macho_binaries = context.macho_binaries
+        context.dead_library_result.dependency_graph = context.dependency_graph
+        context.dead_library_result.advisor_results = context.advisor_results
+        context.dead_library_result.bundle_health = context.bundle_health
         return context.dead_library_result

@@ -49,7 +49,7 @@ def test_module_execution_reports_version() -> None:
     )
 
     assert result.returncode == 0
-    assert "019.3-M4" in result.stdout
+    assert "020-M3" in result.stdout
 
 
 def test_dead_library_option_writes_all_reports(tmp_path: Path) -> None:

@@ -22,7 +22,7 @@ from zerorod_analysis.scanner import (  # noqa: E402
     write_scanner_reports,
 )
 
-BUILD_VERSION = "019.3-M4"
+BUILD_VERSION = "020-M3"
 LOGGER = logging.getLogger("zerorodcad.scanner2")
 
 

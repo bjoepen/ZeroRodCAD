@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from ..scanner.report import human_size
-from .advisor import BundleHealthEvaluator, RecommendationAdvisor
+from .advisor import Advice, BundleHealth, BundleHealthEvaluator, RecommendationAdvisor
 from .models import DeadLibraryAnalysisResult, DeadLibraryFinding, Recommendation
 from .size import compute_savings, summarize_sizes
 
@@ -23,16 +22,30 @@ def _reference_payload(finding: DeadLibraryFinding) -> list[dict[str, str]]:
     ]
 
 
+def _health(result: DeadLibraryAnalysisResult) -> BundleHealth:
+    return result.bundle_health or BundleHealthEvaluator().evaluate(result)
+
+
+def _advice_map(result: DeadLibraryAnalysisResult) -> dict[int, Advice]:
+    if result.advisor_results is not None:
+        return {
+            id(finding): advice
+            for finding, advice in zip(result.findings, result.advisor_results, strict=True)
+        }
+    advisor = RecommendationAdvisor()
+    return {id(finding): advisor.advise(finding) for finding in result.findings}
+
+
 def result_payload(result: DeadLibraryAnalysisResult) -> dict[str, object]:
     """Return the canonical, JSON-serializable representation of a result."""
 
     size_summary = summarize_sizes(result)
     savings = compute_savings(result.findings)
-    advisor = RecommendationAdvisor()
-    health = BundleHealthEvaluator().evaluate(result)
+    advice_by_finding = _advice_map(result)
+    health = _health(result)
     findings = []
     for finding in result.findings:
-        advice = advisor.advise(finding)
+        advice = advice_by_finding[id(finding)]
         findings.append(
             {
                 "library_id": finding.library.identifier,
@@ -86,14 +99,15 @@ def _recommendation_title(value: Recommendation) -> str:
     }[value]
 
 
-def _findings_table(findings: list[DeadLibraryFinding]) -> list[str]:
-    advisor = RecommendationAdvisor()
+def _findings_table(
+    findings: list[DeadLibraryFinding], advice_by_finding: dict[int, Advice]
+) -> list[str]:
     lines = [
         "| Empfehlung | Bibliothek | Größe | Risiko | Konfidenz | Begründung |",
         "|---|---|---:|---:|---|---|",
     ]
     for finding in findings:
-        advice = advisor.advise(finding)
+        advice = advice_by_finding[id(finding)]
         reasons = "<br>".join(advice.reasons) or "Keine Begründung verfügbar."
         lines.append(
             f"| {_recommendation_title(advice.recommendation)} | "
@@ -105,7 +119,8 @@ def _findings_table(findings: list[DeadLibraryFinding]) -> list[str]:
 
 def dead_libraries_markdown(result: DeadLibraryAnalysisResult) -> str:
     summary = summarize_sizes(result)
-    health = BundleHealthEvaluator().evaluate(result)
+    health = _health(result)
+    advice_by_finding = _advice_map(result)
     review_count = sum(item.recommendation is Recommendation.REVIEW for item in result.findings)
     keep_count = sum(item.recommendation is Recommendation.KEEP for item in result.findings)
     ordered = sorted(
@@ -131,7 +146,7 @@ def dead_libraries_markdown(result: DeadLibraryAnalysisResult) -> str:
         "",
         "## Findings",
         "",
-        *_findings_table(ordered),
+        *_findings_table(ordered, advice_by_finding),
         "",
         "> SAFE REMOVE ist eine statische Analyseempfehlung. Vor dem Löschen muss "
         "ein reproduzierbarer Bundle-Test durchgeführt werden.",
@@ -166,8 +181,8 @@ def bundle_size_markdown(result: DeadLibraryAnalysisResult) -> str:
 
 
 def optimization_markdown(result: DeadLibraryAnalysisResult) -> str:
-    advisor = RecommendationAdvisor()
-    health = BundleHealthEvaluator().evaluate(result)
+    advice_by_finding = _advice_map(result)
+    health = _health(result)
     groups = {
         recommendation: [
             finding for finding in result.findings if finding.recommendation is recommendation
@@ -204,7 +219,7 @@ def optimization_markdown(result: DeadLibraryAnalysisResult) -> str:
             lines.extend(["_Keine Einträge._", ""])
             continue
         for finding in findings:
-            advice = advisor.advise(finding)
+            advice = advice_by_finding[id(finding)]
             lines.append(
                 f"### `{finding.library.identifier}` — {human_size(finding.library.size_bytes)}"
             )
@@ -219,15 +234,15 @@ def optimization_markdown(result: DeadLibraryAnalysisResult) -> str:
 
 
 def optimization_plan_markdown(result: DeadLibraryAnalysisResult) -> str:
-    advisor = RecommendationAdvisor()
-    health = BundleHealthEvaluator().evaluate(result)
+    advice_by_finding = _advice_map(result)
+    health = _health(result)
     ordered = sorted(
         result.findings,
         key=lambda finding: (
             {Recommendation.SAFE_REMOVE: 0, Recommendation.REVIEW: 1, Recommendation.KEEP: 2}[
                 finding.recommendation
             ],
-            advisor.advise(finding).risk_score,
+            advice_by_finding[id(finding)].risk_score,
             -finding.library.size_bytes,
             finding.library.identifier.casefold(),
         ),
@@ -246,7 +261,7 @@ def optimization_plan_markdown(result: DeadLibraryAnalysisResult) -> str:
         return "\n".join(lines)
 
     for index, finding in enumerate(ordered, start=1):
-        advice = advisor.advise(finding)
+        advice = advice_by_finding[id(finding)]
         lines.extend(
             [
                 f"### {index}. {_recommendation_title(advice.recommendation)}: "
@@ -269,19 +284,7 @@ def write_dead_library_reports(
 ) -> tuple[Path, Path, Path, Path, Path]:
     """Write the canonical JSON report and its Markdown projections."""
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / "dead-libraries.json"
-    dead_libraries_path = output_dir / "dead-libraries.md"
-    size_path = output_dir / "bundle-size-analysis.md"
-    optimization_path = output_dir / "optimization-report.md"
-    plan_path = output_dir / "optimization-plan.md"
+    from ..report import ReportEngine, ReportRequest
 
-    json_path.write_text(
-        json.dumps(result_payload(result), ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    dead_libraries_path.write_text(dead_libraries_markdown(result), encoding="utf-8")
-    size_path.write_text(bundle_size_markdown(result), encoding="utf-8")
-    optimization_path.write_text(optimization_markdown(result), encoding="utf-8")
-    plan_path.write_text(optimization_plan_markdown(result), encoding="utf-8")
-    return json_path, dead_libraries_path, size_path, optimization_path, plan_path
+    paths = ReportEngine.default().generate(result, ReportRequest(output_directory=output_dir))
+    return paths  # type: ignore[return-value]

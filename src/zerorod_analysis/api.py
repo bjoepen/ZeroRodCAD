@@ -5,12 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from .advisor import BundleHealth, BundleHealthEvaluator
-from .deadlibs import (
-    DeadLibraryAnalysisResult,
-    optimization_plan_markdown,
-    write_dead_library_reports,
-)
+from .deadlibs import DeadLibraryAnalysisResult
 from .pipeline import AnalysisPipeline, AnalysisResult, PipelineContext
+from .report import ReportEngine, ReportFormat, ReportRequest
 from .scanner import ScanFilter
 
 
@@ -38,13 +35,23 @@ def generate_reports(
 ) -> tuple[Path, ...]:
     """Write the established dead-library reports for an analysis result."""
 
-    return write_dead_library_reports(analysis, Path(output_dir))
+    request = ReportRequest(output_directory=Path(output_dir))
+    return ReportEngine.default().generate(analysis, request)
 
 
 def generate_action_plan(analysis: DeadLibraryAnalysisResult) -> str:
     """Return the established Markdown optimization plan."""
 
-    return optimization_plan_markdown(analysis)
+    request = ReportRequest(
+        output_directory=Path("."),
+        requested_formats=frozenset({ReportFormat.MARKDOWN}),
+    )
+    manifest = ReportEngine.default().render(analysis, request)
+    return next(
+        report.content
+        for report in manifest.reports
+        if report.relative_path.name == "optimization-plan.md"
+    )
 
 
 def calculate_bundle_health(analysis: DeadLibraryAnalysisResult) -> BundleHealth:
