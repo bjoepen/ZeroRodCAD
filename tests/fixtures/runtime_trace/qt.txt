@@ -1,0 +1,4 @@
+qt.core.plugin.factoryloader: checking directory path "/Users/example/plugins" ...
+qt.core.plugin.loader: Found metadata in lib /tmp/rejected.dylib
+qt.core.library: Successfully loaded library /Example.app/Contents/PlugIns/platforms/libqcocoa.dylib
+qt.core.plugin.loader: unknown future diagnostic
