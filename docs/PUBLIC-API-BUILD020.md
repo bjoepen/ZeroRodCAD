@@ -33,3 +33,10 @@ Build 020 M3 routes `generate_reports()` through the internal `ReportEngine` and
 `generate_action_plan()` through its shared Markdown renderer. The public signature and five
 established report files remain unchanged. Reporting consumes only the completed `AnalysisResult`;
 `calculate_bundle_health()` remains a pure data function and `analyze_bundle()` writes no files.
+
+## M4 diagnostics compatibility
+
+The four exports remain unchanged. Results from the normal pipeline additionally expose optional
+`analysis_metrics`; no new console output or mandatory argument is introduced. Report metrics and
+`benchmark_bundle()` remain internal diagnostics so Build 020 does not silently add a fifth stable
+top-level API function.

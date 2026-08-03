@@ -14,6 +14,7 @@ if __package__ in {None, ""}:
     if root_text not in sys.path:
         sys.path.insert(0, root_text)
 
+from zerorod_analysis.build_metadata import BUILD_ID, scanner_version  # noqa: E402
 from zerorod_analysis.scanner import (  # noqa: E402
     BundleSection,
     ScanFilter,
@@ -22,7 +23,6 @@ from zerorod_analysis.scanner import (  # noqa: E402
     write_scanner_reports,
 )
 
-BUILD_VERSION = "020-M3"
 LOGGER = logging.getLogger("zerorodcad.scanner2")
 
 
@@ -79,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     verbosity = parser.add_mutually_exclusive_group()
     verbosity.add_argument("--verbose", action="store_true", help="Enable detailed logging")
     verbosity.add_argument("--quiet", action="store_true", help="Suppress normal status output")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {BUILD_VERSION}")
+    parser.add_argument("--version", action="version", version=scanner_version())
     return parser
 
 
@@ -97,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     effective_argv = sys.argv[1:] if argv is None else argv
 
     if effective_argv == ["--version"]:
-        print(f"ZeroRodCAD Scanner 2.0 – Build {BUILD_VERSION}")
+        print(scanner_version())
         return 0
     args = build_parser().parse_args(effective_argv)
     configure_logging(verbose=args.verbose, quiet=args.quiet)
@@ -146,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     statistics = database.statistics
-    LOGGER.info("Build %s – Scanner 2.0 abgeschlossen.", BUILD_VERSION)
+    LOGGER.info("Build %s – Scanner 2.0 abgeschlossen.", BUILD_ID)
     LOGGER.info("Dateien: %s", statistics.file_count)
     LOGGER.info(
         "Cache: %s Treffer, %s neu",

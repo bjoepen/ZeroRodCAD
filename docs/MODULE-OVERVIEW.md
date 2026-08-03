@@ -10,8 +10,12 @@
 | `dependency/` | Internal dependency-graph facade |
 | `deadlibs/` | Library aggregation, evidence resolution, and findings |
 | `advisor/` | Internal risk and bundle-health facade |
-| `report/` | Report-generation facilities |
 | `optimization/` | Duplicate detection and non-destructive planning |
+| `pipeline/` | Ordered four-stage analysis orchestration |
+| `report/` | Unified renderer registry and atomic report persistence |
+| `metrics.py` | Data-only per-run pipeline, renderer, and benchmark metrics |
+| `benchmark.py` | Internal benchmark orchestration |
+| `build_metadata.py` | Single source of current build identity |
 
 The source of truth is exclusively `src/zerorod_analysis`. Files below
 `tools/bundle_analyzer` are backward-compatible import adapters.

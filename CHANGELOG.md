@@ -1,3 +1,10 @@
+# Build 020 M4 — Performance and Release Consolidation
+
+- Added per-run pipeline and report metrics with structural invocation counters.
+- Added a reproducible temporary benchmark workflow and stable v1 benchmark schema.
+- Centralized Scanner and benchmark build metadata at Build 020-M4.
+- Consolidated Build 020 architecture, migration, performance, and release documentation.
+
 # Build 020 M3 — Unified Report Engine
 
 - Unified JSON, Markdown, and DOT generation behind one explicit renderer registry.
