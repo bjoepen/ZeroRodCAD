@@ -1,0 +1,163 @@
+--- /private/tmp/claude-501/-Users-bernd-Projekte-ZeroRodCAD-App/385ca330-6d05-4728-9418-59c718113df9/scratchpad/te0011-cadquery-originals/occ_impl/exporters/vtk.py	2026-08-08 06:09:18
++++ .venv-novtk-poc/lib/python3.13/site-packages/cadquery/occ_impl/exporters/vtk.py	2026-08-08 06:10:15
+@@ -1,73 +1,87 @@
+-from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
+-from vtkmodules.vtkFiltersCore import vtkAppendPolyData
+-from vtkmodules.vtkCommonDataModel import vtkPolyData
+-from vtkmodules.vtkFiltersExtraction import vtkExtractCellsByType
+-
+-from vtkmodules.vtkCommonDataModel import (
+-    VTK_TRIANGLE,
+-    VTK_LINE,
+-    VTK_VERTEX,
+-    VTK_POLY_LINE,
+-)
+-
+-from ..shapes import Shape
+-
+-
+-def extractEdgesFaces(data: vtkPolyData) -> tuple[vtkPolyData, vtkPolyData]:
+-    """Helper for edges and faces extraction"""
+-
+-    # extract edges
+-    extr = vtkExtractCellsByType()
+-    extr.SetInputDataObject(data)
+-
+-    extr.AddCellType(VTK_LINE)
+-    extr.AddCellType(VTK_POLY_LINE)
+-    extr.AddCellType(VTK_VERTEX)
+-    extr.Update()
+-    data_edges = extr.GetOutput()
+-
+-    # extract faces
+-    extr = vtkExtractCellsByType()
+-    extr.SetInputDataObject(data)
+-
+-    extr.AddCellType(VTK_TRIANGLE)
+-    extr.Update()
+-    data_faces = extr.GetOutput()
+-
+-    # remove normals from edges
+-    data_edges.GetPointData().RemoveArray("Normals")
+-
+-    return data_edges, data_faces
+-
+-
+-def exportVTP(
+-    shape: Shape, fname: str, tolerance: float = 0.1, angularTolerance: float = 0.1
+-):
+-
+-    writer = vtkXMLPolyDataWriter()
+-    writer.SetFileName(fname)
+-    writer.SetInputData(shape.toVtkPolyData(tolerance, angularTolerance))
+-    writer.Write()
+-
+-
+-def toString(
+-    shape: Shape, tolerance: float = 1e-3, angularTolerance: float = 0.1
+-) -> tuple[str, str]:
+-
+-    writer_edges = vtkXMLPolyDataWriter()
+-    writer_edges.SetWriteToOutputString(True)
+-
+-    writer_faces = vtkXMLPolyDataWriter()
+-    writer_faces.SetWriteToOutputString(True)
+-
+-    # extract edges and faces
+-    data = shape.toVtkPolyData(tolerance, angularTolerance, True)
+-    data_edges, data_faces = extractEdgesFaces(data)
+-
+-    # separate edges and faces
+-    writer_edges.SetInputData(data_edges)
+-    writer_edges.Write()
+-    writer_faces.SetInputData(data_faces)
+-    writer_faces.Write()
+-
+-    return writer_edges.GetOutputString(), writer_faces.GetOutputString()
++from __future__ import annotations
++
++from ..shapes import Shape
++
++_VTK_IMPORT_ERROR_MESSAGE = (
++    "VTK is required for this CadQuery VTK/VTP feature. Install the 'vtk' "
++    "package (e.g. use the 'cadquery-ocp' distribution instead of "
++    "'cadquery-ocp-novtk') to use it."
++)
++
++
++def extractEdgesFaces(data: vtkPolyData) -> tuple[vtkPolyData, vtkPolyData]:
++    """Helper for edges and faces extraction"""
++    try:
++        from vtkmodules.vtkFiltersExtraction import vtkExtractCellsByType
++        from vtkmodules.vtkCommonDataModel import (
++            VTK_TRIANGLE,
++            VTK_LINE,
++            VTK_VERTEX,
++            VTK_POLY_LINE,
++        )
++    except ImportError as exc:
++        raise ImportError(_VTK_IMPORT_ERROR_MESSAGE) from exc
++
++    # extract edges
++    extr = vtkExtractCellsByType()
++    extr.SetInputDataObject(data)
++
++    extr.AddCellType(VTK_LINE)
++    extr.AddCellType(VTK_POLY_LINE)
++    extr.AddCellType(VTK_VERTEX)
++    extr.Update()
++    data_edges = extr.GetOutput()
++
++    # extract faces
++    extr = vtkExtractCellsByType()
++    extr.SetInputDataObject(data)
++
++    extr.AddCellType(VTK_TRIANGLE)
++    extr.Update()
++    data_faces = extr.GetOutput()
++
++    # remove normals from edges
++    data_edges.GetPointData().RemoveArray("Normals")
++
++    return data_edges, data_faces
++
++
++def exportVTP(
++    shape: Shape, fname: str, tolerance: float = 0.1, angularTolerance: float = 0.1
++):
++    try:
++        from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
++    except ImportError as exc:
++        raise ImportError(_VTK_IMPORT_ERROR_MESSAGE) from exc
++
++    writer = vtkXMLPolyDataWriter()
++    writer.SetFileName(fname)
++    writer.SetInputData(shape.toVtkPolyData(tolerance, angularTolerance))
++    writer.Write()
++
++
++def toString(
++    shape: Shape, tolerance: float = 1e-3, angularTolerance: float = 0.1
++) -> tuple[str, str]:
++    try:
++        from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
++    except ImportError as exc:
++        raise ImportError(_VTK_IMPORT_ERROR_MESSAGE) from exc
++
++    writer_edges = vtkXMLPolyDataWriter()
++    writer_edges.SetWriteToOutputString(True)
++
++    writer_faces = vtkXMLPolyDataWriter()
++    writer_faces.SetWriteToOutputString(True)
++
++    # extract edges and faces
++    data = shape.toVtkPolyData(tolerance, angularTolerance, True)
++    data_edges, data_faces = extractEdgesFaces(data)
++
++    # separate edges and faces
++    writer_edges.SetInputData(data_edges)
++    writer_edges.Write()
++    writer_faces.SetInputData(data_faces)
++    writer_faces.Write()
++
++    return writer_edges.GetOutputString(), writer_faces.GetOutputString()
