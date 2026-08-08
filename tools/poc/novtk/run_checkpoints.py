@@ -99,9 +99,12 @@ def run_checkpoints() -> list[CheckpointResult]:
         objects = list(assembly.objects.values())
         if not objects:
             raise ValueError("assembly contains no objects")
-        bbox = objects[0].shapes[0].BoundingBox() if objects[0].shapes else None
+        # assembly.objects[0] is the root Assembly container itself (no shapes of
+        # its own) — the real geometry lives in its children, so combine the whole
+        # tree into one compound to get a valid bounding box.
+        bbox = assembly.toCompound().BoundingBox()
         if bbox is None:
-            raise ValueError("first assembly object has no shape/bounding box")
+            raise ValueError("assembly has no combined shape/bounding box")
         detail = f"objects={len(objects)} bbox=({bbox.xlen:.2f},{bbox.ylen:.2f},{bbox.zlen:.2f})"
         results.append(CheckpointResult("geometry", "pass", detail, _scan_sys_modules_for_vtk()))
     except Exception as exc:

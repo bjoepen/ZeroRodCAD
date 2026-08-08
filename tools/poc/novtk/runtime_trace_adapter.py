@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -120,14 +121,27 @@ def write_trace(trace: RuntimeTrace, output: Path) -> Path:
     return write_trace_atomic(trace, output, bundle_root=None)
 
 
+_REAL_VTK_TOKEN = re.compile(r"(?<!no)vtk", re.IGNORECASE)
+
+
 def vtk_evidence(trace: RuntimeTrace) -> list[str]:
-    """Return identities of any VTK-related evidence found in the trace."""
+    """Return identities of any VTK-related evidence found in the trace.
+
+    For PYTHON_MODULE/NATIVE_EXTENSION evidence, "VTK-related" means the dotted
+    module name's root is literally ``vtk``/``vtkmodules`` — e.g. a module named
+    ``cadquery.occ_impl.exporters.vtk`` (our own patched, VTK-free-until-called
+    file) must NOT match just because "vtk" appears in its name/path. For
+    DYLIB/FRAMEWORK evidence, the identity/path is checked with a real-token
+    regex that excludes the "novtk" substring (from this PoC's own venv
+    directory name, `.venv-novtk-poc`), matching the same false-positive fix
+    applied in te001_run_all.py's OS-level lsof/vmmap scan.
+    """
     hits: list[str] = []
-    for group in (trace.python_modules, trace.native_extensions, trace.loaded_libraries):
-        for item in group:
-            if (
-                item.identity.split(".", 1)[0].lower() in {"vtk", "vtkmodules"}
-                or "vtk" in (item.bundle_relative_path or "").lower()
-            ):
-                hits.append(item.identity)
+    for item in (*trace.python_modules, *trace.native_extensions):
+        if item.identity.split(".", 1)[0].lower() in {"vtk", "vtkmodules"}:
+            hits.append(item.identity)
+    for item in (*trace.loaded_libraries,):
+        haystack = f"{item.identity} {item.bundle_relative_path or ''}"
+        if _REAL_VTK_TOKEN.search(haystack):
+            hits.append(item.identity)
     return hits
