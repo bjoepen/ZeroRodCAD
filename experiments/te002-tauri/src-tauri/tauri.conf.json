@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ZeroRodCAD TE-002",
+  "productName": "ZeroRodCAD TE-002.1",
   "version": "0.1.0",
-  "identifier": "dev.zerorodcad.te002",
+  "identifier": "dev.zerorodcad.te0021",
   "build": {
     "beforeDevCommand": "npm --prefix ../frontend run dev",
     "beforeBuildCommand": "npm --prefix ../frontend run build",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "ZeroRodCAD TE-002",
+        "title": "ZeroRodCAD TE-002.1 — Technology Evaluation",
         "width": 1000,
         "height": 700,
         "resizable": true
@@ -28,6 +28,9 @@
     "active": true,
     "targets": ["app"],
     "icon": ["icons/icon.icns", "icons/icon.ico", "icons/icon.png"],
-    "externalBin": ["binaries/zerorod-engine"]
+    "externalBin": ["binaries/zerorod-engine"],
+    "resources": {
+      "resources/zerorod-engine-onedir/": "zerorod-engine-onedir/"
+    }
   }
 }

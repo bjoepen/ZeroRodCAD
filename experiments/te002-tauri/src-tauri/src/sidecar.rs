@@ -2,6 +2,7 @@
 //! handling lives here in Rust — the frontend only ever calls the
 //! `request_preview` Tauri command, never spawns a process itself.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
@@ -21,7 +22,7 @@ pub struct PreviewError {
 }
 
 impl PreviewError {
-    fn new(code: &str, message: impl Into<String>) -> Self {
+    pub(crate) fn new(code: &str, message: impl Into<String>) -> Self {
         Self {
             code: code.to_string(),
             message: message.into(),
@@ -42,12 +43,20 @@ pub fn build_request_line(request_id: &str) -> String {
         + "\n"
 }
 
+/// Monotonic tie-breaker: some systems' `SystemTime` clock resolution is
+/// coarser than a nanosecond, so two calls in quick succession (e.g. two
+/// requests issued back-to-back, or two threads racing in a test) can
+/// otherwise produce identical timestamps. Combining both guarantees
+/// uniqueness within a process regardless of clock granularity.
+static REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
 pub fn new_request_id() -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
-    format!("req-{nanos}")
+    let sequence = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("req-{nanos}-{sequence}")
 }
 
 /// Parses raw sidecar stdout into the mesh-contract `result` value, or a
