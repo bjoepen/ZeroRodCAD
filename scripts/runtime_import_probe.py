@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 
 MODULES = (
     "PySide6.QtCore",
@@ -20,11 +21,20 @@ MODULES = (
     "zerorodcad_desktop.app",
 )
 
+# TE-001.2: opt-in escape hatch for the no-VTK packaging environment, where
+# vtkmodules is intentionally absent. Default behavior (env var unset) is
+# unchanged for the normal VTK-based packaging pipeline.
+_SKIP_VTK_ENV = "ZERORODCAD_SKIP_VTK_PROBE"
+
 
 def main() -> int:
     failures: list[str] = []
+    modules = MODULES
+    if os.environ.get(_SKIP_VTK_ENV):
+        modules = tuple(name for name in MODULES if not name.startswith("vtkmodules"))
+        print(f"{_SKIP_VTK_ENV} set: skipping vtkmodules.* checks\n")
 
-    for module_name in MODULES:
+    for module_name in modules:
         try:
             importlib.import_module(module_name)
             print(f"OK   {module_name}")

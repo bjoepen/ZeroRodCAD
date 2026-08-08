@@ -1,9 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
 from pathlib import Path
 
 project_root = Path(SPECPATH).parents[1]
 icon_path = project_root / "assets" / "macos" / "ZeroRodCAD.icns"
+
+# TE-001.2: opt-in, env-gated no-VTK packaging variant. Default behavior
+# (env var unset) is unchanged — the productive spec still hidden-imports
+# vtkmodules. Set ZERORODCAD_NOVTK_BUNDLE=1 to build against
+# cadquery-ocp-novtk + the TE-001.1 patch instead, where vtkmodules is
+# intentionally absent and must not be hidden-imported.
+_novtk_bundle = bool(os.environ.get("ZERORODCAD_NOVTK_BUNDLE"))
 
 excluded_modules = [
     "IPython",
@@ -57,6 +65,12 @@ excluded_modules = [
     "PySide6.QtXml",
 ]
 
+if _novtk_bundle:
+    # TE-001.2: defense-in-depth only — vtk/vtkmodules aren't installed in
+    # this environment at all, so this is inert, but makes the no-VTK intent
+    # explicit and guards against any hook pulling them in unexpectedly.
+    excluded_modules += ["vtk", "vtkmodules"]
+
 info_plist = {
     "CFBundleName": "ZeroRodCAD Desktop",
     "CFBundleDisplayName": "ZeroRodCAD Desktop",
@@ -91,9 +105,8 @@ analysis = Analysis(
         "cadquery.exporters",
         "cadquery.occ_impl",
 	"casadi",
-        "vtkmodules.vtkCommonCore",
-        "vtkmodules.vtkCommonDataModel",
-    ],
+    ]
+    + ([] if _novtk_bundle else ["vtkmodules.vtkCommonCore", "vtkmodules.vtkCommonDataModel"]),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[
