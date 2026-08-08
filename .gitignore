@@ -39,6 +39,18 @@ exports/
 *.dmg
 *.pkg
 
+# Node.js (TE-002 PoC frontend)
+node_modules/
+
+# Rust (TE-002 PoC src-tauri)
+target/
+
+# PyInstaller-built sidecar binaries (TE-002 PoC, rebuilt from tools/poc/tauri/sidecar.spec)
+experiments/*/src-tauri/binaries/
+
+# Tauri-generated schemas (TE-002 PoC, regenerated automatically on build)
+experiments/*/src-tauri/gen/
+
 # Generated reports and logs
 *.log
 build-reports/

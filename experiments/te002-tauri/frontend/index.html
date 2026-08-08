@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZeroRodCAD TE-002</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #1e1e1e; color: #ddd; font-family: system-ui, sans-serif; }
+      #app { display: flex; flex-direction: column; height: 100%; }
+      #toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #2a2a2a; border-bottom: 1px solid #3a3a3a; }
+      #toolbar button { padding: 6px 14px; cursor: pointer; }
+      #status { font-size: 13px; color: #9a9a9a; }
+      #status[data-state="error"] { color: #e06c6c; }
+      #status[data-state="ready"] { color: #7cc47c; }
+      #viewport { flex: 1; position: relative; }
+      #viewport canvas { display: block; width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="toolbar">
+        <button id="load-button">Load ZeroRod</button>
+        <span id="status" data-state="idle">Idle</span>
+      </div>
+      <div id="viewport"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

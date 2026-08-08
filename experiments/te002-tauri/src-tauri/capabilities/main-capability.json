@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "TE-002: the WebView gets no shell/process permissions at all. It can only call the app's own `request_preview` command (core:default), which internally spawns the sidecar from Rust code — never via WebView-facing IPC.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
