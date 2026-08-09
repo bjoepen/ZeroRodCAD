@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { MeshPayload } from "./mesh";
 
 // Mirrors desktop/src-tauri/src/protocol.rs's EngineError — the frontend
 // only ever sees these, never a raw Python traceback (zerorod-sidecar/v1
@@ -71,6 +72,13 @@ export async function fetchSidecarStatus(): Promise<SidecarStatus> {
 /** Requests a real ZeroRod preview mesh; validated Rust-side before it reaches here. */
 export async function requestPreviewSummary(): Promise<MeshSummary> {
   return await invoke<MeshSummary>("engine_preview");
+}
+
+/** M3: requests a real ZeroRod preview mesh and returns the full
+ * zerorod-mesh/v1 payload (validated Rust-side, same check as
+ * requestPreviewSummary) for the Three.js consumer to render. */
+export async function requestPreviewMesh(): Promise<MeshPayload> {
+  return await invoke<MeshPayload>("engine_preview_mesh");
 }
 
 /** Explicit shutdown — also happens automatically on app exit. */

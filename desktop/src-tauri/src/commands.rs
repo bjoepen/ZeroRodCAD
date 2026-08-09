@@ -1,6 +1,6 @@
 //! Tauri commands exposed to the WebView. `app_info` (M1) proves the IPC
-//! bridge; the `engine_*` commands (M2) are the only way the frontend can
-//! reach the Python sidecar — all process control stays in `engine.rs`.
+//! bridge; the `engine_*` commands (M2/M3) are the only way the frontend
+//! can reach the Python sidecar — all process control stays in `engine.rs`.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -24,7 +24,7 @@ pub fn app_info() -> AppInfo {
         name: "ZeroRodCAD Desktop".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build: "022".to_string(),
-        milestone: "M2".to_string(),
+        milestone: "M3".to_string(),
     }
 }
 
@@ -59,9 +59,10 @@ pub async fn engine_sidecar_status(
 
 /// Requests a real ZeroRod preview mesh and validates it Rust-side
 /// (`mesh::validate_and_summarize`) before it ever reaches the frontend.
-/// Returns a summary, not the raw geometry arrays — M2 proves the engine
-/// data path end to end; M3 is the actual Three.js consumer, which will
-/// want the full payload.
+/// Returns a summary, not the raw geometry arrays — kept from M2 for
+/// lightweight diagnostics (the "Ping Engine" / status-oriented use). M3's
+/// actual Three.js consumer uses `engine_preview_mesh` below, which wants
+/// the full payload.
 #[tauri::command]
 pub async fn engine_preview(
     app: AppHandle,
@@ -70,6 +71,24 @@ pub async fn engine_preview(
     let payload = engine::request(&app, &state, "preview").await?;
     mesh::validate_and_summarize(&payload)
         .map_err(|problems| EngineError::new("invalid_mesh", problems.join("; ")))
+}
+
+/// M3: requests a real ZeroRod preview mesh, validates it Rust-side (same
+/// `mesh::validate_and_summarize` check as `engine_preview` — no duplicated
+/// validation logic), and returns the full validated `zerorod-mesh/v1`
+/// payload so the frontend can build real `THREE.BufferGeometry` from it.
+/// No new IPC protocol — same sidecar `preview` command, same
+/// `zerorod-mesh/v1` schema `engine_preview` already validates; this
+/// command only differs in what it returns to the WebView.
+#[tauri::command]
+pub async fn engine_preview_mesh(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+) -> Result<Value, EngineError> {
+    let payload = engine::request(&app, &state, "preview").await?;
+    mesh::validate_and_summarize(&payload)
+        .map_err(|problems| EngineError::new("invalid_mesh", problems.join("; ")))?;
+    Ok(payload)
 }
 
 /// Explicit shutdown command (also invoked automatically on app exit — see
@@ -85,10 +104,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn app_info_reports_build_022_m2() {
+    fn app_info_reports_build_022_m3() {
         let info = app_info();
         assert_eq!(info.build, "022");
-        assert_eq!(info.milestone, "M2");
+        assert_eq!(info.milestone, "M3");
         assert!(!info.version.is_empty());
     }
 }
