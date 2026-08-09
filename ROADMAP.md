@@ -217,28 +217,30 @@ Current status:
 RESEARCH COMPLETE
 ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
-BUILD 022 NOT STARTED
+BUILD 022 IN PROGRESS (M1 COMPLETE, M2 NEXT)
 ```
 
 ### Current
 
-Nothing is currently in progress. Build 022 is prepared but not started — see next section.
+Build 022 is in progress. M1 (Tauri Desktop Foundation) is complete; M2 (Productive Sidecar & Rust
+Lifecycle) is next.
 
-### Build 022 – Tauri Desktop Foundation (prepared, not started)
+### Build 022 – Tauri Desktop Foundation
 
 Preparation document: [`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md).
 
-- [ ] productive Tauri v2 application shell
-- [ ] Rust-owned sidecar process lifecycle (spawn, reuse, timeout, crash/restart, shutdown)
-- [ ] persistent, onedir-packaged Python 3.13 sidecar
-- [ ] existing ZeroRodCAD engine integration (unchanged)
-- [ ] `zerorod-sidecar/v1` adopted stable
-- [ ] `zerorod-mesh/v1` adopted stable
-- [ ] Three.js preview foundation
-- [ ] No-VTK packaging with the TE-002.2B optimized packaging rules as baseline
-- [ ] diagnostics
-- [ ] tests (Rust/Python/frontend)
-- [ ] human validation pass
+- [x] M1 — productive Tauri v2 application shell (`docs/migration/BUILD-022-M1-TAURI-FOUNDATION.md`)
+- [ ] M2 — Rust-owned sidecar process lifecycle (spawn, reuse, timeout, crash/restart, shutdown)
+- [ ] M2 — persistent, onedir-packaged Python 3.13 sidecar
+- [ ] M2 — existing ZeroRodCAD engine integration (unchanged)
+- [ ] M2 — `zerorod-sidecar/v1` adopted stable
+- [ ] M2 — `zerorod-mesh/v1` received and validated (not yet rendered)
+- [ ] M3 — Three.js preview foundation
+- [x] M1 — No-VTK-clean shell (no Python/sidecar dependency yet to violate it)
+- [ ] M2 — No-VTK packaging with the TE-002.2B optimized packaging rules as baseline
+- [ ] M2 — diagnostics
+- [x] M1 — tests (Rust/frontend); M2 adds Python + sidecar-lifecycle tests
+- [x] M1 — real app validation pass (launch, IPC bridge, clean shutdown, 0 orphan processes)
 
 Not yet in Build 022: complete parameter UI, complete export UI, full feature parity, PySide6
 removal.

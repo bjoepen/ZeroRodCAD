@@ -13,7 +13,9 @@ document is a preparation document, not an implementation order.
 RESEARCH COMPLETE
 ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
-BUILD 022 NOT STARTED
+BUILD 022 IN PROGRESS
+  M1 — Tauri Desktop Foundation:      COMPLETE
+  M2 — Productive Sidecar & Lifecycle: NEXT
 ```
 
 ## Why migrate
@@ -127,4 +129,7 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
 - **Architecture decision:** ACCEPTED (`docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md`).
 - **Migration:** PREPARED (this document, `BUILD-022-TAURI-DESKTOP-FOUNDATION.md`, updated
   `README.md`/`ROADMAP.md`).
-- **Build 022:** NOT STARTED. Next recommended action: start Build 022 — Tauri Desktop Foundation.
+- **Build 022:** IN PROGRESS.
+  - M1 — Tauri Desktop Foundation: COMPLETE (`BUILD-022-M1-TAURI-FOUNDATION.md`) — productive
+    `desktop/` Tauri v2 shell, working WebView↔Rust IPC bridge, security boundary in place.
+  - M2 — Productive Sidecar & Rust Lifecycle: next.

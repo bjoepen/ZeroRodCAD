@@ -1,0 +1,20 @@
+[package]
+name = "zerorod-desktop"
+version = "0.1.0"
+description = "ZeroRodCAD Desktop 2.0 — productive Tauri v2 shell (Build 022)"
+edition = "2021"
+publish = false
+
+[lib]
+name = "zerorod_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+
+# M2 will add tauri-plugin-shell, serde_json, and tokio for the sidecar
+# process/IPC layer. Not added in M1 — no process/sidecar logic exists yet.
