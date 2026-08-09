@@ -4,7 +4,8 @@ Same environment limitation as every milestone before it in this series: real in
 click-through cannot be automated here — macOS Accessibility permission is not granted to this
 session (verified directly via `osascript`, not assumed). This checklist is what closes the
 remaining gap between "the data pipeline is proven" and "a human actually saw the model rendered
-on screen and interacted with it."
+on screen and interacted with it." The Project Owner completed it by hand on 2026-08-09.
+**Result: PASS.**
 
 ## What automated evidence already covers (not repeated here)
 
@@ -47,38 +48,51 @@ Rebuild first if this path is stale — see `docs/migration/BUILD-022-M3-THREEJS
 
 ## Checklist
 
-- [ ] App starts (double-click / `open`, no crash, window appears)
-- [ ] Engine starts/connects (click "Start / Check Engine", then "Ping Engine" — Python sidecar
-  shows RUNNING, CAD engine shows CONNECTED)
-- [ ] Clicking "Load / Refresh ZeroRod" makes a ZeroRod model become visible in the viewport
-- [ ] Body geometry is visible and looks plausible (not garbled, not blank)
-- [ ] Rod geometry is visible and looks plausible
-- [ ] Virtual strings are visible (distinct from the solid meshes — thin lines, not triangles)
-- [ ] The complete model fits inside the initial view (no part cut off, not zoomed in past the
-  model, not a tiny speck in the middle of an empty viewport)
-- [ ] Dragging in the viewport rotates the camera around the model (OrbitControls)
-- [ ] Scrolling/pinching in the viewport zooms in and out
-- [ ] Resizing the app window resizes the 3D viewport correctly (no stretching, no stale canvas
-  size, no blank strip)
-- [ ] Clicking "Load / Refresh ZeroRod" again re-loads without needing to restart the app
-- [ ] Refresh does not duplicate stale geometry (no doubled/ghosted model, no leftover geometry
-  from the previous load visible alongside the new one)
-- [ ] No visible renderer errors, no crash, no frozen/unresponsive window during any of the above
-- [ ] App remains responsive throughout (buttons still clickable, viewport still interactive)
-- [ ] Quitting the app (Cmd+Q or the red close button) closes the window promptly, without a hang
-- [ ] After quitting, no `zerorod-engine` process remains running (Activity Monitor, or
-  `ps aux | grep zerorod-engine` in Terminal, should show nothing)
+- [x] App starts (double-click / `open`, no crash, window appears)
+- [x] Engine starts/connects (Python sidecar / CAD engine work)
+- [x] Clicking "Load / Refresh ZeroRod" makes a real ZeroRod model become visible in the viewport
+- [x] Body geometry is visible and looks plausible
+- [x] Rod geometry is visible and looks plausible
+- [x] Virtual strings are visible
+- [x] Dragging in the viewport rotates the camera around the model (OrbitControls)
+- [x] Scrolling/pinching in the viewport zooms in and out
+- [ ] The complete model fits inside the initial view — not individually itemized in the tester's
+  report; covered generally by "model becomes visible" and "all intended M3 functions work," but
+  left unchecked here rather than assumed at this level of detail
+- [ ] Resizing the app window resizes the 3D viewport correctly — not individually itemized by the
+  tester, left unchecked rather than assumed
+- [ ] Clicking "Load / Refresh ZeroRod" again re-loads without needing to restart the app — not
+  individually itemized, left unchecked rather than assumed
+- [ ] Refresh does not duplicate stale geometry — not individually itemized, left unchecked rather
+  than assumed
+- [x] No visible renderer errors, no crash, no frozen/unresponsive window (preview "works within
+  the implemented M3 scope")
+- [ ] App remains responsive throughout — not individually itemized, left unchecked rather than
+  assumed
+- [ ] Quitting the app closes the window promptly — not individually itemized, left unchecked
+  rather than assumed
+- [ ] After quitting, no `zerorod-engine` process remains running — not individually itemized,
+  left unchecked rather than assumed
+
+The tester's report additionally stated in general terms that "preview funktioniert im
+implementierten M3-Scope" and "alle vorgesehenen M3-Funktionen sind gegeben" — a summary
+confirmation covering the milestone's scope as a whole. The unchecked items above are left
+unchecked because they were not individually itemized in that report, consistent with recording
+only what was actually confirmed rather than inferring from a general statement; they do not
+change the overall PASS result below, which reflects the tester's own stated verdict.
 
 ## Result
 
 | Field | Value |
 |---|---|
-| Tester | |
-| Datum | |
-| macOS Version | |
-| Hardware | |
-| Ergebnis (PASS / FAIL / PARTIAL) | |
-| Bemerkungen | |
+| Tester | Project Owner |
+| Datum | 2026-08-09 |
+| macOS Version | not separately recorded by the tester |
+| Hardware | not separately recorded by the tester |
+| Ergebnis (PASS / FAIL / PARTIAL) | **PASS** |
+| Bemerkungen | Human validation completed successfully within the implemented M3 scope. The real ZeroRod preview renders correctly and the interactive view works as intended. |
 
-Left intentionally unchecked and unfilled — human tester to complete. Claude does not, and must
-not, mark any field above as PASS itself.
+## Gate BUILD-022-M3
+
+**PASS.** Engineering criteria (`BUILD-022-M3-THREEJS-PREVIEW.md`) PASS + human validation (this
+document) PASS. Milestone 3 is COMPLETE.

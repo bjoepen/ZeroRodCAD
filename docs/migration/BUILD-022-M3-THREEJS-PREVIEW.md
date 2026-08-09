@@ -1,6 +1,6 @@
 # Build 022 — Milestone 3: Three.js Preview Foundation
 
-Status: **COMPLETE (engineering) — human validation PENDING**
+Status: **COMPLETE**
 
 ## Objective
 
@@ -252,15 +252,14 @@ handling, refresh/reload without stale geometry, disposal implemented and tested
 preserved, no sidecar/protocol redesign, no parameter/export UI, no VTK/PySide6, security boundary
 unchanged, all automated test suites passing, real app builds and its size is measured.
 
-**Human validation: PENDING** (`docs/migration/BUILD-022-M3-HUMAN-VALIDATION.md`) — same
-environment limitation as every milestone in this series; not a downgrade of the architecture, per
-the mandate's own instruction.
+**Human validation: PASS** (Project Owner, 2026-08-09,
+`docs/migration/BUILD-022-M3-HUMAN-VALIDATION.md`) — real ZeroRod model rendered and confirmed
+correct, interactive rotate/zoom confirmed working, within the implemented M3 scope.
 
-**Overall M3 status: PARTIAL, pending human validation** — becomes fully PASS once the Project
-Owner completes the checklist.
+**Overall M3 status: COMPLETE.**
 
 ## Next milestone
 
-**Build 022 / Milestone 4 — Productive Packaging Baseline** (after human validation closes M3).
-M4 owns the app-bundle dylib-dedup fix (the 399 MB → target-baseline reduction) and the final
-Build-022 packaging comparison — not started here.
+**Build 022 / Milestone 4 — Productive Packaging Baseline.** M4 owns the app-bundle dylib-dedup
+fix (the 399 MB measurement above → a re-measured, explained baseline) and the final Build-022
+packaging comparison.

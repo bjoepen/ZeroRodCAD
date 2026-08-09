@@ -217,15 +217,14 @@ Current status:
 RESEARCH COMPLETE
 ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
-BUILD 022 IN PROGRESS (M1 COMPLETE, M2 COMPLETE, M3 PARTIAL — human validation pending, M4 NEXT)
+BUILD 022 IN PROGRESS (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 NEXT)
 ```
 
 ### Current
 
-Build 022 is in progress. M1 (Tauri Desktop Foundation) and M2 (Productive Sidecar & Rust
-Lifecycle) are complete. M3 (Three.js Preview Foundation) is engineering-complete (Gate PASS) with
-human validation pending — same environment limitation every milestone in this series hit. M4
-(Productive Packaging Baseline) is next once M3's human validation closes.
+Build 022 is in progress. M1 (Tauri Desktop Foundation), M2 (Productive Sidecar & Rust Lifecycle),
+and M3 (Three.js Preview Foundation) are all complete, each with Gate PASS including human
+validation. M4 (Productive Packaging Baseline) is next.
 
 ### Build 022 – Tauri Desktop Foundation
 
@@ -237,7 +236,7 @@ Preparation document: [`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](d
 - [x] M2 — existing ZeroRodCAD engine integration (unchanged)
 - [x] M2 — `zerorod-sidecar/v1` adopted stable
 - [x] M2 — `zerorod-mesh/v1` received and validated (not yet rendered)
-- [x] M3 — Three.js preview foundation (engineering) — `docs/migration/BUILD-022-M3-THREEJS-PREVIEW.md`; body/rod meshes + virtual-string lines rendered, OrbitControls, camera fit, resize, refresh/dispose
+- [x] M3 — Three.js preview foundation — `docs/migration/BUILD-022-M3-THREEJS-PREVIEW.md`; body/rod meshes + virtual-string lines rendered, OrbitControls, camera fit, resize, refresh/dispose
 - [x] M1 — No-VTK-clean shell (no Python/sidecar dependency yet to violate it)
 - [x] M2 — No-VTK sidecar packaging with the TE-002.2B optimized packaging rules as baseline (full app-bundle dylib dedup remains M4's scope — see "Packaging note" in `BUILD-022-M2-SIDECAR-LIFECYCLE.md`)
 - [x] M3 — No-VTK/No-PySide6 reconfirmed unchanged (M3 touched no Python code)
@@ -245,7 +244,7 @@ Preparation document: [`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](d
 - [x] M1/M2/M3 — tests (21 Rust, 41 Python, 53 frontend as of M3; full repo regression 282 passed/1 skipped)
 - [x] M1/M2/M3 — real app validation pass (launch, IPC bridge, real bundled-binary protocol round trip incl. a real crash simulation, real payload through the real mesh converter, clean shutdown, 0 orphan processes)
 - [x] M2 — human validation PASS (Project Owner, 2026-08-09, `BUILD-022-M2-HUMAN-VALIDATION.md`) — Gate BUILD-022-M2: PASS
-- [ ] M3 — human validation (`docs/migration/BUILD-022-M3-HUMAN-VALIDATION.md`) — Gate BUILD-022-M3: engineering PASS, overall PARTIAL until this closes
+- [x] M3 — human validation PASS (Project Owner, 2026-08-09, `docs/migration/BUILD-022-M3-HUMAN-VALIDATION.md`) — Gate BUILD-022-M3: PASS
 
 Not yet in Build 022: complete parameter UI, complete export UI, full feature parity, PySide6
 removal.

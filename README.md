@@ -2,14 +2,14 @@
 
 Parametrisches CAD- und Desktop-Projekt für das ZeroRod-System.
 
-ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Die Technology-Evaluation-Phase zur zukünftigen Desktop-Architektur ist abgeschlossen; die Zielarchitektur (Tauri v2 + Rust Process/IPC-Schicht + persistenter Python-Sidecar + Three.js) ist vom Projektverantwortlichen genehmigt. Die produktive Migration (Build 022) läuft: Milestone 1 (Tauri Desktop Foundation) und Milestone 2 (Sidecar & Rust Lifecycle) sind abgeschlossen, Milestone 3 (Three.js Preview Foundation) ist technisch fertig (Gate PASS) und wartet auf die menschliche Interaktionsvalidierung.
+ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Die Technology-Evaluation-Phase zur zukünftigen Desktop-Architektur ist abgeschlossen; die Zielarchitektur (Tauri v2 + Rust Process/IPC-Schicht + persistenter Python-Sidecar + Three.js) ist vom Projektverantwortlichen genehmigt. Die produktive Migration (Build 022) läuft: Milestone 1 (Tauri Desktop Foundation), Milestone 2 (Sidecar & Rust Lifecycle) und Milestone 3 (Three.js Preview Foundation) sind abgeschlossen, jeweils mit Gate PASS inklusive menschlicher Validierung. Milestone 4 (Productive Packaging Baseline) ist der nächste Schritt.
 
 ## Aktueller Stand
 
 ```text
 Technology Evaluation:  COMPLETE
 Architecture:           ACCEPTED
-Productive migration:   IN PROGRESS (Build 022, M1 COMPLETE, M2 COMPLETE, M3 PARTIAL — human validation pending)
+Productive migration:   IN PROGRESS (Build 022, M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 NEXT)
 ```
 
 Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als aktuelle Referenz-, Feature-Parity- und Fallback-Implementierung, bis die Tauri-Migration vollständig validiert und eine ausdrückliche Entscheidung zur Ablösung getroffen ist. Sie wird durch diesen Auftrag nicht verändert oder entfernt.
@@ -273,9 +273,9 @@ Architecture:           ACCEPTED
 Productive migration:   IN PROGRESS
   Build 022 M1 — Tauri Desktop Foundation:       COMPLETE
   Build 022 M2 — Productive Sidecar & Lifecycle: COMPLETE
-  Build 022 M3 — Three.js Preview Foundation:    PARTIAL (engineering COMPLETE, human validation PENDING)
+  Build 022 M3 — Three.js Preview Foundation:    COMPLETE
 ```
 
 Die technische Frage, ob Tauri v2 + Three.js + Python Sidecar + No-VTK CadQuery/OCP grundsätzlich funktioniert, wurde positiv beantwortet — inklusive produktiv geeigneter Sidecar-Runtime-Strategie (persistent + onedir), optimierter Bundle-Größe (~280.27 MiB) und realer menschlicher Interaktionsvalidierung des finalen PoC (PASS within implemented PoC scope, Parameteränderungen ausdrücklich noch nicht implementiert).
 
-Die produktive Migration läuft: Build 022 Milestone 1 (produktive Tauri-v2-Projektstruktur, funktionierende WebView↔Rust-IPC-Bridge) und Milestone 2 (persistenter Python-Sidecar, Rust Engine Manager mit Lazy Start/Timeout/Crash-Detection/Restart/Shutdown, 79 neue Tests, reale Bundled-Binary-Validierung inkl. echter Crash-Simulation) sind abgeschlossen (`docs/migration/BUILD-022-M1-TAURI-FOUNDATION.md`, `docs/migration/BUILD-022-M2-SIDECAR-LIFECYCLE.md`), beide mit menschlicher Validierung **PASS**. Milestone 3 (Three.js Preview Foundation: echtes ZeroRod-Mesh wird über Three.js gerendert, OrbitControls, kamera-fit, Resize, Refresh ohne Restgeometrie, 53 Frontend-Tests) ist technisch abgeschlossen (`docs/migration/BUILD-022-M3-THREEJS-PREVIEW.md`, Gate PASS) — die interaktive Klick-Validierung steht noch aus (`docs/migration/BUILD-022-M3-HUMAN-VALIDATION.md`), dieselbe Umgebungseinschränkung wie bei jedem vorherigen Meilenstein dieser Serie. Nächster Schritt nach abgeschlossener Human Validation: Build 022 Milestone 4 – Productive Packaging Baseline.
+Die produktive Migration läuft: Build 022 Milestone 1 (produktive Tauri-v2-Projektstruktur, funktionierende WebView↔Rust-IPC-Bridge), Milestone 2 (persistenter Python-Sidecar, Rust Engine Manager mit Lazy Start/Timeout/Crash-Detection/Restart/Shutdown, 79 neue Tests, reale Bundled-Binary-Validierung inkl. echter Crash-Simulation) und Milestone 3 (Three.js Preview Foundation: echtes ZeroRod-Mesh wird über Three.js gerendert, OrbitControls, Kamera-Fit, Resize, Refresh ohne Restgeometrie, 53 Frontend-Tests) sind abgeschlossen (`docs/migration/BUILD-022-M1-TAURI-FOUNDATION.md`, `docs/migration/BUILD-022-M2-SIDECAR-LIFECYCLE.md`, `docs/migration/BUILD-022-M3-THREEJS-PREVIEW.md`), alle drei mit menschlicher Validierung **PASS**. Nächster Schritt: Build 022 Milestone 4 – Productive Packaging Baseline.

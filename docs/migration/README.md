@@ -16,8 +16,8 @@ MIGRATION PREPARED
 BUILD 022 IN PROGRESS
   M1 — Tauri Desktop Foundation:       COMPLETE
   M2 — Productive Sidecar & Lifecycle: COMPLETE
-  M3 — Three.js Preview Foundation:    PARTIAL (engineering COMPLETE, human validation PENDING)
-  M4 — Productive Packaging Baseline:  NEXT (after M3 human validation)
+  M3 — Three.js Preview Foundation:    COMPLETE
+  M4 — Productive Packaging Baseline:  NEXT
 ```
 
 ## Why migrate
@@ -139,10 +139,10 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
     restart-once, graceful shutdown), 79 new Rust/Python/frontend tests, real bundled-binary
     validation including a real crash simulation, and human validation PASS (Project Owner,
     2026-08-09, `BUILD-022-M2-HUMAN-VALIDATION.md`).
-  - M3 — Three.js Preview Foundation: engineering COMPLETE / Gate PASS (`BUILD-022-M3-THREEJS-PREVIEW.md`) —
+  - M3 — Three.js Preview Foundation: COMPLETE / Gate PASS (`BUILD-022-M3-THREEJS-PREVIEW.md`) —
     real `zerorod-mesh/v1` payload rendered via Three.js (body/rod meshes, virtual-string lines),
     `OrbitControls` rotate/zoom, bounds-based camera fit, resize, refresh without stale geometry,
     disposal, 53 frontend tests (up from M2's 17), one new read-only Rust command
-    (`engine_preview_mesh`). Human validation PENDING (`BUILD-022-M3-HUMAN-VALIDATION.md`) — same
-    environment limitation every milestone in this series hit; overall M3 status PARTIAL until
-    closed.
+    (`engine_preview_mesh`), and human validation PASS (Project Owner, 2026-08-09,
+    `BUILD-022-M3-HUMAN-VALIDATION.md`).
+  - M4 — Productive Packaging Baseline: next.
