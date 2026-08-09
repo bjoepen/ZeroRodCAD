@@ -14,8 +14,9 @@ RESEARCH COMPLETE
 ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
 BUILD 022 IN PROGRESS
-  M1 — Tauri Desktop Foundation:      COMPLETE
-  M2 — Productive Sidecar & Lifecycle: NEXT
+  M1 — Tauri Desktop Foundation:       COMPLETE
+  M2 — Productive Sidecar & Lifecycle: COMPLETE
+  M3 — Three.js Preview Foundation:    NEXT
 ```
 
 ## Why migrate
@@ -132,4 +133,10 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
 - **Build 022:** IN PROGRESS.
   - M1 — Tauri Desktop Foundation: COMPLETE (`BUILD-022-M1-TAURI-FOUNDATION.md`) — productive
     `desktop/` Tauri v2 shell, working WebView↔Rust IPC bridge, security boundary in place.
-  - M2 — Productive Sidecar & Rust Lifecycle: next.
+  - M2 — Productive Sidecar & Rust Lifecycle: COMPLETE (`BUILD-022-M2-SIDECAR-LIFECYCLE.md`) —
+    persistent onedir Python sidecar, Rust engine manager (lazy start, timeout, crash detection +
+    restart-once, graceful shutdown), 79 new Rust/Python/frontend tests, real bundled-binary
+    validation including a real crash simulation. Interactive click-through validation is pending
+    a human tester (`BUILD-022-M2-HUMAN-VALIDATION.md`) — same environment limitation every TE in
+    this series hit.
+  - M3 — Three.js Preview Foundation: next.

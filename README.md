@@ -2,14 +2,14 @@
 
 Parametrisches CAD- und Desktop-Projekt für das ZeroRod-System.
 
-ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Die Technology-Evaluation-Phase zur zukünftigen Desktop-Architektur ist abgeschlossen; die Zielarchitektur (Tauri v2 + Rust Process/IPC-Schicht + persistenter Python-Sidecar + Three.js) ist vom Projektverantwortlichen genehmigt. Die produktive Migration (Build 022) läuft: Milestone 1 (Tauri Desktop Foundation) ist abgeschlossen, Milestone 2 (Sidecar & Rust Lifecycle) ist der nächste Schritt.
+ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Die Technology-Evaluation-Phase zur zukünftigen Desktop-Architektur ist abgeschlossen; die Zielarchitektur (Tauri v2 + Rust Process/IPC-Schicht + persistenter Python-Sidecar + Three.js) ist vom Projektverantwortlichen genehmigt. Die produktive Migration (Build 022) läuft: Milestone 1 (Tauri Desktop Foundation) und Milestone 2 (Sidecar & Rust Lifecycle) sind abgeschlossen, Milestone 3 (Three.js Preview Foundation) ist der nächste Schritt.
 
 ## Aktueller Stand
 
 ```text
 Technology Evaluation:  COMPLETE
 Architecture:           ACCEPTED
-Productive migration:   IN PROGRESS (Build 022, M1 COMPLETE, M2 NEXT)
+Productive migration:   IN PROGRESS (Build 022, M1 COMPLETE, M2 COMPLETE, M3 NEXT)
 ```
 
 Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als aktuelle Referenz-, Feature-Parity- und Fallback-Implementierung, bis die Tauri-Migration vollständig validiert und eine ausdrückliche Entscheidung zur Ablösung getroffen ist. Sie wird durch diesen Auftrag nicht verändert oder entfernt.
@@ -259,6 +259,8 @@ docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md
 docs/migration/README.md
 docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md
 docs/migration/BUILD-022-M1-TAURI-FOUNDATION.md
+docs/migration/BUILD-022-M2-SIDECAR-LIFECYCLE.md
+docs/migration/BUILD-022-M2-HUMAN-VALIDATION.md
 ```
 
 ## Status
@@ -268,9 +270,10 @@ Technology Evaluation:  COMPLETE
 Architecture:           ACCEPTED
 Productive migration:   IN PROGRESS
   Build 022 M1 — Tauri Desktop Foundation:       COMPLETE
-  Build 022 M2 — Productive Sidecar & Lifecycle: NEXT
+  Build 022 M2 — Productive Sidecar & Lifecycle: COMPLETE
+  Build 022 M3 — Three.js Preview Foundation:    NEXT
 ```
 
 Die technische Frage, ob Tauri v2 + Three.js + Python Sidecar + No-VTK CadQuery/OCP grundsätzlich funktioniert, wurde positiv beantwortet — inklusive produktiv geeigneter Sidecar-Runtime-Strategie (persistent + onedir), optimierter Bundle-Größe (~280.27 MiB) und realer menschlicher Interaktionsvalidierung des finalen PoC (PASS within implemented PoC scope, Parameteränderungen ausdrücklich noch nicht implementiert).
 
-Die produktive Migration läuft: Build 022 Milestone 1 (produktive Tauri-v2-Projektstruktur, funktionierende WebView↔Rust-IPC-Bridge) ist abgeschlossen (`docs/migration/BUILD-022-M1-TAURI-FOUNDATION.md`). Nächster Schritt: Build 022 Milestone 2 – Productive Sidecar & Rust Lifecycle.
+Die produktive Migration läuft: Build 022 Milestone 1 (produktive Tauri-v2-Projektstruktur, funktionierende WebView↔Rust-IPC-Bridge) und Milestone 2 (persistenter Python-Sidecar, Rust Engine Manager mit Lazy Start/Timeout/Crash-Detection/Restart/Shutdown, 79 neue Tests, reale Bundled-Binary-Validierung inkl. echter Crash-Simulation) sind abgeschlossen (`docs/migration/BUILD-022-M1-TAURI-FOUNDATION.md`, `docs/migration/BUILD-022-M2-SIDECAR-LIFECYCLE.md`). Interaktive Klick-Validierung steht noch aus (menschlicher Tester, `docs/migration/BUILD-022-M2-HUMAN-VALIDATION.md`) — dieselbe Umgebungseinschränkung wie bei jeder vorherigen TE in dieser Serie. Nächster Schritt: Build 022 Milestone 3 – Three.js Preview Foundation.

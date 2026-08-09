@@ -1,7 +1,14 @@
-//! Build 022 M1 — the one Tauri command needed to prove the WebView -> Rust
-//! IPC bridge works end to end, before M2 adds any sidecar/process logic.
+//! Tauri commands exposed to the WebView. `app_info` (M1) proves the IPC
+//! bridge; the `engine_*` commands (M2) are the only way the frontend can
+//! reach the Python sidecar — all process control stays in `engine.rs`.
 
 use serde::Serialize;
+use serde_json::Value;
+use tauri::{AppHandle, State};
+
+use crate::engine::{self, EngineState, EngineStatusInfo};
+use crate::mesh;
+use crate::protocol::EngineError;
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct AppInfo {
@@ -17,8 +24,60 @@ pub fn app_info() -> AppInfo {
         name: "ZeroRodCAD Desktop".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build: "022".to_string(),
-        milestone: "M1".to_string(),
+        milestone: "M2".to_string(),
     }
+}
+
+/// Rust-side lifecycle status — instant, does not itself talk to the
+/// sidecar (see `engine::status`'s non-blocking `try_lock`).
+#[tauri::command]
+pub fn engine_status(state: State<'_, EngineState>) -> EngineStatusInfo {
+    engine::status(&state)
+}
+
+/// Round-trips the sidecar's `ping` command — proves the process is not
+/// just spawned but actually answering requests. Starts the sidecar lazily
+/// on first call.
+#[tauri::command]
+pub async fn engine_ping(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+) -> Result<Value, EngineError> {
+    engine::request(&app, &state, "ping").await
+}
+
+/// Round-trips the sidecar's own `status` command (Python version, CadQuery
+/// version, OCP variant, VTK-installed flag) — richer diagnostics than the
+/// Rust-local `engine_status`, at the cost of an actual IPC round trip.
+#[tauri::command]
+pub async fn engine_sidecar_status(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+) -> Result<Value, EngineError> {
+    engine::request(&app, &state, "status").await
+}
+
+/// Requests a real ZeroRod preview mesh and validates it Rust-side
+/// (`mesh::validate_and_summarize`) before it ever reaches the frontend.
+/// Returns a summary, not the raw geometry arrays — M2 proves the engine
+/// data path end to end; M3 is the actual Three.js consumer, which will
+/// want the full payload.
+#[tauri::command]
+pub async fn engine_preview(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+) -> Result<mesh::MeshSummary, EngineError> {
+    let payload = engine::request(&app, &state, "preview").await?;
+    mesh::validate_and_summarize(&payload)
+        .map_err(|problems| EngineError::new("invalid_mesh", problems.join("; ")))
+}
+
+/// Explicit shutdown command (also invoked automatically on app exit — see
+/// `lib.rs`'s `RunEvent::ExitRequested` handler).
+#[tauri::command]
+pub async fn engine_shutdown(state: State<'_, EngineState>) -> Result<(), EngineError> {
+    engine::shutdown(&state).await;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -26,10 +85,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn app_info_reports_build_022_m1() {
+    fn app_info_reports_build_022_m2() {
         let info = app_info();
         assert_eq!(info.build, "022");
-        assert_eq!(info.milestone, "M1");
+        assert_eq!(info.milestone, "M2");
         assert!(!info.version.is_empty());
     }
 }
