@@ -41,6 +41,16 @@ analysis = Analysis(
         "pandas",
         "pytest",
         "tkinter",
+        # TE-002.2B Optimization C+D (each independently accepted after
+        # isolated testing — see Optimization-C-Numba-Llvmlite.md /
+        # Optimization-D-Scipy.md): all three are only reachable via
+        # cadquery.vis -> cadquery.occ_impl.nurbs, which ZeroRodCAD never
+        # imports, and were not observed in any of the 4 broader runtime
+        # traces (preview default, preview alt params, STL+STEP export,
+        # invalid-parameter error path).
+        "numba",
+        "llvmlite",
+        "scipy",
     ],
     noarchive=False,
 )

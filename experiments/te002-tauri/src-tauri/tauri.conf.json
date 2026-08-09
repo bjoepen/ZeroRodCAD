@@ -28,7 +28,6 @@
     "active": true,
     "targets": ["app"],
     "icon": ["icons/icon.icns", "icons/icon.ico", "icons/icon.png"],
-    "externalBin": ["binaries/zerorod-engine"],
     "resources": {
       "resources/zerorod-engine-onedir/": "zerorod-engine-onedir/"
     }
