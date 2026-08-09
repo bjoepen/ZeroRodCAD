@@ -217,16 +217,15 @@ Current status:
 RESEARCH COMPLETE
 ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
-BUILD 022 IN PROGRESS (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 engineering COMPLETE — human validation pending)
+BUILD 022 IN PROGRESS (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 IN PROGRESS)
 ```
 
 ### Current
 
 Build 022 is in progress. M1 (Tauri Desktop Foundation), M2 (Productive Sidecar & Rust Lifecycle),
-and M3 (Three.js Preview Foundation) are all complete, each with Gate PASS including human
-validation. M4 (Productive Packaging Baseline) is engineering-complete (Gate PASS) with human
-validation pending — same environment limitation every milestone in this series hit. M5 is next
-once M4's human validation closes (not yet scoped — gets its own mandate).
+M3 (Three.js Preview Foundation), and M4 (Productive Packaging Baseline) are all complete, each
+with Gate PASS including human validation. M5 (Integration & Build Completion) is in progress —
+the final consolidation milestone before Build 022 itself is declared complete.
 
 ### Build 022 – Tauri Desktop Foundation
 
@@ -252,7 +251,7 @@ Preparation document: [`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](d
 - [x] M4 — release build measured: 285.21 MiB, within 1.76% of TE-002.2B's 280.27 MiB reference, fully explained (Size Classification A)
 - [x] M4 — No-VTK/No-PySide6/no-onefile/no-numba/no-llvmlite/no-scipy reconfirmed in the final bundle
 - [x] M4 — functional/lifecycle/performance/memory/security regression against the exact final bundle, no regression
-- [ ] M4 — human validation (`docs/migration/BUILD-022-M4-HUMAN-VALIDATION.md`) — Gate BUILD-022-M4: engineering PASS, overall PARTIAL until this closes
+- [x] M4 — human validation PASS (Project Owner, 2026-08-09, `docs/migration/BUILD-022-M4-HUMAN-VALIDATION.md`) — Gate BUILD-022-M4: PASS
 
 Not yet in Build 022: complete parameter UI, complete export UI, full feature parity, PySide6
 removal.

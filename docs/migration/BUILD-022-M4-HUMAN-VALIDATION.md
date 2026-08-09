@@ -5,7 +5,8 @@ renderer, M2's sidecar protocol, or the UI. The functional risk surface is there
 M2/M3's own checklists, but the same environment limitation applies: real interactive WebView
 click-through cannot be automated here (macOS Accessibility permission not granted, verified
 directly). This checklist confirms the *optimized* app behaves identically to the already
-human-validated M3 build, not that M3's features work at all (that was already confirmed).
+human-validated M3 build, not that M3's features work at all (that was already confirmed). The
+Project Owner completed it by hand on 2026-08-09. **Result: PASS.**
 
 ## What automated evidence already covers (not repeated here)
 
@@ -40,33 +41,38 @@ unsigned; first launch needs the standard Gatekeeper override (right-click → O
 
 ## Checklist
 
-- [ ] Optimized app starts (double-click / `open`, no crash, window appears)
-- [ ] Engine starts/connects ("Start / Check Engine", then "Ping Engine" — Python sidecar RUNNING,
-  CAD engine CONNECTED)
-- [ ] Clicking "Load / Refresh ZeroRod" makes the ZeroRod preview appear
-- [ ] Body visible
-- [ ] Rod visible
-- [ ] Strings visible
-- [ ] Rotate works (OrbitControls drag)
-- [ ] Zoom works (scroll/pinch)
-- [ ] Refresh works (click "Load / Refresh ZeroRod" again, no stale/duplicated geometry)
-- [ ] App remains responsive throughout
-- [ ] Clean quit (Cmd+Q or the red close button, no hang)
-- [ ] No `zerorod-engine` process remains running after quit (Activity Monitor, or
-  `ps aux | grep zerorod-engine` in Terminal, should show nothing)
+- [x] Optimized app starts (double-click / `open`, no crash, window appears)
+- [x] Engine starts/connects
+- [x] Clicking "Load / Refresh ZeroRod" makes the ZeroRod preview appear
+- [x] Body visible and correct
+- [x] Rod visible and correct
+- [x] Strings visible
+- [x] Rotate works
+- [x] Zoom works
+- [x] Refresh works
+- [x] App remains responsive throughout
+- [x] Clean quit (no hang)
+- [ ] No `zerorod-engine` process remains running after quit — not individually itemized in the
+  tester's report, left unchecked rather than assumed (automated evidence already covers this for
+  the exact bundled binary; see "What automated evidence already covers" above)
+
+The tester additionally confirmed no functional regression was observed within the implemented M4
+scope, consistent with the individual items above.
 
 ## Result
 
 | Field | Value |
 |---|---|
-| Tester | |
-| Datum | |
-| macOS Version | |
-| Hardware | |
+| Tester | Project Owner |
+| Datum | 2026-08-09 |
+| macOS Version | not separately recorded by the tester |
+| Hardware | not separately recorded by the tester |
 | App path | `desktop/src-tauri/target/release/bundle/macos/ZeroRodCAD.app` |
-| App size | ~285 MiB (measured productively — see `BUILD-022-M4-PRODUCTIVE-PACKAGING.md`) |
-| Ergebnis (PASS / FAIL / PARTIAL) | |
-| Bemerkungen | |
+| App size | 299,066,193 bytes / 285.21 MiB / 299.07 MB / 201 files / 77 symlinks (see `BUILD-022-M4-PRODUCTIVE-PACKAGING.md`) |
+| Ergebnis (PASS / FAIL / PARTIAL) | **PASS** |
+| Bemerkungen | Human validation of the optimized productive release bundle completed successfully. Application startup, engine connection, ZeroRod preview, rotate, zoom, refresh and clean application operation were confirmed within the implemented Build 022 scope. |
 
-Left intentionally unchecked and unfilled — human tester to complete. Claude does not, and must
-not, mark any field above as PASS itself.
+## Gate BUILD-022-M4
+
+**PASS.** Engineering criteria (`BUILD-022-M4-PRODUCTIVE-PACKAGING.md`) PASS + human validation
+(this document) PASS. Milestone 4 is COMPLETE.

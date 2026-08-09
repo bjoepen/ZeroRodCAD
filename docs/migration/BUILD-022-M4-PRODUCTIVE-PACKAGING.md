@@ -1,6 +1,6 @@
 # Build 022 — Milestone 4: Productive Packaging Baseline
 
-Status: **Engineering COMPLETE — human validation PENDING**
+Status: **COMPLETE**
 
 ## Objective
 
@@ -303,8 +303,6 @@ only `packaging/tauri/dedup_bundle_dylibs.py`, `scripts/build-productive-desktop
 
 ## Known limitations
 
-- **Human validation pending** (`docs/migration/BUILD-022-M4-HUMAN-VALIDATION.md`) — same
-  environment limitation every milestone in this series has hit.
 - The one documented `Python.framework/Python` exception (~4.8 MiB) is not deduplicated. Revisiting
   it would require either patching Tauri's resource-copy behavior for directory symlinks (out of
   scope — not a ZeroRodCAD-controlled component) or restructuring how the Python framework is
@@ -354,7 +352,11 @@ safety-first exception plus legitimate M1–M3 product code. Functionality, perf
 lifecycle, and security are all reconfirmed intact against the exact optimized artifact, not
 assumed unchanged.
 
+## Gate BUILD-022-M4
+
+**PASS.** Engineering criteria (this document) PASS + human validation
+(`BUILD-022-M4-HUMAN-VALIDATION.md`, Project Owner, 2026-08-09) PASS. Milestone 4 is COMPLETE.
+
 ## Next milestone
 
-Human validation of this milestone (`BUILD-022-M4-HUMAN-VALIDATION.md`), then **Build 022 /
-Milestone 5** (own separate mandate — not started, not scoped here).
+**Build 022 / Milestone 5 — Integration & Build Completion** (own separate mandate).

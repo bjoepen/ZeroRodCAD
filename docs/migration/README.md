@@ -17,8 +17,8 @@ BUILD 022 IN PROGRESS
   M1 — Tauri Desktop Foundation:       COMPLETE
   M2 — Productive Sidecar & Lifecycle: COMPLETE
   M3 — Three.js Preview Foundation:    COMPLETE
-  M4 — Productive Packaging Baseline:  PARTIAL (engineering COMPLETE, human validation PENDING)
-  M5 — (not yet scoped):               NEXT (after M4 human validation)
+  M4 — Productive Packaging Baseline:  COMPLETE
+  M5 — Integration & Build Completion: IN PROGRESS
 ```
 
 ## Why migrate
@@ -146,11 +146,11 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
     disposal, 53 frontend tests (up from M2's 17), one new read-only Rust command
     (`engine_preview_mesh`), and human validation PASS (Project Owner, 2026-08-09,
     `BUILD-022-M3-HUMAN-VALIDATION.md`).
-  - M4 — Productive Packaging Baseline: engineering COMPLETE / Gate PASS
+  - M4 — Productive Packaging Baseline: COMPLETE / Gate PASS
     (`BUILD-022-M4-PRODUCTIVE-PACKAGING.md`) — productive dylib deduplication
     (`packaging/tauri/dedup_bundle_dylibs.py`, hash-gated, symlink-safety-verified, idempotent),
     reproducible build pipeline (`scripts/build-productive-desktop-app.sh`), release build measured
     at 285.21 MiB (within 1.76% of TE-002.2B's own 280.27 MiB reference, fully explained), 0
-    VTK/PySide6/Qt/numba/llvmlite/scipy reconfirmed, no functional/performance/security regression.
-    Human validation PENDING (`BUILD-022-M4-HUMAN-VALIDATION.md`) — same environment limitation
-    every milestone in this series hit.
+    VTK/PySide6/Qt/numba/llvmlite/scipy reconfirmed, no functional/performance/security regression,
+    and human validation PASS (Project Owner, 2026-08-09, `BUILD-022-M4-HUMAN-VALIDATION.md`).
+  - M5 — Integration & Build Completion: in progress.
