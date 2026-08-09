@@ -240,7 +240,8 @@ Preparation document: [`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](d
 - [x] M2 — No-VTK sidecar packaging with the TE-002.2B optimized packaging rules as baseline (full app-bundle dylib dedup remains M4's scope — see "Packaging note" in `BUILD-022-M2-SIDECAR-LIFECYCLE.md`)
 - [x] M2 — diagnostics (`engine_status`/`engine_sidecar_status`, structured `EngineError` throughout)
 - [x] M1/M2 — tests (21 Rust, 41 Python, 17 frontend for M2 alone; full repo regression 282 passed/1 skipped)
-- [x] M1/M2 — real app validation pass (launch, IPC bridge, real bundled-binary protocol round trip, real crash simulation, clean shutdown, 0 orphan processes); interactive click-through pending human tester (`BUILD-022-M2-HUMAN-VALIDATION.md`)
+- [x] M1/M2 — real app validation pass (launch, IPC bridge, real bundled-binary protocol round trip, real crash simulation, clean shutdown, 0 orphan processes)
+- [x] M2 — human validation PASS (Project Owner, 2026-08-09, `BUILD-022-M2-HUMAN-VALIDATION.md`) — Gate BUILD-022-M2: PASS
 
 Not yet in Build 022: complete parameter UI, complete export UI, full feature parity, PySide6
 removal.

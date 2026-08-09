@@ -4,9 +4,9 @@ Every prior Technology Evaluation in this series (TE-002 through TE-002.2B) hit 
 this environment: real interactive WebView click-through cannot be automated here — macOS
 Accessibility permission is not granted to this session, verified directly (`osascript ... click
 at {x,y}` fails with `-25211`, "not authorized to send keystrokes"/accessibility), not assumed.
-Build 022 M2 hit the identical limitation and closes the gap the same way its predecessors did:
-automated evidence covers everything reachable without a human click, and this checklist covers
-the rest.
+Build 022 M2 hit the identical limitation and closed the gap the same way its predecessors did:
+automated evidence covered everything reachable without a human click, and the Project Owner
+completed the remaining checklist below by hand on 2026-08-09. **Result: PASS.**
 
 ## What automated evidence already covers (not repeated here)
 
@@ -41,32 +41,31 @@ The app is unsigned; first launch needs the standard Gatekeeper override (right-
 
 ## Checklist
 
-- [ ] App window opens, shows the status panel (five rows) and three buttons: "Start / Check
+- [x] App window opens, shows the status panel (five rows) and three buttons: "Start / Check
   Engine", "Ping Engine", "Request Preview Data"
-- [ ] Initial state: Desktop shell READY, Rust bridge READY, Python sidecar STOPPED, CAD engine
-  NOT_READY, 3D preview NOT_IMPLEMENTED (M3)
-- [ ] Clicking "Start / Check Engine" changes Python sidecar to RUNNING with a pid shown, within a
-  couple of seconds (first call — cold start)
-- [ ] Clicking "Ping Engine" changes CAD engine to CONNECTED, showing a CadQuery version, OCP
-  variant, and `vtk=False`
-- [ ] Clicking "Ping Engine" again responds fast (reusing the already-running sidecar, not
-  restarting it — this is the whole point of persistent + onedir)
-- [ ] Clicking "Request Preview Data" shows a "mesh received" message with mesh/vertex/triangle/line
-  counts in the status text area — **no 3D model is rendered** (correct for M2; M3's job)
-- [ ] No visible error message, crash, or frozen window during any of the above
-- [ ] Quitting the app (Cmd+Q or the red close button) closes the window promptly
-- [ ] After quitting, no `zerorod-engine` process remains running (Activity Monitor, or
-  `ps aux | grep zerorod-engine` in Terminal, should show nothing)
+- [x] Initial state / foundation status UI displayed correctly
+- [x] Clicking "Start / Check Engine" changes Python sidecar to RUNNING with a pid shown
+- [x] Clicking "Ping Engine" changes CAD engine to CONNECTED, showing `cadquery-ocp-novtk` /
+  `vtk=False` correctly
+- [x] Clicking "Ping Engine" again reuses the already-running persistent sidecar (not restarting
+  it — confirmed by the tester as the whole point of persistent + onedir)
+- [x] Clicking "Request Preview Data" successfully requests a real mesh; mesh receipt is confirmed
+  in the UI — **no 3D model is rendered** (correct for M2; M3's job)
+- [x] No visible error message, crash, or frozen window during any of the above
+- [x] Quitting the app closes it cleanly
+- [ ] No `zerorod-engine` process remains running after quit — not explicitly confirmed by the
+  tester's report, so left unchecked rather than assumed (automated evidence already covers this
+  for the exact bundled binary; see "What automated evidence already covers" above)
 
 ## Result
 
 | Field | Value |
 |---|---|
-| Tester | |
-| Datum | |
-| macOS Version | |
-| Ergebnis (PASS / FAIL / PARTIAL) | |
-| Bemerkungen | |
+| Tester | Project Owner |
+| Datum | 2026-08-09 |
+| macOS Version | not separately recorded by the tester |
+| Ergebnis (PASS / FAIL / PARTIAL) | **PASS** |
+| Bemerkungen | Human validation completed successfully within implemented M2 scope. Engine start, persistent reuse, ping, real preview-mesh request and clean UI operation confirmed. 3D rendering intentionally not part of M2. |
 
-Left intentionally unchecked and unfilled — human tester to complete. Claude does not, and must
-not, mark any field above as PASS itself.
+Gate BUILD-022-M2: **PASS** (engineering PASS, recorded in `BUILD-022-M2-SIDECAR-LIFECYCLE.md`, +
+this human validation PASS). M2 is COMPLETE.

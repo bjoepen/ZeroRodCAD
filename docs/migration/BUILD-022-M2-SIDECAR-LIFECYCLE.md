@@ -278,7 +278,7 @@ action buttons, with the correct pre-interaction state — Desktop shell READY, 
 NOT_IMPLEMENTED (M3). After quitting the app, a process check confirmed 0 remaining
 `zerorod-desktop`/`zerorod-engine` processes.
 
-## Known limitation — interactive click-through
+## Known limitation — interactive click-through (closed by human validation)
 
 Exactly like TE-002 through TE-002.2B before it, this environment cannot automate real WebView
 interaction: macOS Accessibility permission is not granted here, confirmed directly (`osascript
@@ -288,10 +288,15 @@ send keystrokes"), not assumed from a prior TE's note. This means the three butt
 agent in this environment. What *is* automated evidence: the exact bundled sidecar binary answering
 every command those buttons would trigger, over the real protocol, including a real crash
 simulation — the same "prove the exact artifact through the real protocol" bar TE-002.1 set for
-itself. The remaining gap (an actual human clicking those three buttons) is exactly what
-`docs/migration/BUILD-022-M2-HUMAN-VALIDATION.md` exists to close, following the same
-`HUMAN-VALIDATION.md` pattern TE-002.1/TE-002.2B already established. Not yet filled in by a human
-tester — left honestly blank, not fabricated.
+itself. The remaining gap (an actual human clicking those three buttons) was closed by the Project
+Owner on 2026-08-09: **PASS** — see `docs/migration/BUILD-022-M2-HUMAN-VALIDATION.md` for the full
+checklist and result, following the same `HUMAN-VALIDATION.md` pattern TE-002.1/TE-002.2B already
+established.
+
+## Gate BUILD-022-M2
+
+**PASS.** Engineering criteria (this document) PASS + human validation
+(`BUILD-022-M2-HUMAN-VALIDATION.md`) PASS. Milestone 2 is COMPLETE.
 
 ## Reproducing the build
 
