@@ -8,7 +8,7 @@ Technologieentscheidungen werden nicht allein nach Plausibilität oder Bundlegr�
 
 ---
 
-## Completed
+## Completed Research
 
 ### Foundations
 
@@ -31,11 +31,14 @@ Technologieentscheidungen werden nicht allein nach Plausibilität oder Bundlegr�
 
 Build 021 M2–M4 were intentionally paused when the No-VTK/Tauri architecture question became the higher-value investigation.
 
----
+### Technology Evaluation Phase — COMPLETE
 
-## Technology Evaluations
+TE-001 through TE-002.2B are formally complete. No TE-002.3 is planned; further open product
+questions (full parameter UI, export UI, feature parity) belong in the migration builds below, not
+in another foundational Technology Evaluation, unless a genuinely new architectural uncertainty
+emerges.
 
-### TE-001 – No-VTK Feasibility
+#### TE-001 – No-VTK Feasibility
 
 - [x] Isolated Python 3.13 environment
 - [x] cadquery-ocp-novtk evaluation
@@ -46,7 +49,7 @@ Build 021 M2–M4 were intentionally paused when the No-VTK/Tauri architecture q
 
 **Result:** FAIL for unmodified CadQuery 2.8.0 because CadQuery eagerly imports `vtkmodules`.
 
-### TE-001.1 – CadQuery No-VTK Import Decoupling
+#### TE-001.1 – CadQuery No-VTK Import Decoupling
 
 - [x] Minimal CadQuery patch
 - [x] `import cadquery` without VTK
@@ -61,7 +64,7 @@ Build 021 M2–M4 were intentionally paused when the No-VTK/Tauri architecture q
 
 **Result:** PASS
 
-### TE-001.2 – No-VTK Production Bundle Proof
+#### TE-001.2 – No-VTK Production Bundle Proof
 
 - [x] Real macOS PyInstaller bundle
 - [x] App startup
@@ -84,7 +87,7 @@ Measured reduction:
 −58.25 %
 ```
 
-### TE-002 – Tauri v2 + Three.js Preview Architecture
+#### TE-002 – Tauri v2 + Three.js Preview Architecture
 
 - [x] Tauri v2 shell
 - [x] Rust-owned sidecar lifecycle
@@ -101,150 +104,194 @@ Measured reduction:
 
 **Result:** Gate D PASS / MEDIUM confidence
 
-Open findings:
+Open findings carried into TE-002.1: PyInstaller onefile sidecar cold start too slow (~15 s);
+human interactive rendering confirmation still required.
 
-- PyInstaller onefile sidecar cold start is too slow (~15 s).
-- Human interactive rendering confirmation still required.
-- Architecture itself is considered technically sound.
+#### TE-002.1 – Sidecar Runtime Strategy & Human Validation
 
----
+Variants compared:
 
-## Current
-
-### TE-002.1 – Sidecar Runtime Strategy & Human Validation
-
-Goal: determine the production-worthy sidecar runtime/deployment strategy.
-
-Variants:
-
-- [ ] A – onefile / one-shot baseline
-- [ ] B – onedir / one-shot
-- [ ] C – persistent sidecar
-- [ ] D – persistent + onedir, if useful
+- [x] A – onefile / one-shot baseline
+- [x] B – onedir / one-shot
+- [x] C – persistent sidecar
+- [x] D – persistent + onedir
 
 Engineering topics:
 
-- [ ] Cold-start benchmark
-- [ ] Warm-request benchmark
-- [ ] Memory behavior
-- [ ] Process cleanup
-- [ ] Crash recovery
-- [ ] App-close cleanup
-- [ ] No-VTK regression
-- [ ] No-PySide regression
-- [ ] Test `.app` build
-- [ ] Runtime strategy recommendation
+- [x] Cold-start benchmark
+- [x] Warm-request benchmark
+- [x] Memory behavior
+- [x] Process cleanup
+- [x] Crash recovery
+- [x] App-close cleanup
+- [x] No-VTK regression
+- [x] No-PySide regression
+- [x] Test `.app` build
+- [x] Runtime strategy recommendation
 
-Human validation:
+**Result:** Gate E-A PASS (engineering), MEDIUM confidence. Recommendation: **persistent + onedir**
+— cold start ~0.644 s vs. ~15–17 s for onefile; no structural orphan-process risk under forced kill
+(onefile has this risk, onedir does not).
 
-- [ ] ZeroRod visible
-- [ ] body visible
-- [ ] rod visible
-- [ ] strings visible
-- [ ] rotate
-- [ ] zoom
-- [ ] resize
-- [ ] reload
-- [ ] clean shutdown
-- [ ] no remaining sidecar process
+#### TE-002.2A – Tauri Bundle Composition Discovery
 
-Gates:
+- [x] Full bundle size measurement (706,051,017 bytes / 673.34 MiB / 372 files)
+- [x] Sidecar share isolated (660.93 MiB / 98.15 %)
+- [x] Tauri/Rust/frontend share isolated (13.04 MiB)
+- [x] VTK = 0 confirmed (three independent methods)
+- [x] PySide6/Qt = 0 confirmed (two independent methods)
+- [x] Duplicate-file investigation (hash-based, 93.90 MiB)
+- [x] Optimization candidates identified (5, with evidence status)
+- [x] No optimization performed (discovery only)
 
-- [ ] Gate E-A – Engineering PASS
-- [ ] Gate E-B – Human Validation PASS
-- [ ] Gate E – Overall PASS
+**Result:** Gate F-A PASS
+
+#### TE-002.2B – Targeted Bundle Optimization
+
+- [x] Candidate A — remove onefile fallback (−135.45 MiB)
+- [x] Candidate B — restore PyInstaller dylib symlink dedup after Tauri's resource copy (−93.90 MiB)
+- [x] Candidate C — exclude numba/llvmlite (−128.27 MiB)
+- [x] Candidate D — exclude scipy (−35.45 MiB)
+- [x] Root-cause investigation per candidate (not "not observed" alone)
+- [x] Real rebuilds, not hand-edited artifacts
+- [x] Full regression suite (48/48 sidecar, 241/1-skip full repo, 17/17 Rust, 30/30 frontend)
+- [x] Performance/memory benchmark — no regression
+- [x] Functional validation (launch, preview, STL, STEP, repeated requests, error handling, shutdown, 0 orphan processes)
+
+**Result:** Gate F-B PASS. Final optimized bundle:
+
+```text
+293,892,882 bytes / ~280.27 MiB / 193 files
+−393.07 MiB / −58.37 % vs. the 673.34 MiB TE-002.1 baseline
+```
+
+Performance: cold start ~0.612 s, warm median ~0.121 s — no regression vs. TE-002.1's own
+persistent+onedir numbers.
+
+**Human Validation (Project Owner, 2026-08-09):** **PASS within implemented PoC scope.** App
+starts for real; the ZeroRod model and its existing parts (body, rod, virtual strings) render
+correctly; rotate and zoom work; existing preview interaction works. Parameter editing is
+explicitly **NOT IMPLEMENTED / NOT TESTABLE** in the PoC UI — a scope gap, not a failure. Full
+record: `docs/research/TE-002.2B-Tauri-Bundle-Optimization/HUMAN-VALIDATION.md`.
 
 ---
 
-## Next Architecture Decision
+## Architecture Decision — ACCEPTED
 
-If Gate E = PASS:
+**Status: ACCEPTED, 2026-08-09.** Full decision record:
+[`docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md`](docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md).
 
-### Architecture Decision – ZeroRodCAD Desktop 2.0
-
-Proposed target:
+### ZeroRodCAD Desktop 2.0 — Approved Target Architecture
 
 ```text
 Tauri v2 GUI
     +
 Rust process / IPC layer
     +
-Python 3.13 Engine Sidecar
+Persistent Python 3.13 Engine Sidecar (PyInstaller onedir)
     +
 CadQuery + cadquery-ocp-novtk
     +
-PreviewMesh / JSON contracts
+PreviewMesh / JSON contracts (zerorod-sidecar/v1, zerorod-mesh/v1)
     +
 Three.js
 ```
 
-Required before productive migration:
+Completed before productive migration:
 
-- [ ] finalize ADR
-- [ ] define CadQuery patch deployment strategy
-- [ ] prefer upstream CadQuery fix
-- [ ] establish reproducible interim patch mechanism if upstream is unavailable
-- [ ] define migration milestones
-- [ ] retain PySide6 app as rollback/reference until feature parity
+- [x] finalize ADR (`ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md`, Status: Accepted)
+- [x] define CadQuery patch deployment strategy (upstream preferred, version-pinned local patch as
+  interim, no permanent fork)
+- [x] define migration milestones (Build 022–026, below)
+- [x] retain PySide6 app as rollback/reference until feature parity — codified in the ADR and in
+  `docs/migration/README.md`'s reference-implementation policy
 
 ---
 
-## Planned Product Migration
+## ZeroRodCAD Desktop 2.0 Migration
 
-Only after Gate E PASS and final ADR approval.
+Migration overview: [`docs/migration/README.md`](docs/migration/README.md).
+Current status:
 
-### Migration M1 – Tauri Product Shell
+```text
+RESEARCH COMPLETE
+ARCHITECTURE ACCEPTED
+MIGRATION PREPARED
+BUILD 022 NOT STARTED
+```
 
-- [ ] establish productive Tauri v2 application shell
-- [ ] formalize sidecar lifecycle
-- [ ] production-ready packaging
-- [ ] version metadata
+### Current
+
+Nothing is currently in progress. Build 022 is prepared but not started — see next section.
+
+### Build 022 – Tauri Desktop Foundation (prepared, not started)
+
+Preparation document: [`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md).
+
+- [ ] productive Tauri v2 application shell
+- [ ] Rust-owned sidecar process lifecycle (spawn, reuse, timeout, crash/restart, shutdown)
+- [ ] persistent, onedir-packaged Python 3.13 sidecar
+- [ ] existing ZeroRodCAD engine integration (unchanged)
+- [ ] `zerorod-sidecar/v1` adopted stable
+- [ ] `zerorod-mesh/v1` adopted stable
+- [ ] Three.js preview foundation
+- [ ] No-VTK packaging with the TE-002.2B optimized packaging rules as baseline
 - [ ] diagnostics
+- [ ] tests (Rust/Python/frontend)
+- [ ] human validation pass
 
-### Migration M2 – Live Parameter → Preview Workflow
+Not yet in Build 022: complete parameter UI, complete export UI, full feature parity, PySide6
+removal.
 
-- [ ] expose full `ZeroRodParameters`
-- [ ] parameter validation
-- [ ] persistent preview requests
-- [ ] responsive regeneration
-- [ ] error states
+### Build 023 – Parameters & Live Preview
 
-### Migration M3 – Export Workflow
+- [ ] full `ZeroRodParameters` UI
+- [ ] validation
+- [ ] live regeneration
+- [ ] responsive preview
+- [ ] error presentation
 
-- [ ] STL export
-- [ ] STEP export
-- [ ] native file dialogs
-- [ ] export result/status
-- [ ] regression comparison with PySide6 reference
+### Build 024 – STL / STEP Export Workflow
 
-### Migration M4 – Desktop Feature Parity
+- [ ] productive STL export
+- [ ] productive STEP export
+- [ ] native dialogs
+- [ ] export status
+- [ ] error handling
+- [ ] regression comparison with the PySide6 reference app
 
+### Build 025 – Desktop Feature Parity
+
+- [ ] remaining application workflows
 - [ ] settings
-- [ ] project/open/save workflow
-- [ ] remaining application commands
-- [ ] keyboard shortcuts
-- [ ] native macOS integration
-- [ ] accessibility review
+- [ ] project open/save
+- [ ] shortcuts
+- [ ] desktop integration
+- [ ] accessibility
+- [ ] parity validation
 
-### Migration M5 – Production Packaging
+### Build 026 – Production Packaging & macOS Integration
 
-- [ ] app bundle
-- [ ] optimized sidecar packaging
-- [ ] final bundle analysis
-- [ ] startup/runtime performance
-- [ ] update/release workflow
-- [ ] signing
-- [ ] notarization
+- [ ] production bundle
+- [ ] final dependency audit
+- [ ] performance baseline
+- [ ] signing preparation
+- [ ] notarization preparation
+- [ ] release workflow
 
-### Migration M6 – PySide6 Retirement Decision
+Signing/notarization is planned only at the build-planning level here; no new signing/notarization
+subproject is started by this roadmap entry.
 
-Only when all functionality has been validated:
+### Post-Build-026 – PySide6 Retirement Decision
+
+Only after:
 
 - [ ] feature parity confirmed
 - [ ] real-world testing complete
 - [ ] rollback package archived
 - [ ] final architecture review
-- [ ] decision whether to remove PySide6 desktop path
+
+Decision: retain or remove the legacy PySide6 desktop path.
 
 ---
 
@@ -261,14 +308,13 @@ Only when all functionality has been validated:
 
 ## Explicitly Not Planned Yet
 
-Until the current architecture gates are complete:
-
-- no deletion of the existing PySide6 application
-- no premature Build 022 migration
+- no deletion of the existing PySide6 application (only after the Post-Build-026 retirement decision)
+- no deletion of `experiments/te002-tauri/` (remains research evidence and regression reference)
 - no binary mesh protocol without evidence
 - no new CAD kernel
-- no separate repository for the Tauri experiment
-- no full UI redesign inside Technology Evaluations
+- no separate repository for the Tauri experiment or the productive Tauri app
+- no full UI redesign inside Technology Evaluations (phase is complete; UI work now belongs to Build 023/025)
+- no further Technology Evaluation (TE-002.3) unless a genuinely new architectural uncertainty emerges
 
 ---
 
@@ -280,4 +326,4 @@ The current project direction is no longer:
 
 It is now:
 
-> Preserve the proven ZeroRodCAD engine, minimize unnecessary runtime dependencies, and establish a modern desktop architecture whose boundaries are measurable, testable and reversible.
+> Preserve the proven ZeroRodCAD engine, minimize unnecessary runtime dependencies, and execute the accepted Tauri v2 desktop architecture through a measured, testable, reversible migration — starting with Build 022.

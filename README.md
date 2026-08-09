@@ -2,11 +2,17 @@
 
 Parametrisches CAD- und Desktop-Projekt für das ZeroRod-System.
 
-ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Das Projekt befindet sich aktuell in einer Architektur- und Packaging-Modernisierung mit dem Ziel, die CAD-Engine klar von der Desktop-Oberfläche zu trennen und die macOS-Anwendung deutlich schlanker zu machen.
+ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Die Technology-Evaluation-Phase zur zukünftigen Desktop-Architektur ist abgeschlossen; die Zielarchitektur (Tauri v2 + Rust Process/IPC-Schicht + persistenter Python-Sidecar + Three.js) ist vom Projektverantwortlichen genehmigt. Die produktive Migration ist vorbereitet, aber noch nicht gestartet.
 
 ## Aktueller Stand
 
-Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als Referenz- und Fallback-Implementierung.
+```text
+Technology Evaluation:  COMPLETE
+Architecture:           ACCEPTED
+Productive migration:   NEXT (Build 022 – noch nicht gestartet)
+```
+
+Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als aktuelle Referenz-, Feature-Parity- und Fallback-Implementierung, bis die Tauri-Migration vollständig validiert und eine ausdrückliche Entscheidung zur Ablösung getroffen ist. Sie wird durch diesen Auftrag nicht verändert oder entfernt.
 
 Die wichtigsten aktuellen Ergebnisse:
 
@@ -96,63 +102,86 @@ Wesentliche Messwerte:
 
 Die 15 Sekunden entstehen durch PyInstaller-Onefile-Self-Extraction, nicht durch CAD-Engine, JSON oder Three.js.
 
-## Aktuelle Technology Evaluation
-
 ### TE-002.1 – Sidecar Runtime Strategy & Human Validation
 
-TE-002.1 untersucht die produktiv geeignete Sidecar-Strategie.
+Ergebnis: **Gate E-A PASS** (Engineering)
 
-Verglichen werden:
+Verglichen wurden vier Sidecar-Strategien (onefile/onedir × one-shot/persistent). Empfohlene und
+angenommene Variante: **persistent + onedir** — Cold Start ca. **0.644 s** statt ca. 15–17 s bei
+onefile, kein struktureller Orphan-Process-Risiko bei erzwungenem Kill (im Gegensatz zu onefile).
 
-1. PyInstaller onefile / One-Shot
-2. PyInstaller onedir / One-Shot
-3. persistenter Sidecar
-4. optional: persistent + onedir
+### TE-002.2A – Tauri Bundle Composition Discovery
 
-Bewertet werden unter anderem:
+Ergebnis: **Gate F-A PASS**
 
-- Cold Start
-- Warm Request Latency
-- Speicherverhalten
-- Prozess-Cleanup
-- Crash Recovery
-- Disk Footprint
-- VTK-/PySide6-Freiheit
-- Wartbarkeit
-- reale Benutzerinteraktion
+Das ungeoptimierte Tauri-PoC-Bundle (706.051.017 Byte / 673.34 MiB / 372 Dateien) besteht zu
+**98.15 %** (660.93 MiB) aus Sidecar-Payload; die Tauri-/Rust-/Frontend-Schicht selbst ist nur
+13.04 MiB groß. Fünf Optimierungskandidaten wurden identifiziert (u. a. doppeltes
+Onefile-Fallback, doppelte OpenCASCADE-Dylibs, numba/llvmlite, scipy) — noch ohne Änderung.
 
-TE-002.1 endet mit:
+### TE-002.2B – Targeted Bundle Optimization
 
-- **Gate E-A** – Engineering Gate
-- **Gate E-B** – Human Validation Gate
+Ergebnis: **Gate F-B PASS**
 
-Erst bei `E-A PASS` und `E-B PASS` wird Gate E insgesamt als bestanden betrachtet.
-
-## Zielarchitektur
-
-Die derzeit bevorzugte, noch nicht final verabschiedete Zielarchitektur lautet:
+Alle fünf Kandidaten wurden einzeln untersucht, root-caused und als sicher entfernbar bestätigt.
+Finales optimiertes Bundle:
 
 ```text
-ZeroRodCAD Desktop
+293.892.882 Byte / ~280.27 MiB / 193 Dateien
+```
+
+Gesamtersparnis gegenüber der TE-002.1-Baseline (673.34 MiB): **393.07 MiB / 58.37 %**.
+
+Keine Performance-Regression (Cold Start ~0.612 s, Warm Median ~0.121 s), keine Memory-Regression,
+VTK = 0, PySide6/Qt = 0. Vollständige funktionale Validierung (Launch, Preview, STL, STEP,
+wiederholte Requests, Fehlerbehandlung, Shutdown, 0 Orphan-Prozesse).
+
+**Human Validation (Projektverantwortlicher, 2026-08-09): PASS within implemented PoC scope.** App
+startet real, ZeroRod-Modell und seine vorhandenen Bestandteile (Body, Rod, Virtual Strings) werden
+korrekt dargestellt, Rotation und Zoom funktionieren. Parameteränderungen sind in der
+PoC-Oberfläche noch **nicht implementiert** (NOT IMPLEMENTED / NOT TESTABLE) — das ist eine
+Scope-Lücke, kein Fehler. Details:
+`docs/research/TE-002.2B-Tauri-Bundle-Optimization/HUMAN-VALIDATION.md`.
+
+## Technology Evaluation Phase: COMPLETE
+
+TE-001 bis TE-002.2B sind vollständig abgeschlossen. Es ist keine TE-002.3 geplant — weitere offene
+Produktfragen (vollständige Parameter-UI, Export-UI, Feature-Parität) gehören in die Migration
+(Build 023 ff.), nicht in eine weitere Grundlagen-Evaluation.
+
+## Architektur-Entscheidung (ACCEPTED)
+
+Die Zielarchitektur ist final entschieden und im ADR dokumentiert:
+[`docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md`](docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md)
+(Status: Accepted, 2026-08-09).
+
+```text
+ZeroRodCAD Desktop 2.0
 │
 ├── Tauri v2
 │   ├── native Desktop Shell
-│   ├── UI
-│   └── Three.js Preview
+│   ├── WebView UI
+│   └── Three.js 3D Preview
 │
 ├── Rust Process / IPC Layer
 │
-└── Python Engine Sidecar
-    ├── ZeroRodCAD Engine
+└── Persistenter Python 3.13 Sidecar (PyInstaller onedir)
+    ├── ZeroRodCAD Engine (unverändert)
     ├── CadQuery
     ├── cadquery-ocp-novtk
     ├── Geometry
-    ├── Tessellation
+    ├── Tessellation / PreviewMesh
     ├── STL
     └── STEP
 ```
 
-Die bestehende PySide6-App bleibt bis zu einer späteren, ausdrücklich beschlossenen Migration als funktionierende Referenz und Rollback-Pfad erhalten.
+**No-VTK**, **No-PySide6** sind Ziel der produktiven Architektur. Die bestehende PySide6-App bleibt
+bis zu einer späteren, ausdrücklich beschlossenen Retirement-Entscheidung (frühestens nach Build
+026) als funktionierende Referenz, Feature-Parity-Baseline und Rollback-Pfad erhalten — sie wird
+durch die Architekturentscheidung nicht verändert oder entfernt.
+
+Migrationsplan und Build-022-Vorbereitung: [`docs/migration/README.md`](docs/migration/README.md),
+[`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md).
 
 ## Entwicklung
 
@@ -211,7 +240,7 @@ docs/
 docs/research/
 ```
 
-Die aktuellen Technology Evaluations liegen unter anderem in:
+Die abgeschlossenen Technology Evaluations liegen unter:
 
 ```text
 docs/research/TE-001-No-VTK/
@@ -219,12 +248,26 @@ docs/research/TE-001.1-CadQuery-NoVTK/
 docs/research/TE-001.2-NoVTK-Bundle/
 docs/research/TE-002-Tauri-ThreeJS/
 docs/research/TE-002.1-Sidecar-Runtime/
+docs/research/TE-002.2A-Tauri-Bundle-Discovery/
+docs/research/TE-002.2B-Tauri-Bundle-Optimization/
+```
+
+Der finale ADR sowie die Migrationsplanung liegen unter:
+
+```text
+docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md
+docs/migration/README.md
+docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md
 ```
 
 ## Status
 
-ZeroRodCAD befindet sich derzeit zwischen erfolgreicher Architektur-Evaluation und möglicher produktiver Desktop-Migration.
+```text
+Technology Evaluation:  COMPLETE
+Architecture:           ACCEPTED
+Productive migration:   NEXT
+```
 
-Die technische Frage, ob Tauri v2 + Three.js + Python Sidecar + No-VTK CadQuery/OCP grundsätzlich funktioniert, wurde positiv beantwortet.
+Die technische Frage, ob Tauri v2 + Three.js + Python Sidecar + No-VTK CadQuery/OCP grundsätzlich funktioniert, wurde positiv beantwortet — inklusive produktiv geeigneter Sidecar-Runtime-Strategie (persistent + onedir), optimierter Bundle-Größe (~280.27 MiB) und realer menschlicher Interaktionsvalidierung des finalen PoC (PASS within implemented PoC scope, Parameteränderungen ausdrücklich noch nicht implementiert).
 
-Offen ist nun die produktiv optimale Sidecar-Runtime-Strategie und die abschließende menschliche Interaktionsvalidierung.
+Die produktive Migration ist geplant, aber noch **nicht gestartet**. Nächster Schritt: Build 022 – Tauri Desktop Foundation (`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`).

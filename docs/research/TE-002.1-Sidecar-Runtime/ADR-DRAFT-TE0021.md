@@ -1,10 +1,19 @@
 # ADR-DRAFT-TE0021 — Persistent, Onedir-Packaged Sidecar Runtime
 
-**Status: DRAFT — not a productive ADR.** Written because Gate E-A = PASS (`Conclusion.md`). This
-document sketches a *possible* refinement to the TE-002 target architecture for discussion; it
-commits the project to nothing and does not authorize any implementation work. It also does not
-supersede TE-002's own `ADR-DRAFT.md` — it narrows one specific part of that sketch (the sidecar's
-runtime/packaging strategy) based on evidence TE-002 didn't yet have.
+**Status: SUPERSEDED.** This draft's proposed refinement (persistent + onedir as the sidecar
+runtime strategy) was accepted as-is, re-confirmed by TE-002.2A/TE-002.2B's packaging work, and is
+now recorded in
+[`docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md`](../../adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md)
+(Status: Accepted, 2026-08-09), which also supersedes TE-002's own `ADR-DRAFT.md`. This document is
+kept as-is, unmodified below this notice, as the historical research record of the point-in-time
+reasoning that led there.
+
+**Original status note (superseded, kept for history): DRAFT — not a productive ADR.** Written
+because Gate E-A = PASS (`Conclusion.md`). This document sketches a *possible* refinement to the
+TE-002 target architecture for discussion; it commits the project to nothing and does not authorize
+any implementation work. It also does not supersede TE-002's own `ADR-DRAFT.md` — it narrows one
+specific part of that sketch (the sidecar's runtime/packaging strategy) based on evidence TE-002
+didn't yet have.
 
 ## Context
 

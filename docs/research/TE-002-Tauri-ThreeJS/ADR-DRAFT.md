@@ -1,8 +1,15 @@
 # ADR-DRAFT — Tauri v2 + Python Engine Sidecar + No-VTK CadQuery + Three.js Preview
 
-**Status: DRAFT — not a productive ADR.** Written because Gate D = PASS (section 36). This
-document sketches a *possible* target architecture for discussion; it commits the project to
-nothing and does not authorize any implementation work.
+**Status: SUPERSEDED.** This draft's proposed architecture was carried forward, refined by
+TE-002.1/TE-002.2A/TE-002.2B, and formally accepted in
+[`docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md`](../../adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md)
+(Status: Accepted, 2026-08-09). This document is kept as-is, unmodified below this notice, as the
+historical research record of the point-in-time reasoning that led there — it is not deleted and
+not rewritten to look as if it always said what the final ADR says.
+
+**Original status note (superseded, kept for history): DRAFT — not a productive ADR.** Written
+because Gate D = PASS (section 36). This document sketches a *possible* target architecture for
+discussion; it commits the project to nothing and does not authorize any implementation work.
 
 ## Context
 
