@@ -2,24 +2,29 @@
 
 This document is the entry point for the migration from ZeroRodCAD's current PySide6/Qt desktop
 application to the accepted Tauri v2 based target architecture. It links the completed research to
-the upcoming build sequence and states the current status plainly. It does not itself authorize or
-contain implementation work — the concrete next step is
-[`BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](BUILD-022-TAURI-DESKTOP-FOUNDATION.md), and even that
-document is a preparation document, not an implementation order.
+the build sequence that established the productive Desktop 2.0 foundation (Build 022) and states
+the current status plainly. Build 022's own completion record is
+[`BUILD-022-COMPLETION.md`](BUILD-022-COMPLETION.md); the next build's handoff is
+[`BUILD-023-HANDOFF.md`](BUILD-023-HANDOFF.md).
 
 ## Current status
 
 ```text
 RESEARCH COMPLETE
 ARCHITECTURE ACCEPTED
-MIGRATION PREPARED
-BUILD 022 IN PROGRESS
+BUILD 022 COMPLETE
   M1 — Tauri Desktop Foundation:       COMPLETE
   M2 — Productive Sidecar & Lifecycle: COMPLETE
   M3 — Three.js Preview Foundation:    COMPLETE
   M4 — Productive Packaging Baseline:  COMPLETE
-  M5 — Integration & Build Completion: IN PROGRESS
+  M5 — Integration & Build Completion: COMPLETE
+DESKTOP 2.0 FOUNDATION: ESTABLISHED
+NEXT: BUILD 023 — PARAMETERS & LIVE PREVIEW
 ```
+
+**Desktop 2.0 Foundation established** means the new architecture is real, tested, and reproducibly
+packaged — not that the full migration from the existing PySide6 application is complete. Parameter
+editing, export UI, and full feature parity are explicitly Build 023–026 scope, not yet built.
 
 ## Why migrate
 
@@ -130,9 +135,7 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
 
 - **Research phase:** COMPLETE (TE-001 through TE-002.2B, including human validation).
 - **Architecture decision:** ACCEPTED (`docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md`).
-- **Migration:** PREPARED (this document, `BUILD-022-TAURI-DESKTOP-FOUNDATION.md`, updated
-  `README.md`/`ROADMAP.md`).
-- **Build 022:** IN PROGRESS.
+- **Build 022:** COMPLETE. Desktop 2.0 Foundation: ESTABLISHED.
   - M1 — Tauri Desktop Foundation: COMPLETE (`BUILD-022-M1-TAURI-FOUNDATION.md`) — productive
     `desktop/` Tauri v2 shell, working WebView↔Rust IPC bridge, security boundary in place.
   - M2 — Productive Sidecar & Rust Lifecycle: COMPLETE / Gate PASS (`BUILD-022-M2-SIDECAR-LIFECYCLE.md`) —
@@ -153,4 +156,11 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
     at 285.21 MiB (within 1.76% of TE-002.2B's own 280.27 MiB reference, fully explained), 0
     VTK/PySide6/Qt/numba/llvmlite/scipy reconfirmed, no functional/performance/security regression,
     and human validation PASS (Project Owner, 2026-08-09, `BUILD-022-M4-HUMAN-VALIDATION.md`).
-  - M5 — Integration & Build Completion: in progress.
+  - M5 — Integration & Build Completion: COMPLETE / Gate PASS (`BUILD-022-COMPLETION.md`) —
+    milestone consistency audit (no contradictions), architecture conformance audit against
+    `ADR-022-001` (18 checks, 0 deviations), a byte-for-byte reproducible clean release rebuild,
+    and the master validation gate (`scripts/validate-build022.sh`) ending in
+    `BUILD-022 CONSISTENCY GATE: PASS`.
+
+**Build 022 Final Gate: PASS.** See `docs/migration/BUILD-022-COMPLETION.md` for the full record
+and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.

@@ -217,15 +217,22 @@ Current status:
 RESEARCH COMPLETE
 ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
-BUILD 022 IN PROGRESS (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 IN PROGRESS)
+BUILD 022 COMPLETE (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 COMPLETE)
+DESKTOP 2.0 FOUNDATION ESTABLISHED
+NEXT: BUILD 023 — PARAMETERS & LIVE PREVIEW
 ```
 
 ### Current
 
-Build 022 is in progress. M1 (Tauri Desktop Foundation), M2 (Productive Sidecar & Rust Lifecycle),
-M3 (Three.js Preview Foundation), and M4 (Productive Packaging Baseline) are all complete, each
-with Gate PASS including human validation. M5 (Integration & Build Completion) is in progress —
-the final consolidation milestone before Build 022 itself is declared complete.
+Build 022 is **complete**. M1 (Tauri Desktop Foundation), M2 (Productive Sidecar & Rust
+Lifecycle), M3 (Three.js Preview Foundation), M4 (Productive Packaging Baseline), and M5
+(Integration & Build Completion) are all complete, each with Gate PASS including human validation
+where applicable. The productive Desktop 2.0 foundation (Tauri v2 + Rust process layer +
+persistent Python sidecar + Three.js preview) is established, tested, and reproducibly packaged.
+This is the desktop **foundation**, not a completed feature migration — see
+[`docs/migration/BUILD-022-COMPLETION.md`](docs/migration/BUILD-022-COMPLETION.md) for the full
+completion record and [`docs/migration/BUILD-023-HANDOFF.md`](docs/migration/BUILD-023-HANDOFF.md)
+for what Build 023 picks up next.
 
 ### Build 022 – Tauri Desktop Foundation
 
@@ -252,9 +259,16 @@ Preparation document: [`docs/migration/BUILD-022-TAURI-DESKTOP-FOUNDATION.md`](d
 - [x] M4 — No-VTK/No-PySide6/no-onefile/no-numba/no-llvmlite/no-scipy reconfirmed in the final bundle
 - [x] M4 — functional/lifecycle/performance/memory/security regression against the exact final bundle, no regression
 - [x] M4 — human validation PASS (Project Owner, 2026-08-09, `docs/migration/BUILD-022-M4-HUMAN-VALIDATION.md`) — Gate BUILD-022-M4: PASS
+- [x] M5 — milestone consistency audit (M1-M4 claims vs. repository, no contradictions found) — `docs/migration/BUILD-022-COMPLETION.md`
+- [x] M5 — architecture conformance audit vs. `ADR-022-001` (18 checks, 0 deviations)
+- [x] M5 — clean release rebuild from scratch: byte-for-byte reproducible (299,066,193 bytes / 285.21 MiB / 201 files / 77 symlinks, identical to M4's own measurement)
+- [x] M5 — master validation gate (`scripts/validate-build022.sh`) — orchestrates M2/M3/M4 gates + architecture conformance + final inventory — `BUILD-022 CONSISTENCY GATE: PASS`
+- [x] M5 — Build 023 handoff prepared, not started (`docs/migration/BUILD-023-HANDOFF.md`)
 
-Not yet in Build 022: complete parameter UI, complete export UI, full feature parity, PySide6
-removal.
+**Build 022: COMPLETE. Desktop 2.0 Foundation: ESTABLISHED.**
+
+Not yet in Build 022 (by design — later builds' scope): complete parameter UI, complete export UI,
+full feature parity, PySide6 removal, signing/notarization.
 
 ### Build 023 – Parameters & Live Preview
 
