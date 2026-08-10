@@ -10,9 +10,16 @@ behavior while orbiting, absence of flicker) is fundamentally a human judgment c
 test can substitute for, and `createPreviewController` itself is not unit-tested (it constructs a
 real `THREE.WebGLRenderer`, which has no GPU context under jsdom).
 
-This environment has no display/GUI access, so every item below is left **unchecked** rather than
-assumed, per the mandate's own allowance for this ("Claude leaves unchecked if human clicking
-unavailable").
+This environment had no display/GUI access when the checklist below was drafted, so every item was
+initially left **unchecked** rather than assumed, per the mandate's own allowance for this ("Claude
+leaves unchecked if human clicking unavailable").
+
+**Update (2026-08-10):** the Project Owner has since performed this validation against the fresh
+release bundle built for M4 (`docs/migration/BUILD-023-M4-LIVE-PREVIEW.md`'s artifact, commit
+`46a0922`) and reported specific confirmed behaviors (see "Result" below). Checklist items with a
+clear, direct match to what was actually reported are marked `[x]`; items not explicitly covered by
+that report are left unchecked rather than assumed, even where plausibly implied — no additional or
+repeat validation was performed by Claude to produce this update.
 
 ## Build under test
 
@@ -28,34 +35,34 @@ override, right-click → Open).
 
 ## Checklist
 
-- [ ] App starts normally
-- [ ] Default ZeroRod visible
-- [ ] Parameter panel usable
-- [ ] Change `body_width` 38 → 60
+- [x] App starts normally
+- [x] Default ZeroRod visible
+- [x] Parameter panel usable
+- [x] Change `body_width` 38 → 60
 - [ ] Do NOT press Apply
-- [ ] After a short pause the model automatically becomes wider
+- [x] After a short pause the model automatically becomes wider
 - [ ] Change 60 → 45
 - [ ] Model automatically becomes narrower
-- [ ] Type quickly through several values
-- [ ] Preview does not visibly jump back to older values
+- [x] Type quickly through several values
+- [x] Preview does not visibly jump back to older values
 - [ ] Final model corresponds to the final entered value
-- [ ] Invalid temporary input does not destroy the preview
-- [ ] Correcting it resumes automatic preview
+- [x] Invalid temporary input does not destroy the preview
+- [x] Correcting it resumes automatic preview
 - [ ] Domain-invalid value preserves the previous valid model
 - [ ] Correcting it recovers automatically
-- [ ] Rotate the model
-- [ ] Zoom into the model
+- [x] Rotate the model
+- [x] Zoom into the model
 - [ ] Change a small parameter
-- [ ] Camera does not annoyingly reset after every update
-- [ ] Orbit controls remain responsive during/after updates
+- [x] Camera does not annoyingly reset after every update
+- [x] Orbit controls remain responsive during/after updates
 - [ ] Change a string gauge
 - [ ] Preview updates automatically
 - [ ] Change `project_name`
 - [ ] No unnecessary geometry refresh is apparent
-- [ ] Reset to Defaults
-- [ ] Default geometry returns automatically
+- [x] Reset to Defaults
+- [x] Default geometry returns automatically
 - [ ] Apply remains usable and does not cause a duplicate visible refresh
-- [ ] Repeated edits remain responsive
+- [x] Repeated edits remain responsive
 - [ ] No visible flicker
 - [ ] No blank viewport between updates
 - [ ] Errors are understandable
@@ -65,15 +72,15 @@ override, right-click → Open).
 
 | Field | Value |
 |---|---|
-| Tester | *(pending)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Hardware | *(pending)* |
-| Result | **PENDING** |
-| Notes | Not yet performed — no interactive display available in the environment this milestone was engineered in. |
+| Tester | Project Owner |
+| Date | 2026-08-10 |
+| macOS | not separately itemized by the tester's report |
+| Hardware | not separately itemized by the tester's report |
+| Result | **PASS** |
+| Notes | Human validation completed successfully. Live preview updates the real model according to edited values. Rapid edits, invalid-input recovery, preview stability, camera/orbit usability and normal application operation were validated within the implemented Build 023 M4 scope. |
 
 ## Gate BUILD-023-M4 (human component)
 
-**PENDING.** Engineering criteria are covered by `scripts/validate-build023-m4.sh`; this checklist's
-completion is the remaining condition for the milestone's overall PASS. Per the mandate, Claude does
-not mark this PASS on its own — only the Project Owner's actual click-through does.
+**PASS**, as reported by the Project Owner. Combined with the engineering gate
+(`scripts/validate-build023-m4.sh`, PASS), **Gate BUILD-023-M4: PASS** overall — Milestone 4 is
+COMPLETE.
