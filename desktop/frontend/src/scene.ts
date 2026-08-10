@@ -101,6 +101,35 @@ export function fitCameraToBounds(
   controls.update();
 }
 
+/** Build 023 M4 — the camera-refit heuristic for live preview
+ * (§29 of the M4 mandate): refitting on every single live update fights the
+ * user's own camera/zoom/rotate state, but never refitting risks leaving
+ * genuinely new geometry outside the viewable frustum. `EXTREME_BOUNDS_CHANGE_RATIO`
+ * (1.5x) means "the model's largest dimension changed by more than 50%" —
+ * chosen as a simple, defensible, testable threshold rather than a larger
+ * camera-preservation subsystem (the mandate explicitly asks for exactly
+ * this level of restraint: "controlled refit/fallback," not a new policy
+ * engine). Callers additionally always refit on the very first load of a
+ * session, independent of this function. */
+export const EXTREME_BOUNDS_CHANGE_RATIO = 1.5;
+
+function boundsMaxDimension(bounds: Bounds): number {
+  const min = new THREE.Vector3(...bounds.min);
+  const max = new THREE.Vector3(...bounds.max);
+  const size = max.clone().sub(min);
+  return Math.max(size.x, size.y, size.z, 1e-6);
+}
+
+export function isExtremeBoundsChange(
+  previous: Bounds,
+  next: Bounds,
+  ratio: number = EXTREME_BOUNDS_CHANGE_RATIO,
+): boolean {
+  const previousMax = boundsMaxDimension(previous);
+  const nextMax = boundsMaxDimension(next);
+  return nextMax / previousMax > ratio || previousMax / nextMax > ratio;
+}
+
 /** Removes and disposes every child of `group` — used before adding a fresh
  * preview's geometry, so refresh never accumulates stale scene objects. */
 export function clearGroup(group: THREE.Group): void {

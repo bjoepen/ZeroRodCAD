@@ -77,6 +77,17 @@ export function isGeometryUnchanged(a: ZeroRodParametersValues, b: ZeroRodParame
   return true;
 }
 
+/** Full field-for-field equality, including `project_name` — unlike
+ * `isGeometryUnchanged`. Build 023 M4 uses this as the live-preview
+ * scheduler's dedup check (live_preview.ts's `isEqual` config): it only
+ * needs to recognize "this is literally the same request I already
+ * dispatched," not to distinguish metadata from geometry — that
+ * distinction is made earlier, at the call site, via `isGeometryUnchanged`
+ * gating whether to schedule anything at all. */
+export function valuesEqual(a: ZeroRodParametersValues, b: ZeroRodParametersValues): boolean {
+  return a.project_name === b.project_name && isGeometryUnchanged(a, b);
+}
+
 /** Canonical string form used both to seed `raw`/`rawGauges` and to detect
  * dirtiness against a baseline — one formatting function, one source of
  * truth, so "freshly loaded" always reads as raw === formatted(baseline). */

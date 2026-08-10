@@ -67,16 +67,20 @@ section "Frontend — M2 parameter modules (explicit)"
   src/parameter_state.test.ts \
   src/parameter_panel.test.ts)
 
-section "Frontend — no automatic preview IPC on parameter edit (explicit re-check)"
+section "Frontend — no automatic (synchronous) preview IPC on parameter edit (explicit re-check)"
 # A `vitest -t` filter that matches zero tests still exits 0 ("skipped", not
-# "failed") — silently vacuous if the matching test is ever renamed (as it
-# was in Build 023 M3, when this suite's Apply flow moved from local-only to
-# engine-connected and the describe/it titles changed). Guarded explicitly
-# below so a future rename fails loudly here instead of silently no-op'ing.
-M2_IPC_CHECK_OUTPUT=$(cd desktop/frontend && npx vitest run src/parameter_panel.test.ts -t "never calls applyParameters" 2>&1)
+# "failed") — silently vacuous if the matching test is ever renamed. This
+# has happened twice now (Build 023 M3, when Apply moved from local-only to
+# engine-connected, and Build 023 M4, when editing gained a *debounced*
+# engine request, which is why this check's own framing changed from "no
+# request ever" to "no *synchronous* request" below) — guarded explicitly so
+# a future rename fails loudly here instead of silently no-op'ing, which is
+# exactly what caught the M4 rename during that milestone's own validation
+# run.
+M2_IPC_CHECK_OUTPUT=$(cd desktop/frontend && npx vitest run src/parameter_panel.test.ts -t "schedules a debounced live preview for a valid geometry edit" 2>&1)
 echo "${M2_IPC_CHECK_OUTPUT}"
 if ! echo "${M2_IPC_CHECK_OUTPUT}" | grep -qE "Tests {2}[1-9][0-9]* passed"; then
-  echo "FAIL: expected at least 1 passing test matching the Apply-flow name filter, got 0 (was the test renamed?)" >&2
+  echo "FAIL: expected at least 1 passing test matching the no-synchronous-request filter, got 0 (was the test renamed?)" >&2
   FAILED=1
 fi
 

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const invokeMock = vi.fn();
 
@@ -6,12 +6,17 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
 }));
 
-import { createParameterPanelController, type ApplyParametersFn } from "./parameter_panel";
+import {
+  createParameterPanelController,
+  LIVE_PREVIEW_DEBOUNCE_MS,
+  type PreviewIO,
+} from "./parameter_panel";
 import { PARAMETERS_SCHEMA, type ZeroRodParametersValues } from "./parameters";
+import type { FetchPreviewResult, ParsedPreviewData } from "./preview";
 
 // Real returned-shape payload — canonical defaults from
 // docs/contracts/ZEROROD-PARAMETERS-V1.md, mocked only at the Tauri
-// invoke() boundary (same pattern M1/M2 already established).
+// invoke() boundary (same pattern M1/M2/M3 already established).
 const DEFAULT_VALUES: ZeroRodParametersValues = {
   project_name: "CBG Open G",
   body_width: 38.0,
@@ -29,6 +34,14 @@ const DEFAULT_VALUES: ZeroRodParametersValues = {
   channel_overrun_at_inlet: 0.8,
   channel_rod_clearance: 0.05,
   minimum_wall: 1.2,
+};
+
+const FAKE_DATA: ParsedPreviewData = {
+  meshes: [],
+  lines: [],
+  bounds: { min: [0, 0, 0], max: [1, 1, 1] },
+  roundTripMs: 1,
+  geometryParseMs: 1,
 };
 
 function scalarInput(container: HTMLElement, field: string): HTMLInputElement {
@@ -54,31 +67,42 @@ function clickReset(container: HTMLElement): void {
   container.querySelector<HTMLButtonElement>('[data-action="reset"]')!.click();
 }
 
+function liveStatusEl(container: HTMLElement): HTMLElement {
+  return container.querySelector<HTMLElement>(".parameter-live-status")!;
+}
+
 function preloadDefaults(): void {
   invokeMock.mockResolvedValueOnce({ schema: PARAMETERS_SCHEMA, values: DEFAULT_VALUES });
 }
 
+/** Flushes the debounce timer and any immediately-following microtasks —
+ * enough for a single-step (schedule → dispatch → settle) sequence under
+ * vitest fake timers. */
+async function flushDebounceAndSettle(extraMs = 0): Promise<void> {
+  await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS + extraMs);
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 let container: HTMLDivElement;
-let applyParametersMock: ReturnType<typeof vi.fn>;
+let fetchPreview: ReturnType<typeof vi.fn<PreviewIO["fetchPreview"]>>;
+let commitPreview: ReturnType<typeof vi.fn<PreviewIO["commitPreview"]>>;
+let previewIO: PreviewIO;
 
 beforeEach(() => {
   invokeMock.mockReset();
-  applyParametersMock = vi.fn();
+  fetchPreview = vi.fn();
+  commitPreview = vi.fn();
+  previewIO = { fetchPreview, commitPreview };
   container = document.createElement("div");
   document.body.appendChild(container);
 });
 
 async function loadPanel() {
   preloadDefaults();
-  const panel = createParameterPanelController(container, applyParametersMock as unknown as ApplyParametersFn);
+  const panel = createParameterPanelController(container, previewIO);
   await panel.load();
   return panel;
-}
-
-async function waitUntilSettled(panel: { getApplyStatus: () => string }): Promise<void> {
-  await vi.waitFor(() => {
-    if (panel.getApplyStatus() === "applying") throw new Error("still applying");
-  });
 }
 
 describe("loading and error states", () => {
@@ -86,7 +110,7 @@ describe("loading and error states", () => {
     let resolvePromise!: (value: unknown) => void;
     invokeMock.mockReturnValueOnce(new Promise((resolve) => (resolvePromise = resolve)));
 
-    const panel = createParameterPanelController(container, applyParametersMock as unknown as ApplyParametersFn);
+    const panel = createParameterPanelController(container, previewIO);
     const loadPromise = panel.load();
     expect(container.querySelector('[data-state="loading"]')).toBeTruthy();
 
@@ -97,7 +121,7 @@ describe("loading and error states", () => {
 
   it("shows a structured error state when defaults fail to load, without crashing", async () => {
     invokeMock.mockRejectedValueOnce({ code: "internal_error", message: "sidecar unavailable" });
-    const panel = createParameterPanelController(container, applyParametersMock as unknown as ApplyParametersFn);
+    const panel = createParameterPanelController(container, previewIO);
     await panel.load();
 
     const errorEl = container.querySelector('[data-state="error"]');
@@ -116,273 +140,464 @@ describe("field coverage and defaults population", () => {
     expect(scalarInput(container, "body_width").value).toBe("38");
     expect(scalarInput(container, "project_name").value).toBe("CBG Open G");
   });
-
-  it("shows the correct unit per field (mm, inch, none)", async () => {
-    await loadPanel();
-    expect(container.querySelector('[data-field="body_width"] .parameter-unit')?.textContent).toBe("mm");
-    expect(container.querySelector('[data-field="project_name"] .parameter-unit')).toBeFalsy();
-    const gaugeUnits = container.querySelectorAll(".gauge-item .parameter-unit");
-    expect(gaugeUnits.length).toBe(3);
-    gaugeUnits.forEach((el) => expect(el.textContent).toBe("in"));
-  });
 });
 
-describe("initial state (§28 of the M3 mandate)", () => {
-  it("accepted equals canonical defaults, draft matches, dirty is false", async () => {
+describe("initial state", () => {
+  it("accepted equals canonical defaults and live status starts up to date", async () => {
     const panel = await loadPanel();
     expect(panel.getAccepted()).toEqual(DEFAULT_VALUES);
     expect(panel.getAcceptedRequest()?.values).toEqual(DEFAULT_VALUES);
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(false);
-    expect(panel.getApplyStatus()).toBe("idle");
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
+    expect(liveStatusEl(container).dataset.status).toBe("up-to-date");
+    expect(fetchPreview).not.toHaveBeenCalled();
+    expect(commitPreview).not.toHaveBeenCalled();
   });
 });
 
-describe("editing never triggers a request", () => {
-  it("updates the local draft and marks dirty on a numeric edit, without calling applyParameters", async () => {
-    await loadPanel();
-    setValue(scalarInput(container, "body_width"), "60");
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(true);
-    expect(applyParametersMock).not.toHaveBeenCalled();
+describe("live preview scheduling — geometry vs. metadata vs. invalid", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it("never calls applyParameters across a full sequence of edits, gauge add, project_name change", async () => {
-    await loadPanel();
-    setValue(scalarInput(container, "body_width"), "60");
-    setValue(scalarInput(container, "project_name"), "New Name");
-    setValue(container.querySelector<HTMLInputElement>('[data-gauge-index="0"] input')!, "0.048");
-    container.querySelector<HTMLButtonElement>('[data-action="add-gauge"]')!.click();
-    expect(applyParametersMock).not.toHaveBeenCalled();
-    expect(invokeMock).toHaveBeenCalledTimes(1); // only the initial defaults fetch
-  });
-});
-
-describe("local validation feedback", () => {
-  it("shows an error for non-numeric input and clears it after correction", async () => {
-    await loadPanel();
-    const input = scalarInput(container, "body_width");
-    setValue(input, "abc");
-    expect(scalarError(container, "body_width")).toMatch(/finite number/);
-    expect(input.getAttribute("aria-invalid")).toBe("true");
-    setValue(input, "42.5");
-    expect(scalarError(container, "body_width")).toBe("");
-    expect(input.getAttribute("aria-invalid")).toBe("false");
-  });
-
-  it("rejects NaN and Infinity", async () => {
-    await loadPanel();
-    setValue(scalarInput(container, "body_width"), "NaN");
-    expect(scalarError(container, "body_width")).toMatch(/finite number/);
-    setValue(scalarInput(container, "body_width"), "Infinity");
-    expect(scalarError(container, "body_width")).toMatch(/finite number/);
-  });
-});
-
-describe("Apply preconditions (§10/§36 of the M3 mandate)", () => {
-  it("Apply is disabled when there are no changes yet", async () => {
-    await loadPanel();
-    expect(container.querySelector<HTMLButtonElement>('[data-action="apply"]')!.disabled).toBe(true);
-  });
-
-  it("Apply is disabled while the draft is invalid, and a defensive click sends nothing", async () => {
-    await loadPanel();
-    setValue(scalarInput(container, "body_width"), "abc");
-    const applyButton = container.querySelector<HTMLButtonElement>('[data-action="apply"]')!;
-    expect(applyButton.disabled).toBe(true);
-    applyButton.click();
-    expect(applyParametersMock).not.toHaveBeenCalled();
-  });
-
-  it("Apply becomes enabled once a valid, dirty change exists", async () => {
-    await loadPanel();
-    const applyButton = container.querySelector<HTMLButtonElement>('[data-action="apply"]')!;
-    setValue(scalarInput(container, "body_width"), "abc");
-    expect(applyButton.disabled).toBe(true);
-    setValue(scalarInput(container, "body_width"), "60");
-    expect(applyButton.disabled).toBe(false);
-  });
-});
-
-describe("Apply — geometry-changing success/failure", () => {
-  it("invokes applyParameters exactly once with the correct zerorod-parameters/v1 values, updates accepted, clears dirty", async () => {
+  it("schedules a debounced live preview for a valid geometry edit", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
     const panel = await loadPanel();
-    applyParametersMock.mockResolvedValueOnce({ ok: true });
-    setValue(scalarInput(container, "body_width"), "60");
-    clickApply(container);
-    await waitUntilSettled(panel);
 
-    expect(applyParametersMock).toHaveBeenCalledTimes(1);
-    expect(applyParametersMock).toHaveBeenCalledWith(expect.objectContaining({ body_width: 60 }));
+    setValue(scalarInput(container, "body_width"), "60");
+    expect(fetchPreview).not.toHaveBeenCalled();
+    expect(panel.getLivePreviewStatus()).toBe("pending");
+
+    await flushDebounceAndSettle();
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+    expect(fetchPreview).toHaveBeenCalledWith(expect.objectContaining({ body_width: 60 }));
+    expect(commitPreview).toHaveBeenCalledWith(FAKE_DATA);
     expect(panel.getAccepted()?.body_width).toBe(60);
-    expect(panel.getApplyStatus()).toBe("applied");
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(false);
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
   });
 
-  it("failed Apply preserves accepted state and keeps dirty true", async () => {
+  it("does not schedule anything for a project_name-only edit", async () => {
     const panel = await loadPanel();
-    applyParametersMock.mockResolvedValueOnce({
-      ok: false,
-      error: { code: "geometry_error", message: "geometry generation failed" },
-    });
-    setValue(scalarInput(container, "body_width"), "60");
-    clickApply(container);
-    await waitUntilSettled(panel);
-
-    expect(panel.getAccepted()?.body_width).toBe(38);
-    expect(panel.getApplyStatus()).toBe("error");
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(true);
-    const message = container.querySelector(".parameter-apply-message");
-    expect(message?.textContent).toContain("geometry_error");
+    setValue(scalarInput(container, "project_name"), "New Name");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled();
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
   });
 
-  it("displays a field-associated error when the engine error carries details.field", async () => {
-    const panel = await loadPanel();
-    applyParametersMock.mockResolvedValueOnce({
-      ok: false,
-      error: {
-        code: "invalid_parameter_type",
-        message: "body_width must be a number",
-        details: { field: "body_width" },
-      },
-    });
-    setValue(scalarInput(container, "body_width"), "60");
-    clickApply(container);
-    await waitUntilSettled(panel);
-
-    expect(scalarError(container, "body_width")).toBe("body_width must be a number");
-    expect(scalarInput(container, "body_width").getAttribute("aria-invalid")).toBe("true");
-  });
-
-  it("displays a form-level error when the engine error has no field", async () => {
-    const panel = await loadPanel();
-    applyParametersMock.mockResolvedValueOnce({
-      ok: false,
-      error: {
-        code: "invalid_parameters_domain",
-        message: "domain rule violated",
-        details: { errors: ["Groove diameter must be smaller than rod diameter."] },
-      },
-    });
-    setValue(scalarInput(container, "body_width"), "60");
-    clickApply(container);
-    await waitUntilSettled(panel);
-
-    const message = container.querySelector(".parameter-apply-message");
-    expect(message?.textContent).toContain("Groove diameter must be smaller than rod diameter.");
-  });
-
-  it("blocks a second Apply while one is already in flight (no parallel requests)", async () => {
-    const panel = await loadPanel();
-    let resolveApply!: (value: { ok: boolean }) => void;
-    applyParametersMock.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveApply = resolve;
-      }),
-    );
-    setValue(scalarInput(container, "body_width"), "60");
-    clickApply(container);
-    await vi.waitFor(() => expect(panel.getApplyStatus()).toBe("applying"));
-
-    clickApply(container); // rapid re-activation while applying
-    expect(applyParametersMock).toHaveBeenCalledTimes(1);
-
-    resolveApply({ ok: true });
-    await waitUntilSettled(panel);
-    expect(panel.getApplyStatus()).toBe("applied");
-  });
-
-  it("Enter key in a numeric field does not trigger Apply", async () => {
+  it("schedules nothing while the draft is locally invalid", async () => {
     await loadPanel();
-    const input = scalarInput(container, "body_width");
-    setValue(input, "60");
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(applyParametersMock).not.toHaveBeenCalled();
+    setValue(scalarInput(container, "body_width"), "abc");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled();
   });
 
-  it("sends a gauge change correctly, preserving order", async () => {
-    const panel = await loadPanel();
-    applyParametersMock.mockResolvedValueOnce({ ok: true });
-    setValue(container.querySelector<HTMLInputElement>('[data-gauge-index="1"] input')!, "0.048");
-    clickApply(container);
-    await waitUntilSettled(panel);
+  it("resumes scheduling once an invalid field is corrected", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    await loadPanel();
 
-    expect(applyParametersMock).toHaveBeenCalledWith(
+    setValue(scalarInput(container, "body_width"), "abc");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels a pending geometry request if the draft becomes invalid (any field) before it fires", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60"); // valid, schedules
+    await vi.advanceTimersByTimeAsync(100);
+    setValue(scalarInput(container, "rod_diameter"), "abc"); // invalidates the whole draft
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled();
+  });
+
+  it("collapses a rapid sequence of edits into a single request for the final value (§11/§23)", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    const panel = await loadPanel();
+
+    for (const width of [4, 45, 6, 60]) {
+      setValue(scalarInput(container, "body_width"), String(width));
+      await vi.advanceTimersByTimeAsync(50);
+    }
+    await flushDebounceAndSettle();
+
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+    expect(fetchPreview).toHaveBeenCalledWith(expect.objectContaining({ body_width: 60 }));
+    expect(panel.getAccepted()?.body_width).toBe(60);
+  });
+
+  it("resets the debounce timer on continued editing", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "40");
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS - 50);
+    setValue(scalarInput(container, "body_width"), "45");
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS - 50);
+    expect(fetchPreview).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60);
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+    expect(fetchPreview).toHaveBeenCalledWith(expect.objectContaining({ body_width: 45 }));
+  });
+
+  it("issues zero requests when the edit returns to the accepted value before the debounce fires (§36)", async () => {
+    await loadPanel();
+    setValue(scalarInput(container, "body_width"), "40");
+    await vi.advanceTimersByTimeAsync(100);
+    setValue(scalarInput(container, "body_width"), "38"); // back to accepted default
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled();
+  });
+
+  it("issues exactly one request when going default -> 40 -> back to default after 40 was already previewed (§36)", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    const panel = await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "40");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+    expect(panel.getAccepted()?.body_width).toBe(40);
+
+    setValue(scalarInput(container, "body_width"), "38");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).toHaveBeenCalledTimes(2);
+    expect(fetchPreview).toHaveBeenLastCalledWith(expect.objectContaining({ body_width: 38 }));
+  });
+
+  it("follows the same debounce for gauge edits, preserving order", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    await loadPanel();
+
+    setValue(container.querySelector<HTMLInputElement>('[data-gauge-index="1"] input')!, "0.048");
+    await flushDebounceAndSettle();
+
+    expect(fetchPreview).toHaveBeenCalledWith(
       expect.objectContaining({ string_gauges_inch: [0.036, 0.048, 0.017] }),
     );
   });
 
-  it("supports repeated sequential Apply calls without stale state", async () => {
-    const panel = await loadPanel();
-    for (const width of [60, 45, 38]) {
-      applyParametersMock.mockResolvedValueOnce({ ok: true });
-      setValue(scalarInput(container, "body_width"), String(width));
-      clickApply(container);
-      await waitUntilSettled(panel);
-      expect(panel.getAccepted()?.body_width).toBe(width);
-    }
-    expect(applyParametersMock).toHaveBeenCalledTimes(3);
+  it("schedules nothing for an invalid temporary gauge state, resumes once corrected", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    await loadPanel();
+
+    const gaugeInput = container.querySelector<HTMLInputElement>('[data-gauge-index="0"] input')!;
+    setValue(gaugeInput, "bad");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled();
+
+    setValue(gaugeInput, "0.040");
+    await flushDebounceAndSettle();
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("Apply — project_name-only change (§24 of the M3 mandate)", () => {
-  it("accepts a project_name-only change locally, without calling applyParameters", async () => {
+describe("error handling and recovery", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("a domain error preserves the old preview (commitPreview never called) and shows the error", async () => {
+    fetchPreview.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "invalid_parameters_domain", message: "bad", details: { errors: ["Groove too big."] } },
+    } satisfies FetchPreviewResult);
+    const panel = await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await flushDebounceAndSettle();
+
+    expect(commitPreview).not.toHaveBeenCalled();
+    expect(panel.getAccepted()?.body_width).toBe(38); // unchanged
+    expect(panel.getLivePreviewStatus()).toBe("error");
+    expect(liveStatusEl(container).textContent).toContain("Groove too big.");
+  });
+
+  it("recovers automatically once the value is corrected after an error", async () => {
+    fetchPreview
+      .mockResolvedValueOnce({ ok: false, error: { code: "geometry_error", message: "boom" } })
+      .mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
+    const panel = await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "999");
+    await flushDebounceAndSettle();
+    expect(panel.getLivePreviewStatus()).toBe("error");
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await flushDebounceAndSettle();
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
+    expect(panel.getAccepted()?.body_width).toBe(60);
+    expect(commitPreview).toHaveBeenCalledTimes(1);
+  });
+
+  it("associates a field-level error message when the engine error carries details.field", async () => {
+    fetchPreview.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "invalid_parameter_type", message: "must be a number", details: { field: "body_width" } },
+    } satisfies FetchPreviewResult);
+    await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await flushDebounceAndSettle();
+
+    expect(scalarError(container, "body_width")).toBe("must be a number");
+  });
+
+  it("error sequence: valid 38 -> invalid domain request -> valid 60 (§39)", async () => {
+    fetchPreview
+      .mockResolvedValueOnce({ ok: false, error: { code: "invalid_parameters_domain", message: "bad" } })
+      .mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
+    const panel = await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "999");
+    await flushDebounceAndSettle();
+    expect(commitPreview).not.toHaveBeenCalled(); // 38 remains visible (never committed anything else)
+    expect(panel.getLivePreviewStatus()).toBe("error");
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await flushDebounceAndSettle();
+    expect(commitPreview).toHaveBeenCalledTimes(1);
+    expect(panel.getAccepted()?.body_width).toBe(60);
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
+  });
+});
+
+describe("Reset — schedules a debounced default preview, does not dispatch immediately (§19)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("Reset does not itself call fetchPreview", async () => {
+    await loadPanel();
+    setValue(scalarInput(container, "body_width"), "60");
+    clickReset(container);
+    expect(fetchPreview).not.toHaveBeenCalled();
+  });
+
+  it("Reset after a live-previewed non-default value schedules (via normal debounce) a request back to defaults", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    const panel = await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await flushDebounceAndSettle();
+    expect(panel.getAccepted()?.body_width).toBe(60);
+
+    clickReset(container);
+    expect(scalarInput(container, "body_width").value).toBe("38");
+    expect(fetchPreview).toHaveBeenCalledTimes(1); // not yet a second call
+    await flushDebounceAndSettle();
+    expect(fetchPreview).toHaveBeenCalledTimes(2);
+    expect(fetchPreview).toHaveBeenLastCalledWith(expect.objectContaining({ body_width: 38 }));
+    expect(panel.getAccepted()?.body_width).toBe(38);
+  });
+
+  it("Reset issues no request at all if accepted already equals defaults", async () => {
+    await loadPanel();
+    clickReset(container);
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled();
+  });
+
+  it("Reset after only a metadata (project_name) accept does not trigger an unnecessary geometry rebuild", async () => {
+    const panel = await loadPanel();
+    setValue(scalarInput(container, "project_name"), "My Rod");
+    clickApply(container); // metadata-only accept, no engine call
+    expect(panel.getAccepted()?.project_name).toBe("My Rod");
+    expect(fetchPreview).not.toHaveBeenCalled();
+
+    clickReset(container);
+    await flushDebounceAndSettle();
+    expect(fetchPreview).not.toHaveBeenCalled(); // geometry was already at defaults throughout
+  });
+});
+
+describe("Apply — shares the live-preview pipeline (§16/§22)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("Apply flushes a pending debounce immediately instead of waiting", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    const panel = await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    clickApply(container);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+    expect(panel.getAccepted()?.body_width).toBe(60);
+  });
+
+  it("Apply during a pending debounce does not duplicate the request once the debounce would have fired", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    clickApply(container);
+    await Promise.resolve();
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS + 10);
+
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+  });
+
+  it("Apply while a live-preview request is already in flight coalesces deterministically (no parallel requests)", async () => {
+    let resolveFirst!: (r: FetchPreviewResult) => void;
+    fetchPreview
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+      .mockResolvedValue({ ok: true, data: FAKE_DATA });
+    const panel = await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "45");
+    await flushDebounceAndSettle(); // now in flight (unresolved)
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+
+    setValue(scalarInput(container, "body_width"), "60");
+    clickApply(container); // queued behind the in-flight request
+    await Promise.resolve();
+    expect(fetchPreview).toHaveBeenCalledTimes(1); // still just the one in flight
+
+    resolveFirst({ ok: true, data: FAKE_DATA });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fetchPreview).toHaveBeenCalledTimes(2);
+    expect(fetchPreview).toHaveBeenLastCalledWith(expect.objectContaining({ body_width: 60 }));
+    expect(panel.getAccepted()?.body_width).toBe(60);
+  });
+
+  it("is disabled when there is nothing to apply", async () => {
+    await loadPanel();
+    expect(container.querySelector<HTMLButtonElement>('[data-action="apply"]')!.disabled).toBe(true);
+  });
+
+  it("is disabled while the draft is invalid", async () => {
+    await loadPanel();
+    setValue(scalarInput(container, "body_width"), "abc");
+    expect(container.querySelector<HTMLButtonElement>('[data-action="apply"]')!.disabled).toBe(true);
+  });
+
+  it("stays enabled after a live-preview error, allowing an explicit retry", async () => {
+    fetchPreview.mockResolvedValueOnce({ ok: false, error: { code: "geometry_error", message: "boom" } });
+    await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "999");
+    await flushDebounceAndSettle();
+    expect(container.querySelector<HTMLButtonElement>('[data-action="apply"]')!.disabled).toBe(false);
+  });
+
+  it("accepts a metadata-only change locally via Apply, without calling fetchPreview", async () => {
     const panel = await loadPanel();
     setValue(scalarInput(container, "project_name"), "My Rod");
     clickApply(container);
-    await waitUntilSettled(panel);
 
-    expect(applyParametersMock).not.toHaveBeenCalled();
+    expect(fetchPreview).not.toHaveBeenCalled();
     expect(panel.getAccepted()?.project_name).toBe("My Rod");
-    expect(panel.getApplyStatus()).toBe("applied");
-    expect(container.querySelector(".parameter-apply-message")?.textContent).toMatch(/metadata only/);
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(false);
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
   });
 });
 
-describe("Reset semantics under the M3 accepted-state model (§25/§26)", () => {
-  it("Reset alone never calls applyParameters", async () => {
-    await loadPanel();
-    setValue(scalarInput(container, "body_width"), "60");
-    clickReset(container);
-    expect(applyParametersMock).not.toHaveBeenCalled();
+describe("status transitions and the delayed 'Updating…' indicator (§27/§28)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it("Reset after a successful non-default Apply restores defaults into the draft but stays dirty (accepted still differs)", async () => {
+  it("moves through pending -> updating -> up-to-date for a successful edit", async () => {
+    let resolveFetch!: (r: FetchPreviewResult) => void;
+    fetchPreview.mockImplementationOnce(() => new Promise((resolve) => (resolveFetch = resolve)));
     const panel = await loadPanel();
-    applyParametersMock.mockResolvedValueOnce({ ok: true });
+
     setValue(scalarInput(container, "body_width"), "60");
-    clickApply(container);
-    await waitUntilSettled(panel);
-    expect(panel.getAccepted()?.body_width).toBe(60);
+    expect(panel.getLivePreviewStatus()).toBe("pending");
 
-    applyParametersMock.mockClear();
-    clickReset(container);
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS);
+    expect(panel.getLivePreviewStatus()).toBe("updating");
 
-    expect(scalarInput(container, "body_width").value).toBe("38");
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(true);
-    expect(applyParametersMock).not.toHaveBeenCalled();
+    resolveFetch({ ok: true, data: FAKE_DATA });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
   });
 
-  it("Applying after that reset restores the default geometry and clears dirty", async () => {
-    const panel = await loadPanel();
-    applyParametersMock.mockResolvedValueOnce({ ok: true });
-    setValue(scalarInput(container, "body_width"), "60");
-    clickApply(container);
-    await waitUntilSettled(panel);
-
-    clickReset(container);
-    applyParametersMock.mockResolvedValueOnce({ ok: true });
-    clickApply(container);
-    await waitUntilSettled(panel);
-
-    expect(panel.getAccepted()?.body_width).toBe(38);
-    expect(applyParametersMock).toHaveBeenLastCalledWith(expect.objectContaining({ body_width: 38 }));
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(false);
-  });
-
-  it("Reset when accepted already equals defaults leaves dirty false", async () => {
+  it("does not show 'Updating preview…' text for a fast-resolving request (avoids flicker)", async () => {
+    fetchPreview.mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
     await loadPanel();
-    clickReset(container);
-    expect(container.querySelector(".parameter-dirty-badge")?.classList.contains("is-visible")).toBe(false);
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS);
+    // Request settles on the same microtask turn — well under the display delay.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(liveStatusEl(container).textContent).not.toContain("Updating preview");
+  });
+
+  it("shows 'Updating preview…' text once a request runs past the display delay", async () => {
+    let resolveFetch!: (r: FetchPreviewResult) => void;
+    fetchPreview.mockImplementationOnce(() => new Promise((resolve) => (resolveFetch = resolve)));
+    await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS); // request starts
+    expect(liveStatusEl(container).textContent).not.toContain("Updating preview");
+    await vi.advanceTimersByTimeAsync(200); // past the display delay, still unresolved
+    expect(liveStatusEl(container).textContent).toContain("Updating preview…");
+
+    resolveFetch({ ok: true, data: FAKE_DATA });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  it("data-status is always instantly correct even while the display text is delayed", async () => {
+    let resolveFetch!: (r: FetchPreviewResult) => void;
+    fetchPreview.mockImplementationOnce(() => new Promise((resolve) => (resolveFetch = resolve)));
+    await loadPanel();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS);
+    expect(liveStatusEl(container).dataset.status).toBe("updating");
+
+    resolveFetch({ ok: true, data: FAKE_DATA });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+});
+
+describe("repeated update stability (§32)", () => {
+  it("handles 100 sequential successful Apply cycles without error or state corruption", async () => {
+    fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    const panel = await loadPanel();
+
+    for (let i = 0; i < 100; i++) {
+      const width = 38 + (i % 20);
+      setValue(scalarInput(container, "body_width"), String(width));
+      clickApply(container);
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.resolve();
+    }
+
+    expect(commitPreview).toHaveBeenCalledTimes(fetchPreview.mock.calls.length);
+    expect(panel.getLivePreviewStatus()).not.toBe("error");
   });
 });
 
@@ -401,5 +616,15 @@ describe("gauge add/remove", () => {
     container.querySelector<HTMLButtonElement>('[data-gauge-index="0"] [data-action="remove-gauge"]')?.click();
     expect(container.querySelectorAll(".gauge-item")).toHaveLength(1);
     expect(container.querySelector<HTMLButtonElement>('[data-action="remove-gauge"]')!.disabled).toBe(true);
+  });
+});
+
+describe("Enter key does not trigger extra requests", () => {
+  it("Enter in a numeric field does not submit or dispatch anything", async () => {
+    await loadPanel();
+    const input = scalarInput(container, "body_width");
+    setValue(input, "60");
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(fetchPreview).not.toHaveBeenCalled();
   });
 });

@@ -63,15 +63,15 @@ override, right-click → Open).
 
 | Field | Value |
 |---|---|
-| Tester | *(pending)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Hardware | *(pending)* |
-| Result | **PENDING** |
-| Notes | Not yet performed — no interactive display available in the environment this milestone was engineered in. |
+| Tester | Project Owner |
+| Date | not separately itemized by the tester's report |
+| macOS | not separately itemized by the tester's report |
+| Hardware | not separately itemized by the tester's report |
+| Result | **PASS** |
+| Notes | Reported directly by the Project Owner: "Eingegebene Werte verändern das reale ZeroRod-Modell entsprechend den Erwartungen" — entered values change the real ZeroRod model as expected. This confirms the complete manual productive path (parameter edit → local draft validation → Apply → `zerorod-parameters/v1` → Rust → persistent Python sidecar → ZeroRodCAD/CadQuery → `zerorod-mesh/v1` → Three.js → visibly changed geometry). Individual checklist rows above were not itemized in that report and are left unchecked rather than retroactively assumed — the aggregate PASS in this table is the actual recorded result. No additional or repeat validation was performed by Claude to produce this update. |
 
 ## Gate BUILD-023-M3 (human component)
 
-**PENDING.** Engineering criteria are covered by `scripts/validate-build023-m3.sh`; this checklist's
-completion is the remaining condition for the milestone's overall PASS. Per the mandate, Claude does
-not mark this PASS on its own — only the Project Owner's actual click-through does.
+**PASS**, as reported by the Project Owner. Combined with the engineering gate
+(`scripts/validate-build023-m3.sh`, PASS), **Gate BUILD-023-M3: PASS** overall — Milestone 3 is
+COMPLETE.

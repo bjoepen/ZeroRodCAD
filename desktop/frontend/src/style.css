@@ -195,7 +195,7 @@ h1 {
   color: var(--neutral);
 }
 
-/* Parameter panel (Build 023 M2) */
+/* Parameter panel (Build 023 M2, live-preview status line added in M4) */
 
 .parameter-panel-status {
   padding: 1rem;
@@ -233,17 +233,28 @@ h1 {
   color: var(--text-h);
 }
 
-.parameter-dirty-badge {
+/* Build 023 M4 — a single, calm, always-visible status line replaces M3's
+   separate dirty badge and apply-outcome message: one place, one truth,
+   updated in place rather than popping in/out (§27 of the M4 mandate asks
+   for exactly this — no "hektische" badge that appears/disappears). */
+.parameter-live-status {
   font-size: 0.72rem;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  background: var(--warn-bg);
-  color: var(--warn);
-  visibility: hidden;
+  background: var(--neutral-bg);
+  color: var(--neutral);
+  white-space: nowrap;
 }
 
-.parameter-dirty-badge.is-visible {
-  visibility: visible;
+.parameter-live-status[data-status="pending"],
+.parameter-live-status[data-status="updating"] {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.parameter-live-status[data-status="error"] {
+  background: var(--error-bg);
+  color: var(--error);
 }
 
 .parameter-panel-hint {
@@ -418,23 +429,4 @@ h1 {
 .parameter-panel-actions button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-.parameter-apply-message {
-  margin: 0;
-  font-size: 0.78rem;
-  min-height: 1em;
-  display: none;
-}
-
-.parameter-apply-message.is-visible {
-  display: block;
-}
-
-.parameter-apply-message[data-state="ok"] {
-  color: var(--ok);
-}
-
-.parameter-apply-message[data-state="error"] {
-  color: var(--error);
 }

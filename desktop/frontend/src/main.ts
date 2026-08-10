@@ -21,7 +21,7 @@ const appEl = document.querySelector<HTMLDivElement>("#app")!;
 appEl.innerHTML = `
   <main class="foundation">
     <h1>ZeroRodCAD Desktop 2.0</h1>
-    <p class="subtitle">Build 023 — Milestone 3: Parameter-to-Engine Integration</p>
+    <p class="subtitle">Build 023 — Milestone 4: Live Preview Behavior & UX</p>
     <div class="layout">
       <section class="sidebar">
         <section class="status-panel" id="status-panel"></section>
@@ -131,10 +131,16 @@ function handlePreviewStateChange(state: PreviewState, detail: string): void {
 }
 
 const preview = createPreviewController(viewportEl, handlePreviewStateChange);
-// Build 023 M3: the panel's Apply handler drives the same geometry-replacement
-// path the "Load / Refresh ZeroRod" button uses — preview.load() reused
-// as-is, just called with explicit parameter values instead of none.
-const parameterPanel = createParameterPanelController(parameterPanelEl, preview.load);
+// Build 023 M4: the panel's live-preview scheduler and its Apply fallback
+// both drive the same fetch/commit pair the "Load / Refresh ZeroRod"
+// button's preview.load() is itself built from — one pipeline, per the M4
+// mandate — but they need the fetch and commit steps separately so a
+// stale (superseded) result can be discarded before it ever reaches the
+// scene (see live_preview.ts and parameter_panel.ts's module doc comments).
+const parameterPanel = createParameterPanelController(parameterPanelEl, {
+  fetchPreview: preview.fetchPreview,
+  commitPreview: preview.commitPreview,
+});
 
 document.querySelector<HTMLButtonElement>("#start-check-engine")!.addEventListener("click", () => {
   void handleStartCheckEngine();
@@ -151,6 +157,7 @@ document.querySelector<HTMLButtonElement>("#load-zerorod")!.addEventListener("cl
 
 window.addEventListener("beforeunload", () => {
   preview.dispose();
+  parameterPanel.dispose();
 });
 
 async function init(): Promise<void> {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { fitCameraToBounds, clearGroup } from "./scene";
+import { fitCameraToBounds, clearGroup, isExtremeBoundsChange } from "./scene";
 
 describe("fitCameraToBounds", () => {
   it("points the camera at the bounds center and updates controls target", () => {
@@ -80,5 +80,34 @@ describe("clearGroup", () => {
     clearGroup(group);
 
     expect(disposed).toEqual([true, true]);
+  });
+});
+
+describe("isExtremeBoundsChange", () => {
+  const base = { min: [0, 0, 0] as [number, number, number], max: [10, 10, 10] as [number, number, number] };
+
+  it("is false for an unchanged bounds box", () => {
+    expect(isExtremeBoundsChange(base, base)).toBe(false);
+  });
+
+  it("is false for a small (< default ratio) size change", () => {
+    const next = { min: [0, 0, 0] as [number, number, number], max: [12, 10, 10] as [number, number, number] };
+    expect(isExtremeBoundsChange(base, next)).toBe(false);
+  });
+
+  it("is true when the model grows past the default ratio", () => {
+    const next = { min: [0, 0, 0] as [number, number, number], max: [20, 10, 10] as [number, number, number] };
+    expect(isExtremeBoundsChange(base, next)).toBe(true);
+  });
+
+  it("is true when the model shrinks past the default ratio", () => {
+    const next = { min: [0, 0, 0] as [number, number, number], max: [5, 5, 5] as [number, number, number] };
+    expect(isExtremeBoundsChange(base, next)).toBe(true);
+  });
+
+  it("respects a custom ratio", () => {
+    const next = { min: [0, 0, 0] as [number, number, number], max: [12, 10, 10] as [number, number, number] };
+    expect(isExtremeBoundsChange(base, next, 1.1)).toBe(true);
+    expect(isExtremeBoundsChange(base, next, 5)).toBe(false);
   });
 });

@@ -5,11 +5,13 @@ import {
   draftFromValues,
   hasDraftErrors,
   isDraftDirty,
+  isGeometryUnchanged,
   removeGauge,
   resetDraft,
   serializeDraft,
   updateGauge,
   updateScalarField,
+  valuesEqual,
 } from "./parameter_state";
 
 // Canonical defaults exactly as documented in
@@ -249,5 +251,48 @@ describe("serializeDraft", () => {
     expect(serializeDraft(draft).ok).toBe(false);
     draft = updateScalarField(draft, "body_width", "Infinity");
     expect(serializeDraft(draft).ok).toBe(false);
+  });
+});
+
+describe("isGeometryUnchanged", () => {
+  it("is true for identical values", () => {
+    expect(isGeometryUnchanged(DEFAULTS, DEFAULTS)).toBe(true);
+  });
+
+  it("is true when only project_name differs", () => {
+    const other = { ...DEFAULTS, project_name: "Something Else" };
+    expect(isGeometryUnchanged(DEFAULTS, other)).toBe(true);
+  });
+
+  it("is false when a geometry field differs", () => {
+    const other = { ...DEFAULTS, body_width: 60 };
+    expect(isGeometryUnchanged(DEFAULTS, other)).toBe(false);
+  });
+
+  it("is false when string_gauges_inch differs", () => {
+    const other = { ...DEFAULTS, string_gauges_inch: [0.036, 0.048, 0.017] };
+    expect(isGeometryUnchanged(DEFAULTS, other)).toBe(false);
+  });
+
+  it("is false when string_gauges_inch length differs", () => {
+    const other = { ...DEFAULTS, string_gauges_inch: [0.036, 0.026] };
+    expect(isGeometryUnchanged(DEFAULTS, other)).toBe(false);
+  });
+});
+
+describe("valuesEqual", () => {
+  it("is true for identical values", () => {
+    expect(valuesEqual(DEFAULTS, DEFAULTS)).toBe(true);
+  });
+
+  it("is false when only project_name differs (unlike isGeometryUnchanged)", () => {
+    const other = { ...DEFAULTS, project_name: "Something Else" };
+    expect(valuesEqual(DEFAULTS, other)).toBe(false);
+    expect(isGeometryUnchanged(DEFAULTS, other)).toBe(true);
+  });
+
+  it("is false when a geometry field differs", () => {
+    const other = { ...DEFAULTS, body_width: 60 };
+    expect(valuesEqual(DEFAULTS, other)).toBe(false);
   });
 });

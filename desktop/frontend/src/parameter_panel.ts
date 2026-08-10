@@ -1,23 +1,38 @@
 // Build 023 M2 — the parameter panel DOM component. Owns rendering the
 // grouped controls, wiring input events to the local draft
-// (parameter_state.ts), and surfacing loading/error/dirty/validation
+// (parameter_state.ts), and surfacing loading/error/status/validation
 // feedback. The DOM tree is built once per successful load and mutated
-// surgically afterward (only the changed field's error text / the dirty
-// badge / the apply button are touched per keystroke) so typing never loses
-// focus or cursor position — a full innerHTML re-render per keystroke would
-// break exactly the keyboard usability the mandate calls out.
+// surgically afterward (only the changed field's error text / the live
+// status line / the apply button are touched per keystroke) so typing
+// never loses focus or cursor position.
 //
-// Build 023 M3 connects Apply to the real engine: `createParameterPanelController`
-// now takes an `applyParameters` callback (main.ts wires it to
-// `preview.load`, preview.ts's Three.js geometry-replacement path). Editing
-// a field, adding/removing a gauge, or Reset still never call it — Apply is
-// the *only* trigger (§9 of the M3 mandate). "Dirty" is redefined from "the
-// draft differs from the loaded defaults" (M2) to "the draft differs from
-// the last successfully accepted parameter state" (M3 §26) — `accepted`
-// tracks that; `defaults` (the canonical default set) is kept separately,
-// used only as Reset's target, per the M3 mandate's explicit split (§25).
+// Build 023 M3 connected Apply to the real engine via an injected
+// `applyParameters` callback.
+//
+// Build 023 M4 replaces that with automatic, debounced live preview
+// (live_preview.ts's `createLivePreviewController`) — editing a
+// geometry-affecting field now schedules a preview request on its own;
+// Apply becomes an explicit "do it now" / retry action sharing the exact
+// same scheduler, request, and stale-response protection (§2/§16/§22 of
+// the M4 mandate: one pipeline, not two). `previewIO` (main.ts wires in
+// `preview.fetchPreview`/`preview.commitPreview`) replaces the old
+// `applyParameters` callback — the fetch/commit split lets this module gate
+// scene mutation on the live-preview controller's generation check.
+//
+// State semantics chosen for M4 (§17/§18 of the mandate — documented, not
+// left implicit): `accepted` now means "the parameter values currently
+// represented in the preview, or the last state a completed engine round
+// trip (live or Apply-triggered) confirmed" — M3's separate "accepted"
+// concept and a hypothetical new "previewed" concept are deliberately
+// merged into this one, since M4 makes every successful engine round trip
+// go through the same commit path regardless of trigger. Dirty
+// (`isDraftDirty(draft, accepted)`) stays meaningful: it now means "the
+// draft hasn't been reflected in the preview yet" (still debouncing,
+// invalid, or the last attempt errored) rather than "you must remember to
+// click a button."
 
 import { isEngineError } from "./engine";
+import { createLivePreviewController, type LivePreviewController } from "./live_preview";
 import {
   groupedParameterFields,
   PARAMETER_FIELDS_BY_KEY,
@@ -29,6 +44,7 @@ import {
   type ParametersRequest,
   type ZeroRodParametersValues,
 } from "./parameters";
+import type { FetchPreviewResult, ParsedPreviewData } from "./preview";
 import {
   addGauge,
   cloneValues,
@@ -42,9 +58,25 @@ import {
   SCALAR_FIELDS,
   updateGauge,
   updateScalarField,
+  valuesEqual,
   type ParameterDraftState,
   type ScalarFieldKey,
 } from "./parameter_state";
+
+/** The debounce delay for live preview (§10 of the M4 mandate). Chosen from
+ * the measured warm engine round trip (~0.12–0.125 s, unchanged since M1)
+ * plus normal desktop numeric-entry typing cadence: long enough that a
+ * continuous edit ("38" → "4" → "45" → "6" → "60") collapses into one
+ * request instead of five, short enough that the total stable-edit →
+ * preview latency (debounce + engine round trip ≈ 300 ms + 125 ms ≈
+ * 425 ms) still reads as "the model follows me," not "the app is slow." */
+export const LIVE_PREVIEW_DEBOUNCE_MS = 300;
+
+/** How long a request must still be running before "Updating preview…"
+ * actually becomes visible (§28 of the mandate) — shorter than this and the
+ * status text simply never changes from "Editing…", avoiding a flash for
+ * the common ~125 ms case. */
+const UPDATING_DISPLAY_DELAY_MS = 150;
 
 function escapeHtml(text: string): string {
   return text
@@ -91,51 +123,50 @@ function renderFieldHtml(meta: ParameterFieldMeta, draft: ParameterDraftState): 
   `;
 }
 
-/** Build 023 M3 — the panel never calls the sidecar itself; it asks the
- * caller (main.ts, wiring in `preview.load`) to do it, and only reacts to
- * the outcome. This keeps the panel decoupled from Three.js/engine
- * internals, mirroring how `preview.ts` itself takes an `onStateChange`
- * callback instead of owning status-panel DOM. */
-export type ApplyParametersFn = (
-  values: ZeroRodParametersValues,
-) => Promise<{ ok: boolean; error?: unknown }>;
+/** Build 023 M4 — the two engine-facing primitives the panel needs, wired
+ * by main.ts from a single shared `preview.ts` `PreviewController`
+ * instance. The panel never imports Three.js or calls `invoke()` itself. */
+export interface PreviewIO {
+  fetchPreview: (values: Partial<ZeroRodParametersValues>) => Promise<FetchPreviewResult>;
+  commitPreview: (data: ParsedPreviewData) => void;
+}
 
-export type ApplyStatus = "idle" | "applying" | "applied" | "error";
+export type LivePreviewStatus = "up-to-date" | "pending" | "updating" | "error";
 
 export interface ParameterPanelController {
   /** Fetches canonical defaults through the real engine path
    * (parameters_defaults → engine_parameters_defaults) and renders the
    * form. Call once at startup. */
   load: () => Promise<void>;
-  /** The last successfully accepted parameter state, wrapped as a
-   * zerorod-parameters/v1 request — null until the first successful Apply
-   * (or before defaults have loaded at all). Derived from `accepted`, so it
-   * always reflects the current session-accepted state (§27 of the M3
-   * mandate: accepted is session state, not project persistence). */
+  /** The last successfully accepted (previewed or metadata-only-accepted)
+   * parameter state, wrapped as a zerorod-parameters/v1 request — null
+   * until defaults have loaded. */
   getAcceptedRequest: () => ParametersRequest | null;
-  /** The last successfully accepted parameter values directly (no envelope
-   * wrapper) — exposed for tests and future milestones. */
+  /** The last successfully accepted parameter values directly. */
   getAccepted: () => ZeroRodParametersValues | null;
-  /** Current Apply state machine position — exposed for tests. */
-  getApplyStatus: () => ApplyStatus;
+  /** Current live-preview state-machine position — exposed for tests. */
+  getLivePreviewStatus: () => LivePreviewStatus;
+  /** Releases the live-preview scheduler's timers. Call once when the panel
+   * is being torn down (e.g. page/app unload). */
+  dispose: () => void;
 }
 
 export function createParameterPanelController(
   container: HTMLElement,
-  applyParameters: ApplyParametersFn,
+  previewIO: PreviewIO,
 ): ParameterPanelController {
   let draft: ParameterDraftState | null = null;
   let defaults: ZeroRodParametersValues | null = null;
   let accepted: ZeroRodParametersValues | null = null;
-  let applyStatus: ApplyStatus = "idle";
+  let livePreview: LivePreviewController<ZeroRodParametersValues> | null = null;
+  let livePreviewStatus: LivePreviewStatus = "up-to-date";
+  let updatingDisplayTimer: ReturnType<typeof setTimeout> | null = null;
 
   const scalarInputs = new Map<ScalarFieldKey, HTMLInputElement>();
   const scalarErrorEls = new Map<ScalarFieldKey, HTMLElement>();
   let gaugeListEl: HTMLElement | null = null;
-  let dirtyBadgeEl: HTMLElement | null = null;
+  let liveStatusEl: HTMLElement | null = null;
   let applyButtonEl: HTMLButtonElement | null = null;
-  let resetButtonEl: HTMLButtonElement | null = null;
-  let applyMessageEl: HTMLElement | null = null;
 
   function renderLoading(): void {
     container.innerHTML = `<p class="parameter-panel-status" data-state="loading">Loading defaults…</p>`;
@@ -150,55 +181,74 @@ export function createParameterPanelController(
     `;
   }
 
-  function updateDirtyBadge(): void {
-    if (!draft || !accepted) return;
-    dirtyBadgeEl?.classList.toggle("is-visible", isDraftDirty(draft, accepted));
+  /** Sets the live-preview status. `data-status` on the status element is
+   * always updated synchronously (so tests and a11y tooling see the true
+   * state immediately); the *text* for "updating" specifically is delayed
+   * (§28 of the mandate) — see the module doc comment. */
+  function setLiveStatus(status: LivePreviewStatus, errorMessage?: string): void {
+    livePreviewStatus = status;
+    if (liveStatusEl) liveStatusEl.dataset.status = status;
+
+    if (updatingDisplayTimer !== null) {
+      clearTimeout(updatingDisplayTimer);
+      updatingDisplayTimer = null;
+    }
+
+    if (status === "updating") {
+      updatingDisplayTimer = setTimeout(() => {
+        updatingDisplayTimer = null;
+        if (livePreviewStatus === "updating" && liveStatusEl) {
+          liveStatusEl.textContent = "Updating preview…";
+        }
+      }, UPDATING_DISPLAY_DELAY_MS);
+      return;
+    }
+
+    if (liveStatusEl) {
+      liveStatusEl.textContent =
+        status === "up-to-date"
+          ? "Up to date"
+          : status === "pending"
+            ? "Editing…"
+            : `Could not update preview: ${errorMessage ?? "unknown error"}`;
+    }
   }
 
-  /** Apply is blocked while invalid, while nothing differs from the last
-   * accepted state (§36 of the M3 mandate — no unnecessary rebuild), and
-   * while a request is already in flight (§15/§37 — no parallel requests).
-   * Reset is only blocked while applying, so a stray click can't mutate the
-   * draft out from under an in-flight request's already-captured snapshot. */
   function updateApplyButton(): void {
-    if (!draft || !accepted) return;
-    const applying = applyStatus === "applying";
-    if (applyButtonEl) {
-      applyButtonEl.disabled = applying || hasDraftErrors(draft) || !isDraftDirty(draft, accepted);
-      applyButtonEl.textContent = applying ? "Applying…" : "Apply";
-    }
-    if (resetButtonEl) {
-      resetButtonEl.disabled = applying;
-    }
+    if (!draft || !accepted || !applyButtonEl) return;
+    applyButtonEl.disabled = hasDraftErrors(draft) || !isDraftDirty(draft, accepted);
   }
 
   function updateStatusUI(): void {
-    updateDirtyBadge();
     updateApplyButton();
   }
 
-  function showApplyMessage(state: "ok" | "error" | "applying", text: string): void {
-    if (!applyMessageEl) return;
-    applyMessageEl.classList.add("is-visible");
-    applyMessageEl.dataset.state = state;
-    applyMessageEl.textContent = text;
-  }
-
-  function clearApplyMessage(): void {
-    if (!applyMessageEl) return;
-    applyMessageEl.classList.remove("is-visible");
-    applyMessageEl.textContent = "";
-    delete applyMessageEl.dataset.state;
-  }
-
-  /** A fresh edit after a settled Apply (applied or error) makes that
-   * outcome message stale — clear it rather than leave a misleading
-   * "Applied"/error message next to a draft that has since changed again. */
-  function clearStaleApplyOutcome(): void {
-    if (applyStatus === "applied" || applyStatus === "error") {
-      applyStatus = "idle";
-      clearApplyMessage();
+  /** The single post-edit hook every draft-mutating handler calls (§9/§11
+   * of the mandate: validity + relevance gate scheduling, uniformly,
+   * regardless of which field changed). Cancels a pending debounce when the
+   * draft is currently invalid or doesn't differ from `accepted` in any
+   * geometry-affecting way; otherwise (re)schedules with the freshest
+   * snapshot, which naturally also handles "editing continued" (the
+   * scheduler's own timer reset) and "edited back to the already-accepted
+   * value before the debounce fired" (the scheduler's own dedup). */
+  function reconcileLivePreview(): void {
+    if (!draft || !accepted || !livePreview) {
+      updateStatusUI();
+      return;
     }
+    if (hasDraftErrors(draft)) {
+      livePreview.cancelPending();
+      updateStatusUI();
+      return;
+    }
+    if (isGeometryUnchanged(draft.values, accepted)) {
+      livePreview.cancelPending();
+      updateStatusUI();
+      return;
+    }
+    setLiveStatus("pending");
+    livePreview.schedule(cloneValues(draft.values));
+    updateStatusUI();
   }
 
   function renderGaugeList(): void {
@@ -231,55 +281,49 @@ export function createParameterPanelController(
 
   function handleScalarInput(field: ScalarFieldKey, value: string): void {
     if (!draft) return;
-    clearStaleApplyOutcome();
     draft = updateScalarField(draft, field, value);
     const errorEl = scalarErrorEls.get(field);
     const errorText = draft.errors[field] ?? "";
     if (errorEl) errorEl.textContent = errorText;
     scalarInputs.get(field)?.setAttribute("aria-invalid", errorText ? "true" : "false");
-    updateStatusUI();
+    reconcileLivePreview();
   }
 
   function handleGaugeInput(index: number, value: string): void {
     if (!draft) return;
-    clearStaleApplyOutcome();
     draft = updateGauge(draft, index, value);
     const item = gaugeListEl?.querySelector(`[data-gauge-index="${index}"]`);
     const errorEl = item?.querySelector<HTMLElement>(".parameter-error");
     const errorText = draft.gaugeErrors[index] ?? "";
     if (errorEl) errorEl.textContent = errorText;
     item?.querySelector("input")?.setAttribute("aria-invalid", errorText ? "true" : "false");
-    updateStatusUI();
+    reconcileLivePreview();
   }
 
   function handleAddGauge(): void {
     if (!draft) return;
-    clearStaleApplyOutcome();
     draft = addGauge(draft);
     renderGaugeList();
-    updateStatusUI();
+    reconcileLivePreview();
   }
 
   function handleRemoveGauge(index: number): void {
     if (!draft) return;
-    clearStaleApplyOutcome();
     draft = removeGauge(draft, index);
     renderGaugeList();
-    updateStatusUI();
+    reconcileLivePreview();
   }
 
-  /** Reset only ever touches the local draft — never calls applyParameters
-   * (§25 of the M3 mandate: reset does not regenerate). It restores the
-   * canonical defaults into the draft, not into `accepted` — if `accepted`
-   * currently differs from `defaults` (some other state was already
-   * Applied), the draft becomes dirty again and Apply is required to
-   * actually restore the default geometry, exactly as the mandate
-   * specifies. */
+  /** Reset immediately restores the canonical defaults into the draft and
+   * — a deliberate change from M3 — lets the normal live-preview
+   * scheduling take over from there (§19 of the M4 mandate): it does not
+   * itself dispatch anything, it just makes the draft valid-and-different
+   * again, which `reconcileLivePreview` picks up exactly like any other
+   * edit. If `accepted` already matches the defaults, the scheduler's own
+   * dedup means nothing is dispatched at all. */
   function handleReset(): void {
-    if (!defaults || applyStatus === "applying") return;
+    if (!defaults) return;
     draft = resetDraft(defaults);
-    applyStatus = "idle";
-    clearApplyMessage();
     for (const field of SCALAR_FIELDS) {
       const input = scalarInputs.get(field);
       if (input) {
@@ -290,10 +334,10 @@ export function createParameterPanelController(
       if (errorEl) errorEl.textContent = "";
     }
     renderGaugeList();
-    updateStatusUI();
+    reconcileLivePreview();
   }
 
-  function formatApplyError(error: unknown): {
+  function formatEngineError(error: unknown): {
     formMessage: string;
     fieldErrors: Partial<Record<ScalarFieldKey, string>>;
   } {
@@ -319,59 +363,55 @@ export function createParameterPanelController(
     }
   }
 
-  /** The sole geometry-regeneration trigger in M3 (§9 of the mandate).
-   * `applyStatus` is set to "applying" synchronously, before any `await` —
-   * since JS runs that prefix to completion before yielding, no second
-   * invocation (double click, Enter-triggered re-entry, etc.) can slip in
-   * between the guard check and the flag being set (§15/§37). A snapshot of
-   * the values actually being submitted is captured up front, so a
-   * concurrent edit to `draft` while the request is in flight cannot alter
-   * what gets recorded as accepted on success (§17/§21 of the mandate —
-   * atomic w.r.t. the in-flight request). */
-  async function handleApply(): Promise<void> {
-    if (!draft || !accepted) return;
-    if (applyStatus === "applying") return;
+  /** Explicit Apply: validates, then either accepts a metadata-only change
+   * locally (§24/§35 — never touches the engine) or flushes the current
+   * draft through the SAME live-preview controller `scheduleImmediate`
+   * uses for everything else (§16/§22 of the M4 mandate — Apply shares the
+   * pipeline and its stale-response protection, it just skips the debounce
+   * wait). No local async/await needed here — `onSettle` (shared with the
+   * automatic live-preview path) does all the resulting state updates. */
+  function handleApply(): void {
+    if (!draft || !accepted || !livePreview) return;
     if (hasDraftErrors(draft)) return;
     if (!isDraftDirty(draft, accepted)) return;
     if (!serializeDraft(draft).ok) return;
 
     const submittedValues = cloneValues(draft.values);
-    applyStatus = "applying";
-    updateStatusUI();
-
-    // project_name-only changes never affect the generated geometry (§24 of
-    // the mandate) — accept locally without a wasted engine round trip.
     if (isGeometryUnchanged(submittedValues, accepted)) {
       accepted = submittedValues;
-      applyStatus = "applied";
-      showApplyMessage("ok", "Applied locally — metadata only, no geometry regeneration needed.");
+      setLiveStatus("up-to-date");
       updateStatusUI();
       return;
     }
-
-    showApplyMessage("applying", "Requesting updated geometry…");
-    const result = await applyParameters(submittedValues);
-
-    if (result.ok) {
-      accepted = submittedValues;
-      applyStatus = "applied";
-      showApplyMessage("ok", "Applied — preview updated.");
-    } else {
-      applyStatus = "error";
-      const { formMessage, fieldErrors } = formatApplyError(result.error);
-      showApplyMessage("error", formMessage);
-      applyFieldErrors(fieldErrors);
-    }
-    updateStatusUI();
+    livePreview.scheduleImmediate(submittedValues);
   }
 
   function buildForm(values: ZeroRodParametersValues): void {
     draft = draftFromValues(values);
     defaults = values;
     accepted = cloneValues(values);
-    applyStatus = "idle";
     scalarInputs.clear();
     scalarErrorEls.clear();
+
+    livePreview?.dispose();
+    livePreview = createLivePreviewController<ZeroRodParametersValues, ParsedPreviewData>({
+      initialValue: cloneValues(values),
+      debounceMs: LIVE_PREVIEW_DEBOUNCE_MS,
+      isEqual: valuesEqual,
+      request: (v) => previewIO.fetchPreview(v),
+      onRequestStart: () => setLiveStatus("updating"),
+      onSettle: (outcome) => {
+        if (outcome.ok) {
+          previewIO.commitPreview(outcome.data);
+          accepted = outcome.value;
+          setLiveStatus("up-to-date");
+        } else {
+          setLiveStatus("error", formatEngineError(outcome.error).formMessage);
+          applyFieldErrors(formatEngineError(outcome.error).fieldErrors);
+        }
+        updateStatusUI();
+      },
+    });
 
     const groupsHtml = groupedParameterFields()
       .map(
@@ -390,10 +430,11 @@ export function createParameterPanelController(
       <div class="parameter-panel" data-state="ready">
         <div class="parameter-panel-header">
           <h2>Parameters</h2>
-          <span class="parameter-dirty-badge">Unsaved parameter changes</span>
+          <span class="parameter-live-status" data-status="up-to-date">Up to date</span>
         </div>
         <p class="parameter-panel-hint">
-          Press Apply to send your changes to the engine and update the 3D preview.
+          Geometry changes preview automatically a moment after you stop editing. Apply updates
+          immediately.
         </p>
         <form class="parameter-form" novalidate>
           ${groupsHtml}
@@ -402,21 +443,19 @@ export function createParameterPanelController(
           <button type="button" data-action="reset">Reset to Defaults</button>
           <button type="button" data-action="apply">Apply</button>
         </div>
-        <p class="parameter-apply-message"></p>
       </div>
     `;
 
     // No submit-type button exists, so pressing Enter in a text field has no
     // implicit-submission target per the HTML form-submission algorithm —
-    // Enter deliberately does nothing here (§38 of the M3 mandate); this
+    // Enter deliberately does nothing here (§44 of the M4 mandate); this
     // listener is only a defensive backstop in case a future edit ever adds
     // one.
     container.querySelector("form")?.addEventListener("submit", (event) => event.preventDefault());
 
-    dirtyBadgeEl = container.querySelector<HTMLElement>(".parameter-dirty-badge");
+    liveStatusEl = container.querySelector<HTMLElement>(".parameter-live-status");
     applyButtonEl = container.querySelector<HTMLButtonElement>('[data-action="apply"]');
-    resetButtonEl = container.querySelector<HTMLButtonElement>('[data-action="reset"]');
-    applyMessageEl = container.querySelector<HTMLElement>(".parameter-apply-message");
+
     gaugeListEl = container.querySelector<HTMLElement>(
       '[data-field="string_gauges_inch"] .gauge-list',
     );
@@ -434,11 +473,10 @@ export function createParameterPanelController(
 
     container.querySelector('[data-action="add-gauge"]')?.addEventListener("click", handleAddGauge);
     container.querySelector('[data-action="reset"]')?.addEventListener("click", handleReset);
-    container.querySelector('[data-action="apply"]')?.addEventListener("click", () => {
-      void handleApply();
-    });
+    container.querySelector('[data-action="apply"]')?.addEventListener("click", handleApply);
 
     renderGaugeList();
+    setLiveStatus("up-to-date");
     updateStatusUI();
   }
 
@@ -452,10 +490,19 @@ export function createParameterPanelController(
     }
   }
 
+  function dispose(): void {
+    livePreview?.dispose();
+    if (updatingDisplayTimer !== null) {
+      clearTimeout(updatingDisplayTimer);
+      updatingDisplayTimer = null;
+    }
+  }
+
   return {
     load,
     getAcceptedRequest: () => (accepted ? buildParametersRequest(accepted) : null),
     getAccepted: () => accepted,
-    getApplyStatus: () => applyStatus,
+    getLivePreviewStatus: () => livePreviewStatus,
+    dispose,
   };
 }
