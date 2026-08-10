@@ -38,7 +38,7 @@ from zerorod_sidecar.protocol import (  # noqa: E402
     ok_response,
 )
 
-MILESTONE = "build022-m2"
+MILESTONE = "build023-m1"
 
 
 def _package_version(name: str) -> str | None:
@@ -72,19 +72,36 @@ def _run_status_command(parameters: dict) -> dict:  # noqa: ARG001
 
 def _run_preview_command(parameters: dict) -> dict:
     from zerorod_sidecar.mesh_contract import scene_to_mesh_contract, validate_mesh_contract
+    from zerorod_sidecar.parameters_contract import parse_parameters_request
+    from zerorodcad.preview import build_preview_scene
+    from zerorodcad.validation import validate_parameters
 
-    if parameters:
+    # Level 1 (structural) / Level 2 (per-field type): zerorod-parameters/v1
+    # parsing. An empty `parameters` object still resolves to the canonical
+    # defaults — the Build 022 parameterless preview path is unchanged.
+    params = parse_parameters_request(parameters)
+
+    # Level 3 (cross-parameter/domain): the single existing engine-owned
+    # validator, reused unmodified (docs/contracts/ZEROROD-PARAMETERS-V1.md).
+    validation = validate_parameters(params)
+    if not validation.is_valid:
         raise SidecarError(
-            "unsupported_parameters",
-            "the 'preview' command only supports default ZeroRod parameters in Build 022 M2",
+            "invalid_parameters_domain",
+            "; ".join(validation.errors),
+            details={"errors": list(validation.errors)},
         )
 
-    from zerorodcad.parameters import default_parameters
-    from zerorodcad.preview import build_preview_scene
-
     build_started = time.perf_counter()
-    params = default_parameters()
-    scene = build_preview_scene(params)
+    try:
+        # Level 4: a validated parameter set can still fail at actual
+        # geometry construction — distinguished from other internal errors
+        # so the frontend can tell "bad input" from "engine defect" apart.
+        scene = build_preview_scene(params)
+    except Exception as exc:
+        raise SidecarError(
+            "geometry_error",
+            f"geometry generation failed: {type(exc).__name__}: {exc}",
+        ) from exc
     build_duration = time.perf_counter() - build_started
 
     serialize_started = time.perf_counter()
@@ -105,6 +122,16 @@ def _run_preview_command(parameters: dict) -> dict:
     return payload
 
 
+def _run_parameters_defaults_command(parameters: dict) -> dict:  # noqa: ARG001
+    """Returns the canonical default ZeroRodParameters wrapped in the
+    zerorod-parameters/v1 envelope — the single authoritative default set a
+    future frontend can consume instead of hardcoding a second copy."""
+    from zerorod_sidecar.parameters_contract import parameters_to_contract
+    from zerorodcad.parameters import default_parameters
+
+    return parameters_to_contract(default_parameters())
+
+
 def _run_shutdown_command(parameters: dict) -> dict:  # noqa: ARG001
     return {"status": "shutting_down", "pid": os.getpid()}
 
@@ -113,6 +140,7 @@ COMMANDS = {
     "ping": _run_ping_command,
     "status": _run_status_command,
     "preview": _run_preview_command,
+    "parameters_defaults": _run_parameters_defaults_command,
     "shutdown": _run_shutdown_command,
 }
 
@@ -133,7 +161,7 @@ def handle_request(raw_line: str) -> dict:
         result = handler(request.parameters)
         return ok_response(request.request_id, result)
     except SidecarError as exc:
-        return error_response(request_id, exc.code, exc.message)
+        return error_response(request_id, exc.code, exc.message, exc.details)
     except Exception as exc:  # noqa: BLE001 - deliberately broad, never raise raw tracebacks to stdout
         traceback.print_exc(file=sys.stderr)
         return error_response(request_id, "internal_error", f"{type(exc).__name__}: {exc}")

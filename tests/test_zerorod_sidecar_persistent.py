@@ -96,6 +96,30 @@ def test_blank_lines_between_requests_are_skipped(monkeypatch):
     assert [r["request_id"] for r in responses] == ["a", "stop"]
 
 
+def test_invalid_parameters_request_does_not_kill_the_persistent_loop(monkeypatch):
+    """Build 023 M1: an invalid zerorod-parameters/v1 request must not
+    corrupt the stdout protocol or end the persistent loop — the next valid
+    request on the same (in this unit test: simulated) process must still
+    succeed."""
+    bad_params = {
+        "schema": "zerorod-parameters/v1",
+        "values": {"body_width": -1.0},
+    }
+    lines = (
+        _req("good-1", "preview")
+        + _req("bad", "preview", bad_params)
+        + _req("good-2", "preview")
+        + _req("stop", "shutdown")
+    )
+    responses = _run(monkeypatch, lines)
+    assert [r["request_id"] for r in responses] == ["good-1", "bad", "good-2", "stop"]
+    assert responses[0]["ok"] is True
+    assert responses[1]["ok"] is False
+    assert responses[1]["error"]["code"] == "invalid_parameters_domain"
+    assert responses[2]["ok"] is True
+    assert responses[3]["ok"] is True
+
+
 class TestRealPersistentSubprocess:
     """Same behaviors, but through the actual sidecar CLI and a real
     subprocess against the TE-001.1-patched, VTK-free interpreter."""
@@ -129,6 +153,28 @@ class TestRealPersistentSubprocess:
         for line in result.stdout.splitlines():
             if line.strip():
                 json.loads(line)  # must not raise
+
+    def test_real_subprocess_valid_invalid_valid_parameter_sequence(self):
+        """Build 023 M1: proves process stability against the real bundled
+        interpreter, not just the monkeypatched unit test above — an invalid
+        zerorod-parameters/v1 request must not crash the real subprocess or
+        corrupt its stdout, and the next valid request must still succeed."""
+        bad_params = {"schema": "zerorod-parameters/v1", "values": {"rod_diameter": -1.0}}
+        lines = (
+            _req("good-1", "preview")
+            + _req("bad", "preview", bad_params)
+            + _req("good-2", "preview")
+            + _req("bye", "shutdown")
+        )
+        result = self._run_subprocess(lines)
+        assert result.returncode == 0
+        responses = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+        assert len(responses) == 4
+        assert responses[0]["ok"] is True
+        assert responses[1]["ok"] is False
+        assert responses[1]["error"]["code"] == "invalid_parameters_domain"
+        assert responses[2]["ok"] is True
+        assert responses[3]["ok"] is True
 
     def test_real_subprocess_no_vtk_or_pyside6(self):
         probe = """

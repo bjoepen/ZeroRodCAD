@@ -11,10 +11,16 @@ use serde_json::Value;
 
 pub const SIDECAR_SCHEMA: &str = "zerorod-sidecar/v1";
 
-#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub struct EngineError {
     pub code: String,
     pub message: String,
+    /// Optional structured context (e.g. `field`/`expected`/`actual` for a
+    /// zerorod-parameters/v1 validation failure) forwarded verbatim from the
+    /// sidecar's `error.details` — Rust does not interpret it, only relays
+    /// it (Build 023 M1, docs/contracts/ZEROROD-PARAMETERS-V1.md).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<Value>,
 }
 
 impl EngineError {
@@ -22,6 +28,7 @@ impl EngineError {
         Self {
             code: code.to_string(),
             message: message.into(),
+            details: None,
         }
     }
 }
@@ -42,12 +49,19 @@ pub fn new_request_id() -> String {
 
 /// Builds the exact JSON line to write to the sidecar's stdin (includes the
 /// trailing newline `sys.stdin.readline()` needs on the Python side).
-pub fn build_request_line(command: &str, request_id: &str) -> String {
+///
+/// `parameters` is forwarded verbatim — Rust does not interpret its shape
+/// (e.g. a zerorod-parameters/v1 envelope for the `preview` command); it
+/// only needs to serialize/deserialize the IPC boundary (Build 023 M1,
+/// docs/contracts/ZEROROD-PARAMETERS-V1.md §21). Callers that don't need
+/// parameters pass `serde_json::json!({})`, preserving the exact Build 022
+/// wire shape.
+pub fn build_request_line(command: &str, request_id: &str, parameters: &Value) -> String {
     serde_json::json!({
         "schema": SIDECAR_SCHEMA,
         "request_id": request_id,
         "command": command,
-        "parameters": {},
+        "parameters": parameters,
     })
     .to_string()
         + "\n"
@@ -92,7 +106,12 @@ pub fn parse_response(line: &str, expected_request_id: &str) -> Result<Value, En
             .and_then(Value::as_str)
             .unwrap_or("sidecar reported an error with no message")
             .to_string();
-        return Err(EngineError { code, message });
+        let details = error.and_then(|e| e.get("details")).cloned();
+        return Err(EngineError {
+            code,
+            message,
+            details,
+        });
     }
 
     response.get("result").cloned().ok_or_else(|| {
@@ -115,12 +134,24 @@ mod tests {
 
     #[test]
     fn build_request_line_has_expected_shape_and_trailing_newline() {
-        let line = build_request_line("ping", "rid-1");
+        let line = build_request_line("ping", "rid-1", &serde_json::json!({}));
         assert!(line.ends_with('\n'));
         let value: Value = serde_json::from_str(line.trim_end()).unwrap();
         assert_eq!(value["schema"], SIDECAR_SCHEMA);
         assert_eq!(value["command"], "ping");
         assert_eq!(value["request_id"], "rid-1");
+        assert_eq!(value["parameters"], serde_json::json!({}));
+    }
+
+    #[test]
+    fn build_request_line_forwards_non_empty_parameters_verbatim() {
+        let parameters = serde_json::json!({
+            "schema": "zerorod-parameters/v1",
+            "values": {"body_width": 60.0},
+        });
+        let line = build_request_line("preview", "rid-1", &parameters);
+        let value: Value = serde_json::from_str(line.trim_end()).unwrap();
+        assert_eq!(value["parameters"], parameters);
     }
 
     #[test]
@@ -164,6 +195,20 @@ mod tests {
         let err = parse_response(&line, "rid-1").unwrap_err();
         assert_eq!(err.code, "unknown_command");
         assert_eq!(err.message, "nope");
+        assert_eq!(err.details, None);
+    }
+
+    #[test]
+    fn parse_response_surfaces_structured_error_details() {
+        let line = format!(
+            r#"{{"schema":"{SIDECAR_SCHEMA}","request_id":"rid-1","ok":false,"error":{{"code":"invalid_parameter_type","message":"nope","details":{{"field":"body_width"}}}}}}"#
+        );
+        let err = parse_response(&line, "rid-1").unwrap_err();
+        assert_eq!(err.code, "invalid_parameter_type");
+        assert_eq!(
+            err.details,
+            Some(serde_json::json!({"field": "body_width"}))
+        );
     }
 
     #[test]

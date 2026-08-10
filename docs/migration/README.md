@@ -19,7 +19,9 @@ BUILD 022 COMPLETE
   M4 — Productive Packaging Baseline:  COMPLETE
   M5 — Integration & Build Completion: COMPLETE
 DESKTOP 2.0 FOUNDATION: ESTABLISHED
-NEXT: BUILD 023 — PARAMETERS & LIVE PREVIEW
+BUILD 023 IN PROGRESS
+  M1 — Parameter Model & Request Contract Foundation: COMPLETE — Gate BUILD-023-M1: PASS
+NEXT: BUILD 023 / M2 — PARAMETER CONTROLS FOUNDATION
 ```
 
 **Desktop 2.0 Foundation established** means the new architecture is real, tested, and reproducibly
@@ -164,3 +166,17 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
 
 **Build 022 Final Gate: PASS.** See `docs/migration/BUILD-022-COMPLETION.md` for the full record
 and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
+
+- **Build 023, Milestone 1 — Parameter Model & Request Contract Foundation: COMPLETE / Gate PASS**
+  (`docs/migration/BUILD-023-M1-PARAMETER-CONTRACT.md`,
+  `docs/migration/BUILD-023-M1-PARAMETER-DISCOVERY.md`,
+  `docs/contracts/ZEROROD-PARAMETERS-V1.md`) — the canonical `zerorod-parameters/v1` request
+  contract, empirically derived from the existing `zerorodcad.parameters`/`zerorodcad.validation`
+  domain model (no guessed/invented parameters), integrated through the Python sidecar, Rust IPC
+  boundary, and a TypeScript type/contract foundation (no UI controls). Explicit parameter requests
+  proven end to end against the real bundled sidecar: canonical-default equivalence, an alternate
+  valid parameter set producing a real, attributable geometry change, structured errors for invalid
+  requests, and process stability across a valid→invalid→valid sequence. Build 022 invariants
+  (No-VTK, no productive PySide6/Qt, packaging baseline, security boundary) reconfirmed unchanged.
+  Next: **Build 023 / M2 — Parameter Controls Foundation** (not started; requires explicit
+  approval).

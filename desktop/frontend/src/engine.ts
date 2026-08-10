@@ -3,10 +3,14 @@ import type { MeshPayload } from "./mesh";
 
 // Mirrors desktop/src-tauri/src/protocol.rs's EngineError — the frontend
 // only ever sees these, never a raw Python traceback (zerorod-sidecar/v1
-// forbids that at the source).
+// forbids that at the source). `details` (Build 023 M1) carries optional
+// structured context (e.g. `field`/`expected`/`actual` for a
+// zerorod-parameters/v1 validation failure) — omitted when the sidecar
+// didn't provide any, exactly like Rust's `#[serde(skip_serializing_if)]`.
 export interface EngineError {
   code: string;
   message: string;
+  details?: unknown;
 }
 
 export type LifecycleState = "STOPPED" | "RUNNING" | "ERROR";

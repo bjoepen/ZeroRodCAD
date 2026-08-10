@@ -13,7 +13,8 @@ Technology Evaluation:     COMPLETE
 Architecture:              ACCEPTED
 Build 022:                 COMPLETE
 Desktop 2.0 Foundation:    ESTABLISHED
-Next:                      Build 023 — Parameters & Live Preview
+Build 023:                 IN PROGRESS (M1 COMPLETE — Gate BUILD-023-M1: PASS)
+Next:                      Build 023 / M2 — Parameter Controls Foundation
 ```
 
 Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als aktuelle Referenz-, Feature-Parity- und Fallback-Implementierung, bis die Tauri-Migration vollständig validiert und eine ausdrückliche Entscheidung zur Ablösung getroffen ist. Sie wurde durch Build 022 nicht verändert oder entfernt.
@@ -278,6 +279,9 @@ docs/migration/BUILD-022-M4-PRODUCTIVE-PACKAGING.md
 docs/migration/BUILD-022-M4-HUMAN-VALIDATION.md
 docs/migration/BUILD-022-COMPLETION.md
 docs/migration/BUILD-023-HANDOFF.md
+docs/migration/BUILD-023-M1-PARAMETER-DISCOVERY.md
+docs/migration/BUILD-023-M1-PARAMETER-CONTRACT.md
+docs/contracts/ZEROROD-PARAMETERS-V1.md
 ```
 
 ## Status
@@ -292,7 +296,9 @@ Desktop 2.0 Foundation:    ESTABLISHED
   M3 — Three.js Preview Foundation:    COMPLETE
   M4 — Productive Packaging Baseline:  COMPLETE
   M5 — Integration & Build Completion: COMPLETE
-Next:                       Build 023 — Parameters & Live Preview
+Build 023 — Parameters & Live Preview: IN PROGRESS
+  M1 — Parameter Model & Request Contract Foundation: COMPLETE — Gate BUILD-023-M1: PASS
+Next:                       Build 023 / M2 — Parameter Controls Foundation
 ```
 
 Die technische Frage, ob Tauri v2 + Three.js + Python Sidecar + No-VTK CadQuery/OCP grundsätzlich funktioniert, wurde positiv beantwortet — inklusive produktiv geeigneter Sidecar-Runtime-Strategie (persistent + onedir), optimierter Bundle-Größe und realer menschlicher Interaktionsvalidierung.

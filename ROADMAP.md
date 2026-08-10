@@ -219,7 +219,8 @@ ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
 BUILD 022 COMPLETE (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 COMPLETE)
 DESKTOP 2.0 FOUNDATION ESTABLISHED
-NEXT: BUILD 023 — PARAMETERS & LIVE PREVIEW
+BUILD 023 IN PROGRESS (M1 COMPLETE — Gate BUILD-023-M1: PASS)
+NEXT: BUILD 023 / M2 — PARAMETER CONTROLS FOUNDATION
 ```
 
 ### Current
@@ -272,6 +273,8 @@ full feature parity, PySide6 removal, signing/notarization.
 
 ### Build 023 – Parameters & Live Preview
 
+- [x] M1 — Parameter Model & Request Contract Foundation — `docs/migration/BUILD-023-M1-PARAMETER-CONTRACT.md`, `docs/migration/BUILD-023-M1-PARAMETER-DISCOVERY.md`, `docs/contracts/ZEROROD-PARAMETERS-V1.md` — `zerorod-parameters/v1` request contract defined, engine-owned parameter/validation model confirmed as the single source of truth, Python/Rust/TypeScript boundaries integrated, real explicit-parameter requests proven end to end against the bundled sidecar (canonical-default equivalence, alternate-parameter geometry change, structured invalid-parameter errors, valid-after-invalid process stability), no UI added — Gate BUILD-023-M1: PASS
+- [ ] M2 — Parameter Controls Foundation (not started — requires explicit approval per the M1 handoff)
 - [ ] full `ZeroRodParameters` UI
 - [ ] validation
 - [ ] live regeneration

@@ -24,6 +24,8 @@ pub fn run() {
             commands::engine_sidecar_status,
             commands::engine_preview,
             commands::engine_preview_mesh,
+            commands::engine_preview_mesh_with_parameters,
+            commands::engine_parameters_defaults,
             commands::engine_shutdown,
         ])
         .build(tauri::generate_context!())

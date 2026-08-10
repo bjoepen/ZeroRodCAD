@@ -15,12 +15,18 @@ SIDECAR_SCHEMA = "zerorod-sidecar/v1"
 
 class SidecarError(Exception):
     """Raised for any handled, reportable failure. Carries a stable error code
-    and a message safe to forward to the frontend — never a raw traceback."""
+    and a message safe to forward to the frontend — never a raw traceback.
 
-    def __init__(self, code: str, message: str) -> None:
+    `details` is optional structured context (e.g. `field`/`expected`/
+    `actual` for a parameter validation failure) — introduced in Build 023
+    M1 for zerorod-parameters/v1 errors; omitted entirely from the response
+    when not provided, so existing error responses are unchanged."""
+
+    def __init__(self, code: str, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
+        self.details = details
 
 
 @dataclass(frozen=True)
@@ -59,10 +65,18 @@ def ok_response(request_id: str, result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def error_response(request_id: str | None, code: str, message: str) -> dict[str, Any]:
+def error_response(
+    request_id: str | None,
+    code: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    error: dict[str, Any] = {"code": code, "message": message}
+    if details is not None:
+        error["details"] = details
     return {
         "schema": SIDECAR_SCHEMA,
         "request_id": request_id,
         "ok": False,
-        "error": {"code": code, "message": message},
+        "error": error,
     }

@@ -104,9 +104,12 @@ impl RunningEngine {
     /// detected crash, the caller (`request`, below) decides whether to
     /// kill/restart — this method never restarts itself, keeping
     /// crash-detection and recovery-policy separate concerns.
-    async fn send(&mut self, command: &str) -> Result<Value, EngineError> {
+    ///
+    /// `parameters` is forwarded verbatim to the sidecar (Build 023 M1) —
+    /// pass `serde_json::json!({})` for the parameterless Build 022 shape.
+    async fn send(&mut self, command: &str, parameters: &Value) -> Result<Value, EngineError> {
         let request_id = new_request_id();
-        let request_line = build_request_line(command, &request_id);
+        let request_line = build_request_line(command, &request_id, parameters);
 
         self.child.write(request_line.as_bytes()).map_err(|e| {
             EngineError::new(
@@ -163,7 +166,7 @@ impl RunningEngine {
     /// process to exit on its own, kill it if it doesn't.
     async fn shutdown(mut self) {
         let request_id = new_request_id();
-        let line = build_request_line("shutdown", &request_id);
+        let line = build_request_line("shutdown", &request_id, &serde_json::json!({}));
         if self.child.write(line.as_bytes()).is_ok() {
             let wait = async {
                 loop {
@@ -199,15 +202,20 @@ async fn ensure_started(
 }
 
 /// The one entry point `commands.rs` uses for every sidecar round trip
-/// (`ping`, `status`, `preview`). Starts the sidecar lazily on first use,
-/// reuses it afterward, and on a detected crash or timeout kills the dead
-/// engine and retries exactly once against a freshly spawned one — no
-/// unbounded retry loop, matching TE-002.1's "ein expliziter Retry kann
-/// genügen" policy.
+/// (`ping`, `status`, `preview`, `parameters_defaults`). Starts the sidecar
+/// lazily on first use, reuses it afterward, and on a detected crash or
+/// timeout kills the dead engine and retries exactly once against a freshly
+/// spawned one — no unbounded retry loop, matching TE-002.1's "ein
+/// expliziter Retry kann genügen" policy.
+///
+/// `parameters` is forwarded to the sidecar verbatim (Build 023 M1) — Rust
+/// does not interpret it. Existing callers that don't need parameters pass
+/// `serde_json::json!({})`, preserving the exact Build 022 wire shape.
 pub async fn request(
     app: &AppHandle,
     state: &EngineState,
     command: &str,
+    parameters: Value,
 ) -> Result<Value, EngineError> {
     let mut guard = state.engine.lock().await;
 
@@ -216,7 +224,7 @@ pub async fn request(
         return Err(err);
     }
 
-    let result = guard.as_mut().unwrap().send(command).await;
+    let result = guard.as_mut().unwrap().send(command, &parameters).await;
     let final_result = match result {
         Err(err) if err.code == "sidecar_crashed" || err.code == "timeout" => {
             if let Some(dead) = guard.take() {
@@ -227,7 +235,7 @@ pub async fn request(
                 *state.last_error.lock().await = Some(restart_err.clone());
                 return Err(restart_err);
             }
-            guard.as_mut().unwrap().send(command).await
+            guard.as_mut().unwrap().send(command, &parameters).await
         }
         other => other,
     };
