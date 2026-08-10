@@ -219,8 +219,9 @@ ARCHITECTURE ACCEPTED
 MIGRATION PREPARED
 BUILD 022 COMPLETE (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 COMPLETE)
 DESKTOP 2.0 FOUNDATION ESTABLISHED
-BUILD 023 IN PROGRESS (M1 COMPLETE — Gate BUILD-023-M1: PASS)
-NEXT: BUILD 023 / M2 — PARAMETER CONTROLS FOUNDATION
+BUILD 023 COMPLETE (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 COMPLETE)
+PARAMETERS & LIVE PREVIEW ESTABLISHED
+NEXT: BUILD 024 — STL / STEP EXPORT WORKFLOW
 ```
 
 ### Current
@@ -274,12 +275,15 @@ full feature parity, PySide6 removal, signing/notarization.
 ### Build 023 – Parameters & Live Preview
 
 - [x] M1 — Parameter Model & Request Contract Foundation — `docs/migration/BUILD-023-M1-PARAMETER-CONTRACT.md`, `docs/migration/BUILD-023-M1-PARAMETER-DISCOVERY.md`, `docs/contracts/ZEROROD-PARAMETERS-V1.md` — `zerorod-parameters/v1` request contract defined, engine-owned parameter/validation model confirmed as the single source of truth, Python/Rust/TypeScript boundaries integrated, real explicit-parameter requests proven end to end against the bundled sidecar (canonical-default equivalence, alternate-parameter geometry change, structured invalid-parameter errors, valid-after-invalid process stability), no UI added — Gate BUILD-023-M1: PASS
-- [ ] M2 — Parameter Controls Foundation (not started — requires explicit approval per the M1 handoff)
-- [ ] full `ZeroRodParameters` UI
-- [ ] validation
-- [ ] live regeneration
-- [ ] responsive preview
-- [ ] error presentation
+- [x] M2 — Parameter Controls Foundation — `docs/migration/BUILD-023-M2-PARAMETER-CONTROLS.md` — productive parameter panel covering all 16 `zerorod-parameters/v1` fields (15 geometry + `project_name` metadata), grouped by contract-derived semantics, canonical defaults loaded through the real `parameters_defaults` path (never duplicated), local draft/dirty state, local structural validation, Reset — Gate BUILD-023-M2: PASS, Human Validation PASS (Project Owner)
+- [x] M3 — Parameter-to-Engine Integration — `docs/migration/BUILD-023-M3-PARAMETER-ENGINE-INTEGRATION.md` — Apply connects the parameter draft to the real engine through the existing `zerorod-parameters/v1`/`zerorod-sidecar/v1` path (no protocol change, no new Rust/Python code needed — M1 had already built it), atomic preview replacement, an accepted-state model, a metadata-only-Apply optimization, a real `body_width: 38 → 60 mm` geometry change proven through the productive pipeline — Gate BUILD-023-M3: PASS, Human Validation PASS (Project Owner)
+- [x] M4 — Live Preview Behavior & UX — `docs/migration/BUILD-023-M4-LIVE-PREVIEW.md` — automatic debounced live preview (300 ms, chosen from the measured ~0.12 s warm engine round trip), generation-based stale-response protection, in-flight request coalescing, a camera-preservation heuristic (refit only on first load / an extreme bounds change) so small live edits don't fight the user's manual framing, Apply/Reset unified with the live-preview pipeline — Gate BUILD-023-M4: PASS, Human Validation PASS (Project Owner)
+- [x] M5 — Integration & Build Completion — `docs/migration/BUILD-023-COMPLETION.md` — milestone consistency audit (no contradictions found), architecture conformance re-verification against `ADR-022-001`, a clean final release rebuild, and the master validation gate (`scripts/validate-build023.sh`) ending in `BUILD-023 CONSISTENCY GATE: PASS`
+
+**Build 023: COMPLETE. Parameters & Live Preview: ESTABLISHED.**
+
+Not yet in Build 023 (by design — later builds' scope): STL/STEP export UI, full feature parity,
+project persistence, PySide6 removal, signing/notarization.
 
 ### Build 024 – STL / STEP Export Workflow
 

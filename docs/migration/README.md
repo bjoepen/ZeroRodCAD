@@ -2,10 +2,11 @@
 
 This document is the entry point for the migration from ZeroRodCAD's current PySide6/Qt desktop
 application to the accepted Tauri v2 based target architecture. It links the completed research to
-the build sequence that established the productive Desktop 2.0 foundation (Build 022) and states
-the current status plainly. Build 022's own completion record is
-[`BUILD-022-COMPLETION.md`](BUILD-022-COMPLETION.md); the next build's handoff is
-[`BUILD-023-HANDOFF.md`](BUILD-023-HANDOFF.md).
+the build sequence that established the productive Desktop 2.0 foundation (Build 022) and its
+parameter-editing/live-preview capability (Build 023), and states the current status plainly.
+Build 022's own completion record is [`BUILD-022-COMPLETION.md`](BUILD-022-COMPLETION.md); Build
+023's is [`BUILD-023-COMPLETION.md`](BUILD-023-COMPLETION.md); the next build's handoff is
+[`BUILD-024-HANDOFF.md`](BUILD-024-HANDOFF.md).
 
 ## Current status
 
@@ -19,14 +20,21 @@ BUILD 022 COMPLETE
   M4 — Productive Packaging Baseline:  COMPLETE
   M5 — Integration & Build Completion: COMPLETE
 DESKTOP 2.0 FOUNDATION: ESTABLISHED
-BUILD 023 IN PROGRESS
+BUILD 023 COMPLETE
   M1 — Parameter Model & Request Contract Foundation: COMPLETE — Gate BUILD-023-M1: PASS
-NEXT: BUILD 023 / M2 — PARAMETER CONTROLS FOUNDATION
+  M2 — Parameter Controls Foundation:                 COMPLETE — Gate BUILD-023-M2: PASS, Human PASS
+  M3 — Parameter-to-Engine Integration:                COMPLETE — Gate BUILD-023-M3: PASS, Human PASS
+  M4 — Live Preview Behavior & UX:                     COMPLETE — Gate BUILD-023-M4: PASS, Human PASS
+  M5 — Integration & Build Completion:                 COMPLETE — Gate BUILD-023: PASS
+PARAMETERS & LIVE PREVIEW: ESTABLISHED
+NEXT: BUILD 024 — STL / STEP EXPORT WORKFLOW
 ```
 
-**Desktop 2.0 Foundation established** means the new architecture is real, tested, and reproducibly
-packaged — not that the full migration from the existing PySide6 application is complete. Parameter
-editing, export UI, and full feature parity are explicitly Build 023–026 scope, not yet built.
+**Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
+reproducibly packaged. **Parameters & Live Preview established** (Build 023) means parameter editing
+and real, engine-driven live regeneration are now real, tested, and productive too — not that the
+full migration from the existing PySide6 application is complete. Export UI and full feature parity
+remain explicitly Build 024–026 scope, not yet built.
 
 ## Why migrate
 
@@ -167,16 +175,36 @@ Build's tag/branch and the PySide6 app remain the two concrete rollback anchors.
 **Build 022 Final Gate: PASS.** See `docs/migration/BUILD-022-COMPLETION.md` for the full record
 and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
 
-- **Build 023, Milestone 1 — Parameter Model & Request Contract Foundation: COMPLETE / Gate PASS**
-  (`docs/migration/BUILD-023-M1-PARAMETER-CONTRACT.md`,
-  `docs/migration/BUILD-023-M1-PARAMETER-DISCOVERY.md`,
-  `docs/contracts/ZEROROD-PARAMETERS-V1.md`) — the canonical `zerorod-parameters/v1` request
-  contract, empirically derived from the existing `zerorodcad.parameters`/`zerorodcad.validation`
-  domain model (no guessed/invented parameters), integrated through the Python sidecar, Rust IPC
-  boundary, and a TypeScript type/contract foundation (no UI controls). Explicit parameter requests
-  proven end to end against the real bundled sidecar: canonical-default equivalence, an alternate
-  valid parameter set producing a real, attributable geometry change, structured errors for invalid
-  requests, and process stability across a valid→invalid→valid sequence. Build 022 invariants
-  (No-VTK, no productive PySide6/Qt, packaging baseline, security boundary) reconfirmed unchanged.
-  Next: **Build 023 / M2 — Parameter Controls Foundation** (not started; requires explicit
-  approval).
+- **Build 023 — Parameters & Live Preview: COMPLETE. Parameters & Live Preview: ESTABLISHED.**
+  - M1 — Parameter Model & Request Contract Foundation: COMPLETE / Gate PASS
+    (`BUILD-023-M1-PARAMETER-CONTRACT.md`, `BUILD-023-M1-PARAMETER-DISCOVERY.md`,
+    `../contracts/ZEROROD-PARAMETERS-V1.md`) — the canonical `zerorod-parameters/v1` request
+    contract, empirically derived from the existing `zerorodcad.parameters`/`zerorodcad.validation`
+    domain model (no guessed/invented parameters), integrated through the Python sidecar, Rust IPC
+    boundary, and a TypeScript type/contract foundation (no UI controls yet). Explicit parameter
+    requests proven end to end against the real bundled sidecar: canonical-default equivalence, an
+    alternate valid parameter set producing a real, attributable geometry change, structured errors
+    for invalid requests, and process stability across a valid→invalid→valid sequence.
+  - M2 — Parameter Controls Foundation: COMPLETE / Gate PASS (`BUILD-023-M2-PARAMETER-CONTROLS.md`)
+    — a productive parameter panel covering all 16 fields (15 geometry + `project_name` metadata),
+    grouped by contract-derived semantics, canonical defaults loaded through the real
+    `parameters_defaults` path (never duplicated), local draft/dirty state, local structural
+    validation, Reset — and human validation PASS (Project Owner).
+  - M3 — Parameter-to-Engine Integration: COMPLETE / Gate PASS
+    (`BUILD-023-M3-PARAMETER-ENGINE-INTEGRATION.md`) — Apply connects the parameter draft to the
+    real engine through the existing M1 contract (no protocol change, no new Rust/Python code
+    needed), atomic preview replacement, a real `body_width: 38 → 60 mm` geometry change proven
+    through the productive pipeline — and human validation PASS (Project Owner: "entered values
+    change the real ZeroRod model as expected").
+  - M4 — Live Preview Behavior & UX: COMPLETE / Gate PASS (`BUILD-023-M4-LIVE-PREVIEW.md`) —
+    automatic debounced live preview (300 ms), generation-based stale-response protection, in-flight
+    request coalescing, a camera-preservation heuristic so small live edits don't fight the user's
+    manual framing — and human validation PASS (Project Owner).
+  - M5 — Integration & Build Completion: COMPLETE / Gate PASS (`BUILD-023-COMPLETION.md`) —
+    milestone consistency audit, architecture conformance re-verification against `ADR-022-001`, a
+    clean final release rebuild, and the master validation gate (`scripts/validate-build023.sh`)
+    ending in `BUILD-023 CONSISTENCY GATE: PASS`.
+
+**Build 023 Final Gate: PASS.** See `docs/migration/BUILD-023-COMPLETION.md` for the full record and
+`docs/migration/BUILD-024-HANDOFF.md` for what comes next: **Build 024 — STL / STEP Export
+Workflow** (not started; requires explicit Project Owner approval).

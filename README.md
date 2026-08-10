@@ -2,9 +2,9 @@
 
 Parametrisches CAD- und Desktop-Projekt für das ZeroRod-System.
 
-ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Die produktive Desktop-2.0-Architektur ist **Tauri v2** (WebView-UI, Three.js-3D-Vorschau, Rust-Prozess-/IPC-Schicht, persistenter Python-3.13-Sidecar, CadQuery/cadquery-ocp-novtk) — evidenzbasiert entschieden ([ADR-022-001](docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md), Status: Accepted) und mit **Build 022** produktiv etabliert: alle fünf Meilensteine (M1 Foundation, M2 Sidecar & Rust Lifecycle, M3 Three.js Preview, M4 Productive Packaging, M5 Integration & Build Completion) sind abgeschlossen, jeweils mit Gate PASS inklusive menschlicher Validierung, wo vorgesehen.
+ZeroRodCAD erzeugt die Geometrie des ZeroRod-Nullbundsystems, stellt eine Vorschau bereit und exportiert Fertigungsdaten wie STL und STEP. Die produktive Desktop-2.0-Architektur ist **Tauri v2** (WebView-UI, Three.js-3D-Vorschau, Rust-Prozess-/IPC-Schicht, persistenter Python-3.13-Sidecar, CadQuery/cadquery-ocp-novtk) — evidenzbasiert entschieden ([ADR-022-001](docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md), Status: Accepted), mit **Build 022** produktiv etabliert (alle fünf Meilensteine, Gate PASS inklusive menschlicher Validierung, wo vorgesehen) und mit **Build 023** um eine produktive, parametergetriebene Live-Vorschau erweitert: ein Parameter-Panel treibt die echte Engine, Änderungen werden nach kurzer Debounce-Verzögerung automatisch neu gerendert — ebenfalls alle fünf Meilensteine abgeschlossen, Gate PASS inklusive menschlicher Validierung.
 
-**Wichtig:** Build 022 etabliert die produktive Desktop-2.0-**Foundation** — es handelt sich nicht um eine vollständige Migration. Parameter-Editing, Export-UI und volle Feature-Parität mit der bestehenden PySide6-Anwendung folgen in späteren Builds (023–026).
+**Wichtig:** Build 022 und Build 023 etablieren zusammen die produktive Desktop-2.0-**Foundation** samt parametergetriebener Live-Vorschau — es handelt sich weiterhin nicht um eine vollständige Migration. Export-UI (STL/STEP) und volle Feature-Parität mit der bestehenden PySide6-Anwendung folgen in späteren Builds (024–026).
 
 ## Aktueller Stand
 
@@ -13,11 +13,12 @@ Technology Evaluation:     COMPLETE
 Architecture:              ACCEPTED
 Build 022:                 COMPLETE
 Desktop 2.0 Foundation:    ESTABLISHED
-Build 023:                 IN PROGRESS (M1 COMPLETE — Gate BUILD-023-M1: PASS)
-Next:                      Build 023 / M2 — Parameter Controls Foundation
+Build 023:                 COMPLETE (M1-M5 COMPLETE — Gate BUILD-023: PASS)
+Parameters & Live Preview: ESTABLISHED
+Next:                      Build 024 — STL / STEP Export Workflow
 ```
 
-Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als aktuelle Referenz-, Feature-Parity- und Fallback-Implementierung, bis die Tauri-Migration vollständig validiert und eine ausdrückliche Entscheidung zur Ablösung getroffen ist. Sie wurde durch Build 022 nicht verändert oder entfernt.
+Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als aktuelle Referenz-, Feature-Parity- und Fallback-Implementierung, bis die Tauri-Migration vollständig validiert und eine ausdrückliche Entscheidung zur Ablösung getroffen ist. Sie wurde durch Build 022 und Build 023 nicht verändert oder entfernt.
 
 Die wichtigsten aktuellen Ergebnisse:
 
@@ -296,13 +297,20 @@ Desktop 2.0 Foundation:    ESTABLISHED
   M3 — Three.js Preview Foundation:    COMPLETE
   M4 — Productive Packaging Baseline:  COMPLETE
   M5 — Integration & Build Completion: COMPLETE
-Build 023 — Parameters & Live Preview: IN PROGRESS
-  M1 — Parameter Model & Request Contract Foundation: COMPLETE — Gate BUILD-023-M1: PASS
-Next:                       Build 023 / M2 — Parameter Controls Foundation
+Build 023 — Parameters & Live Preview: COMPLETE
+  M1 — Parameter Model & Request Contract Foundation: COMPLETE — Gate PASS
+  M2 — Parameter Controls Foundation:                 COMPLETE — Gate PASS, Human PASS
+  M3 — Parameter-to-Engine Integration:                COMPLETE — Gate PASS, Human PASS
+  M4 — Live Preview Behavior & UX:                     COMPLETE — Gate PASS, Human PASS
+  M5 — Integration & Build Completion:                 COMPLETE — Gate PASS
+Parameters & Live Preview: ESTABLISHED
+Next:                       Build 024 — STL / STEP Export Workflow
 ```
 
 Die technische Frage, ob Tauri v2 + Three.js + Python Sidecar + No-VTK CadQuery/OCP grundsätzlich funktioniert, wurde positiv beantwortet — inklusive produktiv geeigneter Sidecar-Runtime-Strategie (persistent + onedir), optimierter Bundle-Größe und realer menschlicher Interaktionsvalidierung.
 
 Build 022 ist vollständig abgeschlossen: Milestone 1 (produktive Tauri-v2-Projektstruktur, funktionierende WebView↔Rust-IPC-Bridge), Milestone 2 (persistenter Python-Sidecar, Rust Engine Manager mit Lazy Start/Timeout/Crash-Detection/Restart/Shutdown), Milestone 3 (Three.js Preview Foundation: echtes ZeroRod-Mesh wird über Three.js gerendert, OrbitControls, Kamera-Fit, Resize, Refresh ohne Restgeometrie), Milestone 4 (Productive Packaging Baseline: produktives hash-gated Dylib-Dedup, reproduzierbare Build-Pipeline, Release-Build 285.21 MiB — 1.76 % über der TE-002.2B-Referenz von 280.27 MiB, vollständig erklärt) und Milestone 5 (Integration & Build Completion: Gesamtsystem-Audit, Architektur-Konformitätsprüfung gegen ADR-022-001, finales Master-Validierungsgate) sind abgeschlossen, alle mit Gate PASS. Details: [`docs/migration/BUILD-022-COMPLETION.md`](docs/migration/BUILD-022-COMPLETION.md).
 
-**Desktop 2.0 Foundation: ESTABLISHED.** Das bedeutet, dass die neue Architektur real, getestet und produktiv gebaut funktioniert — nicht, dass die vollständige Migration der bestehenden Anwendung abgeschlossen ist. Nächster Schritt: [Build 023 – Parameters & Live Preview](docs/migration/BUILD-023-HANDOFF.md).
+Build 023 ist ebenfalls vollständig abgeschlossen: Milestone 1 (kanonischer `zerorod-parameters/v1`-Request-Contract, 16 Felder, End-to-End gegen den echten Sidecar bewiesen), Milestone 2 (produktives Parameter-Panel mit allen 16 Feldern, canonical Defaults, lokalem Draft-/Dirty-State, lokaler Validierung), Milestone 3 (Apply verbindet den Parameter-Draft mit der echten Engine — reale Geometrieänderung im Three.js-Viewport bewiesen), Milestone 4 (automatische, debounced Live-Vorschau mit generation-basiertem Stale-Response-Schutz, Request-Coalescing und kamera-schonendem Refit-Verhalten) und Milestone 5 (Gesamtsystem-Audit, Architektur-Konformitätsprüfung, finales Master-Validierungsgate) sind abgeschlossen, alle mit Gate PASS und — wo vorgesehen — menschlicher Validierung PASS durch den Project Owner. Details: [`docs/migration/BUILD-023-COMPLETION.md`](docs/migration/BUILD-023-COMPLETION.md).
+
+**Desktop 2.0 Foundation: ESTABLISHED. Parameters & Live Preview: ESTABLISHED.** Das bedeutet, dass die neue Architektur real, getestet und produktiv gebaut funktioniert und dass Parameter-Editing samt echter, engine-getriebener Live-Regenerierung jetzt ebenfalls real, getestet und produktiv ist — nicht, dass die vollständige Migration der bestehenden Anwendung abgeschlossen ist. Nächster Schritt: [Build 024 – STL / STEP Export Workflow](docs/migration/BUILD-024-HANDOFF.md).
