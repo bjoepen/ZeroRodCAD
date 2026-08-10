@@ -8,6 +8,7 @@ import {
   requestPreviewSummary,
   type LifecycleState,
 } from "./engine";
+import { createParameterPanelController } from "./parameter_panel";
 import { createPreviewController, previewStateToStatusValue, type PreviewState } from "./preview";
 import { renderStatusRows, type StatusRow, type StatusValue } from "./status";
 
@@ -20,7 +21,7 @@ const appEl = document.querySelector<HTMLDivElement>("#app")!;
 appEl.innerHTML = `
   <main class="foundation">
     <h1>ZeroRodCAD Desktop 2.0</h1>
-    <p class="subtitle">Build 022 — Milestone 3: Three.js Preview Foundation</p>
+    <p class="subtitle">Build 023 — Milestone 2: Parameter Controls Foundation</p>
     <div class="layout">
       <section class="sidebar">
         <section class="status-panel" id="status-panel"></section>
@@ -32,6 +33,7 @@ appEl.innerHTML = `
         </section>
         <pre id="last-action" class="last-action"></pre>
       </section>
+      <section class="parameters" id="parameter-panel"></section>
       <section class="viewport" id="viewport"></section>
     </div>
   </main>
@@ -40,6 +42,7 @@ appEl.innerHTML = `
 const statusPanelEl = document.querySelector<HTMLDivElement>("#status-panel")!;
 const lastActionEl = document.querySelector<HTMLPreElement>("#last-action")!;
 const viewportEl = document.querySelector<HTMLDivElement>("#viewport")!;
+const parameterPanelEl = document.querySelector<HTMLDivElement>("#parameter-panel")!;
 
 const rows: StatusRow[] = [
   { id: "shell", label: "Desktop shell", value: "READY" },
@@ -128,6 +131,7 @@ function handlePreviewStateChange(state: PreviewState, detail: string): void {
 }
 
 const preview = createPreviewController(viewportEl, handlePreviewStateChange);
+const parameterPanel = createParameterPanelController(parameterPanelEl);
 
 document.querySelector<HTMLButtonElement>("#start-check-engine")!.addEventListener("click", () => {
   void handleStartCheckEngine();
@@ -162,6 +166,12 @@ async function init(): Promise<void> {
   } catch (error) {
     setRow("python-sidecar", "ERROR", String(error));
   }
+
+  // Loads canonical defaults through the real parameters_defaults →
+  // engine_parameters_defaults path (§40/§41 of the M2 mandate) — the
+  // panel's own loading/error states cover failure, nothing further to
+  // surface on the shared status panel.
+  void parameterPanel.load();
 }
 
 init();

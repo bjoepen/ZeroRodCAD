@@ -10,6 +10,9 @@
   --neutral-bg: rgba(107, 99, 117, 0.1);
   --error: #cf222e;
   --error-bg: rgba(207, 34, 46, 0.1);
+  --warn: #9a6700;
+  --warn-bg: rgba(154, 103, 0, 0.12);
+  --focus: #2563eb;
 
   font: 16px/145% system-ui, "Segoe UI", Roboto, sans-serif;
   color-scheme: light dark;
@@ -24,6 +27,9 @@
     --bg: #16141a;
     --panel-bg: #1c1a21;
     --border: #2c2933;
+    --warn: #d29922;
+    --warn-bg: rgba(210, 153, 34, 0.15);
+    --focus: #58a6ff;
   }
 }
 
@@ -74,11 +80,20 @@ h1 {
 }
 
 .sidebar {
-  width: 320px;
-  flex: 0 0 320px;
+  width: 280px;
+  flex: 0 0 280px;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+}
+
+.parameters {
+  width: 360px;
+  flex: 0 0 360px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
 }
 
 .viewport {
@@ -178,4 +193,248 @@ h1 {
   word-break: break-word;
   min-height: 1.2em;
   color: var(--neutral);
+}
+
+/* Parameter panel (Build 023 M2) */
+
+.parameter-panel-status {
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--neutral);
+}
+
+.parameter-panel-status[data-state="error"] {
+  color: var(--error);
+}
+
+.parameter-panel-error-detail {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.75rem;
+  word-break: break-word;
+}
+
+.parameter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.parameter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.parameter-panel-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-h);
+}
+
+.parameter-dirty-badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  visibility: hidden;
+}
+
+.parameter-dirty-badge.is-visible {
+  visibility: visible;
+}
+
+.parameter-panel-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--neutral);
+}
+
+.parameter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.parameter-group {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem 0.75rem;
+  margin: 0;
+}
+
+.parameter-group legend {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-h);
+  padding: 0 0.3rem;
+}
+
+.parameter-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.parameter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.parameter-field label,
+.parameter-field-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.parameter-metadata-badge {
+  margin-left: 0.4rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--neutral);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+
+.parameter-field-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.parameter-field-control input,
+.gauge-item input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-family: ui-monospace, Consolas, monospace;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+}
+
+.parameter-field-control input:focus-visible,
+.gauge-item input:focus-visible,
+.parameter-panel-actions button:focus-visible,
+.gauge-add:focus-visible,
+.gauge-remove:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.parameter-field-control input[aria-invalid="true"],
+.gauge-item input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.parameter-unit {
+  font-size: 0.75rem;
+  color: var(--neutral);
+  white-space: nowrap;
+}
+
+.parameter-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--error);
+  min-height: 1em;
+}
+
+.parameter-description {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--neutral);
+}
+
+.gauge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.gauge-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.gauge-item .parameter-error {
+  flex-basis: 100%;
+}
+
+.gauge-add,
+.gauge-remove {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.gauge-add:hover,
+.gauge-remove:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.gauge-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.parameter-panel-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.parameter-panel-actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.parameter-panel-actions button:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.parameter-panel-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.parameter-apply-message {
+  margin: 0;
+  font-size: 0.78rem;
+  min-height: 1em;
+  display: none;
+}
+
+.parameter-apply-message.is-visible {
+  display: block;
+}
+
+.parameter-apply-message[data-state="ok"] {
+  color: var(--ok);
+}
+
+.parameter-apply-message[data-state="error"] {
+  color: var(--error);
 }
