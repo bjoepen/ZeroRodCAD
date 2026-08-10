@@ -4,10 +4,20 @@
 // the camera, resizing, and disposing geometry/materials/renderer. main.ts
 // only wires this to a button and a status callback — no Three.js code
 // lives in main.ts itself.
+//
+// Build 023 M3 extends `load()` with an optional `values` argument so the
+// same geometry-replacement path serves both the parameterless "Load /
+// Refresh ZeroRod" button (unchanged since M2/M3) and the parameter panel's
+// Apply flow — no second Three.js scene, no re-initialized renderer per
+// Apply (§20 of the M3 mandate). The existing fetch → validate → convert →
+// *then* clear/replace ordering already made a failed request leave the old
+// geometry untouched (§18/§21's "atomic preview replacement" requirement) —
+// M3 does not need to change that ordering, only add a second data source.
 
 import * as THREE from "three";
 import { isEngineError, requestPreviewMesh } from "./engine";
 import { meshContractToGeometries, type RenderableMesh } from "./mesh";
+import { requestPreviewMeshWithParameters, type ZeroRodParametersValues } from "./parameters";
 import { clearGroup, createScene, fitCameraToBounds, type SceneHandle } from "./scene";
 import type { StatusValue } from "./status";
 
@@ -75,10 +85,23 @@ export function formatErrorDetail(error: unknown): string {
   return String(error);
 }
 
+/** Build 023 M3 — lets a caller (parameter_panel.ts's Apply handler) react
+ * to success/failure without duplicating error formatting; `onStateChange`
+ * remains the single place that updates the visible status text. */
+export interface PreviewLoadResult {
+  ok: boolean;
+  error?: unknown;
+}
+
 export interface PreviewController {
-  /** Requests a real ZeroRod preview mesh and renders it. Replaces any
-   * previously rendered model — never accumulates stale geometry. */
-  load: () => Promise<void>;
+  /** Requests a real ZeroRod preview mesh and renders it, replacing any
+   * previously rendered model — never accumulates stale geometry. With no
+   * argument, requests the engine's canonical defaults (unchanged since
+   * M2/M3). With `values`, requests that explicit zerorod-parameters/v1
+   * value set instead (Build 023 M3's Apply path) — same rendering code,
+   * same atomicity guarantee: a failed request never touches the currently
+   * displayed geometry. */
+  load: (values?: Partial<ZeroRodParametersValues>) => Promise<PreviewLoadResult>;
   /** Releases the renderer, controls, geometry, and materials. Call once,
    * when the preview is being torn down (e.g. page/app unload). */
   dispose: () => void;
@@ -105,17 +128,22 @@ export function createPreviewController(
   // (createScene's own constructor-time measurement can race layout).
   resize();
 
-  async function load(): Promise<void> {
+  async function load(values?: Partial<ZeroRodParametersValues>): Promise<PreviewLoadResult> {
     onStateChange("loading", "Loading…");
     try {
       const started = performance.now();
-      const payload = await requestPreviewMesh();
+      const payload = values
+        ? await requestPreviewMeshWithParameters(values)
+        : await requestPreviewMesh();
       const roundTripMs = performance.now() - started;
 
       const geometryStarted = performance.now();
       const { meshes, lines, bounds } = meshContractToGeometries(payload);
 
-      // Refresh must not accumulate stale geometry from a prior load.
+      // Refresh must not accumulate stale geometry from a prior load. This
+      // only runs after the fetch and mesh conversion above have already
+      // succeeded, so a failed/invalid request never reaches this point —
+      // the previously displayed geometry is left completely untouched.
       clearGroup(modelGroup);
       for (const { geometry } of meshes) {
         modelGroup.add(new THREE.Mesh(geometry, meshMaterial));
@@ -128,8 +156,10 @@ export function createPreviewController(
 
       const summary = summarizeRenderResult(meshes, lines);
       onStateChange("ready", formatReadyDetail(summary, roundTripMs, geometryMs));
+      return { ok: true };
     } catch (error) {
       onStateChange("error", formatErrorDetail(error));
+      return { ok: false, error };
     }
   }
 

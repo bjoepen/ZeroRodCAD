@@ -68,7 +68,17 @@ section "Frontend — M2 parameter modules (explicit)"
   src/parameter_panel.test.ts)
 
 section "Frontend — no automatic preview IPC on parameter edit (explicit re-check)"
-(cd desktop/frontend && npx vitest run src/parameter_panel.test.ts -t "no automatic preview IPC on edit")
+# A `vitest -t` filter that matches zero tests still exits 0 ("skipped", not
+# "failed") — silently vacuous if the matching test is ever renamed (as it
+# was in Build 023 M3, when this suite's Apply flow moved from local-only to
+# engine-connected and the describe/it titles changed). Guarded explicitly
+# below so a future rename fails loudly here instead of silently no-op'ing.
+M2_IPC_CHECK_OUTPUT=$(cd desktop/frontend && npx vitest run src/parameter_panel.test.ts -t "never calls applyParameters" 2>&1)
+echo "${M2_IPC_CHECK_OUTPUT}"
+if ! echo "${M2_IPC_CHECK_OUTPUT}" | grep -qE "Tests {2}[1-9][0-9]* passed"; then
+  echo "FAIL: expected at least 1 passing test matching the Apply-flow name filter, got 0 (was the test renamed?)" >&2
+  FAILED=1
+fi
 
 section "Frontend — full vitest / TypeScript / build (M1 + M2 combined)"
 (cd desktop/frontend && npm run test)

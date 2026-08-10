@@ -1,14 +1,21 @@
 // Build 023 M2 — the parameter panel DOM component. Owns rendering the
 // grouped controls, wiring input events to the local draft
 // (parameter_state.ts), and surfacing loading/error/dirty/validation
-// feedback. Deliberately does NOT call requestPreviewMeshWithParameters or
-// any other preview-regenerating command on edit — M2 is local-editing
-// foundation only, M3 connects Apply to the engine (§33/§16 of the M2
-// mandate). The DOM tree is built once per successful load and mutated
+// feedback. The DOM tree is built once per successful load and mutated
 // surgically afterward (only the changed field's error text / the dirty
 // badge / the apply button are touched per keystroke) so typing never loses
 // focus or cursor position — a full innerHTML re-render per keystroke would
 // break exactly the keyboard usability the mandate calls out.
+//
+// Build 023 M3 connects Apply to the real engine: `createParameterPanelController`
+// now takes an `applyParameters` callback (main.ts wires it to
+// `preview.load`, preview.ts's Three.js geometry-replacement path). Editing
+// a field, adding/removing a gauge, or Reset still never call it — Apply is
+// the *only* trigger (§9 of the M3 mandate). "Dirty" is redefined from "the
+// draft differs from the loaded defaults" (M2) to "the draft differs from
+// the last successfully accepted parameter state" (M3 §26) — `accepted`
+// tracks that; `defaults` (the canonical default set) is kept separately,
+// used only as Reset's target, per the M3 mandate's explicit split (§25).
 
 import { isEngineError } from "./engine";
 import {
@@ -16,12 +23,19 @@ import {
   PARAMETER_FIELDS_BY_KEY,
   type ParameterFieldMeta,
 } from "./parameter_metadata";
-import { fetchDefaultParameters, type ParametersRequest, type ZeroRodParametersValues } from "./parameters";
+import {
+  buildParametersRequest,
+  fetchDefaultParameters,
+  type ParametersRequest,
+  type ZeroRodParametersValues,
+} from "./parameters";
 import {
   addGauge,
+  cloneValues,
   draftFromValues,
   hasDraftErrors,
   isDraftDirty,
+  isGeometryUnchanged,
   removeGauge,
   resetDraft,
   serializeDraft,
@@ -77,27 +91,50 @@ function renderFieldHtml(meta: ParameterFieldMeta, draft: ParameterDraftState): 
   `;
 }
 
+/** Build 023 M3 — the panel never calls the sidecar itself; it asks the
+ * caller (main.ts, wiring in `preview.load`) to do it, and only reacts to
+ * the outcome. This keeps the panel decoupled from Three.js/engine
+ * internals, mirroring how `preview.ts` itself takes an `onStateChange`
+ * callback instead of owning status-panel DOM. */
+export type ApplyParametersFn = (
+  values: ZeroRodParametersValues,
+) => Promise<{ ok: boolean; error?: unknown }>;
+
+export type ApplyStatus = "idle" | "applying" | "applied" | "error";
+
 export interface ParameterPanelController {
   /** Fetches canonical defaults through the real engine path
    * (parameters_defaults → engine_parameters_defaults) and renders the
    * form. Call once at startup. */
   load: () => Promise<void>;
-  /** The last successfully Applied request, or null if Apply has never
-   * succeeded this session. Exposed for tests and future M3 wiring — never
-   * sent anywhere by M2 itself. */
+  /** The last successfully accepted parameter state, wrapped as a
+   * zerorod-parameters/v1 request — null until the first successful Apply
+   * (or before defaults have loaded at all). Derived from `accepted`, so it
+   * always reflects the current session-accepted state (§27 of the M3
+   * mandate: accepted is session state, not project persistence). */
   getAcceptedRequest: () => ParametersRequest | null;
+  /** The last successfully accepted parameter values directly (no envelope
+   * wrapper) — exposed for tests and future milestones. */
+  getAccepted: () => ZeroRodParametersValues | null;
+  /** Current Apply state machine position — exposed for tests. */
+  getApplyStatus: () => ApplyStatus;
 }
 
-export function createParameterPanelController(container: HTMLElement): ParameterPanelController {
+export function createParameterPanelController(
+  container: HTMLElement,
+  applyParameters: ApplyParametersFn,
+): ParameterPanelController {
   let draft: ParameterDraftState | null = null;
-  let baseline: ZeroRodParametersValues | null = null;
-  let acceptedRequest: ParametersRequest | null = null;
+  let defaults: ZeroRodParametersValues | null = null;
+  let accepted: ZeroRodParametersValues | null = null;
+  let applyStatus: ApplyStatus = "idle";
 
   const scalarInputs = new Map<ScalarFieldKey, HTMLInputElement>();
   const scalarErrorEls = new Map<ScalarFieldKey, HTMLElement>();
   let gaugeListEl: HTMLElement | null = null;
   let dirtyBadgeEl: HTMLElement | null = null;
   let applyButtonEl: HTMLButtonElement | null = null;
+  let resetButtonEl: HTMLButtonElement | null = null;
   let applyMessageEl: HTMLElement | null = null;
 
   function renderLoading(): void {
@@ -113,12 +150,54 @@ export function createParameterPanelController(container: HTMLElement): Paramete
     `;
   }
 
-  function updateStatusUI(): void {
-    if (!draft || !baseline) return;
-    const dirty = isDraftDirty(draft, baseline);
-    dirtyBadgeEl?.classList.toggle("is-visible", dirty);
+  function updateDirtyBadge(): void {
+    if (!draft || !accepted) return;
+    dirtyBadgeEl?.classList.toggle("is-visible", isDraftDirty(draft, accepted));
+  }
+
+  /** Apply is blocked while invalid, while nothing differs from the last
+   * accepted state (§36 of the M3 mandate — no unnecessary rebuild), and
+   * while a request is already in flight (§15/§37 — no parallel requests).
+   * Reset is only blocked while applying, so a stray click can't mutate the
+   * draft out from under an in-flight request's already-captured snapshot. */
+  function updateApplyButton(): void {
+    if (!draft || !accepted) return;
+    const applying = applyStatus === "applying";
     if (applyButtonEl) {
-      applyButtonEl.disabled = hasDraftErrors(draft);
+      applyButtonEl.disabled = applying || hasDraftErrors(draft) || !isDraftDirty(draft, accepted);
+      applyButtonEl.textContent = applying ? "Applying…" : "Apply";
+    }
+    if (resetButtonEl) {
+      resetButtonEl.disabled = applying;
+    }
+  }
+
+  function updateStatusUI(): void {
+    updateDirtyBadge();
+    updateApplyButton();
+  }
+
+  function showApplyMessage(state: "ok" | "error" | "applying", text: string): void {
+    if (!applyMessageEl) return;
+    applyMessageEl.classList.add("is-visible");
+    applyMessageEl.dataset.state = state;
+    applyMessageEl.textContent = text;
+  }
+
+  function clearApplyMessage(): void {
+    if (!applyMessageEl) return;
+    applyMessageEl.classList.remove("is-visible");
+    applyMessageEl.textContent = "";
+    delete applyMessageEl.dataset.state;
+  }
+
+  /** A fresh edit after a settled Apply (applied or error) makes that
+   * outcome message stale — clear it rather than leave a misleading
+   * "Applied"/error message next to a draft that has since changed again. */
+  function clearStaleApplyOutcome(): void {
+    if (applyStatus === "applied" || applyStatus === "error") {
+      applyStatus = "idle";
+      clearApplyMessage();
     }
   }
 
@@ -152,6 +231,7 @@ export function createParameterPanelController(container: HTMLElement): Paramete
 
   function handleScalarInput(field: ScalarFieldKey, value: string): void {
     if (!draft) return;
+    clearStaleApplyOutcome();
     draft = updateScalarField(draft, field, value);
     const errorEl = scalarErrorEls.get(field);
     const errorText = draft.errors[field] ?? "";
@@ -162,6 +242,7 @@ export function createParameterPanelController(container: HTMLElement): Paramete
 
   function handleGaugeInput(index: number, value: string): void {
     if (!draft) return;
+    clearStaleApplyOutcome();
     draft = updateGauge(draft, index, value);
     const item = gaugeListEl?.querySelector(`[data-gauge-index="${index}"]`);
     const errorEl = item?.querySelector<HTMLElement>(".parameter-error");
@@ -173,6 +254,7 @@ export function createParameterPanelController(container: HTMLElement): Paramete
 
   function handleAddGauge(): void {
     if (!draft) return;
+    clearStaleApplyOutcome();
     draft = addGauge(draft);
     renderGaugeList();
     updateStatusUI();
@@ -180,18 +262,24 @@ export function createParameterPanelController(container: HTMLElement): Paramete
 
   function handleRemoveGauge(index: number): void {
     if (!draft) return;
+    clearStaleApplyOutcome();
     draft = removeGauge(draft, index);
     renderGaugeList();
     updateStatusUI();
   }
 
+  /** Reset only ever touches the local draft — never calls applyParameters
+   * (§25 of the M3 mandate: reset does not regenerate). It restores the
+   * canonical defaults into the draft, not into `accepted` — if `accepted`
+   * currently differs from `defaults` (some other state was already
+   * Applied), the draft becomes dirty again and Apply is required to
+   * actually restore the default geometry, exactly as the mandate
+   * specifies. */
   function handleReset(): void {
-    if (!baseline) return;
-    draft = resetDraft(baseline);
-    if (applyMessageEl) {
-      applyMessageEl.textContent = "";
-      applyMessageEl.classList.remove("is-visible");
-    }
+    if (!defaults || applyStatus === "applying") return;
+    draft = resetDraft(defaults);
+    applyStatus = "idle";
+    clearApplyMessage();
     for (const field of SCALAR_FIELDS) {
       const input = scalarInputs.get(field);
       if (input) {
@@ -205,25 +293,83 @@ export function createParameterPanelController(container: HTMLElement): Paramete
     updateStatusUI();
   }
 
-  function handleApply(): void {
-    if (!draft || !applyMessageEl) return;
-    const result = serializeDraft(draft);
-    applyMessageEl.classList.add("is-visible");
-    if (result.ok) {
-      acceptedRequest = result.request;
-      applyMessageEl.dataset.state = "ok";
-      applyMessageEl.textContent =
-        "Applied locally. Preview regeneration is not yet connected — that begins in Build 023 M3.";
-    } else {
-      applyMessageEl.dataset.state = "error";
-      applyMessageEl.textContent = `Cannot apply — fix the highlighted fields first (${result.errors.length} issue(s)).`;
+  function formatApplyError(error: unknown): {
+    formMessage: string;
+    fieldErrors: Partial<Record<ScalarFieldKey, string>>;
+  } {
+    if (isEngineError(error)) {
+      const fieldErrors: Partial<Record<ScalarFieldKey, string>> = {};
+      const details = error.details as { field?: unknown; errors?: unknown } | undefined;
+      if (details && typeof details.field === "string" && details.field in PARAMETER_FIELDS_BY_KEY) {
+        fieldErrors[details.field as ScalarFieldKey] = error.message;
+      }
+      if (Array.isArray(details?.errors) && details.errors.every((e) => typeof e === "string")) {
+        return { formMessage: (details.errors as string[]).join(" "), fieldErrors };
+      }
+      return { formMessage: `${error.code}: ${error.message}`, fieldErrors };
     }
+    return { formMessage: String(error), fieldErrors: {} };
+  }
+
+  function applyFieldErrors(fieldErrors: Partial<Record<ScalarFieldKey, string>>): void {
+    for (const [field, message] of Object.entries(fieldErrors) as [ScalarFieldKey, string][]) {
+      const errorEl = scalarErrorEls.get(field);
+      if (errorEl) errorEl.textContent = message;
+      scalarInputs.get(field)?.setAttribute("aria-invalid", "true");
+    }
+  }
+
+  /** The sole geometry-regeneration trigger in M3 (§9 of the mandate).
+   * `applyStatus` is set to "applying" synchronously, before any `await` —
+   * since JS runs that prefix to completion before yielding, no second
+   * invocation (double click, Enter-triggered re-entry, etc.) can slip in
+   * between the guard check and the flag being set (§15/§37). A snapshot of
+   * the values actually being submitted is captured up front, so a
+   * concurrent edit to `draft` while the request is in flight cannot alter
+   * what gets recorded as accepted on success (§17/§21 of the mandate —
+   * atomic w.r.t. the in-flight request). */
+  async function handleApply(): Promise<void> {
+    if (!draft || !accepted) return;
+    if (applyStatus === "applying") return;
+    if (hasDraftErrors(draft)) return;
+    if (!isDraftDirty(draft, accepted)) return;
+    if (!serializeDraft(draft).ok) return;
+
+    const submittedValues = cloneValues(draft.values);
+    applyStatus = "applying";
+    updateStatusUI();
+
+    // project_name-only changes never affect the generated geometry (§24 of
+    // the mandate) — accept locally without a wasted engine round trip.
+    if (isGeometryUnchanged(submittedValues, accepted)) {
+      accepted = submittedValues;
+      applyStatus = "applied";
+      showApplyMessage("ok", "Applied locally — metadata only, no geometry regeneration needed.");
+      updateStatusUI();
+      return;
+    }
+
+    showApplyMessage("applying", "Requesting updated geometry…");
+    const result = await applyParameters(submittedValues);
+
+    if (result.ok) {
+      accepted = submittedValues;
+      applyStatus = "applied";
+      showApplyMessage("ok", "Applied — preview updated.");
+    } else {
+      applyStatus = "error";
+      const { formMessage, fieldErrors } = formatApplyError(result.error);
+      showApplyMessage("error", formMessage);
+      applyFieldErrors(fieldErrors);
+    }
+    updateStatusUI();
   }
 
   function buildForm(values: ZeroRodParametersValues): void {
     draft = draftFromValues(values);
-    baseline = values;
-    acceptedRequest = null;
+    defaults = values;
+    accepted = cloneValues(values);
+    applyStatus = "idle";
     scalarInputs.clear();
     scalarErrorEls.clear();
 
@@ -247,7 +393,7 @@ export function createParameterPanelController(container: HTMLElement): Paramete
           <span class="parameter-dirty-badge">Unsaved parameter changes</span>
         </div>
         <p class="parameter-panel-hint">
-          Parameter changes are not yet applied to the preview until the next integration milestone.
+          Press Apply to send your changes to the engine and update the 3D preview.
         </p>
         <form class="parameter-form" novalidate>
           ${groupsHtml}
@@ -260,10 +406,16 @@ export function createParameterPanelController(container: HTMLElement): Paramete
       </div>
     `;
 
+    // No submit-type button exists, so pressing Enter in a text field has no
+    // implicit-submission target per the HTML form-submission algorithm —
+    // Enter deliberately does nothing here (§38 of the M3 mandate); this
+    // listener is only a defensive backstop in case a future edit ever adds
+    // one.
     container.querySelector("form")?.addEventListener("submit", (event) => event.preventDefault());
 
     dirtyBadgeEl = container.querySelector<HTMLElement>(".parameter-dirty-badge");
     applyButtonEl = container.querySelector<HTMLButtonElement>('[data-action="apply"]');
+    resetButtonEl = container.querySelector<HTMLButtonElement>('[data-action="reset"]');
     applyMessageEl = container.querySelector<HTMLElement>(".parameter-apply-message");
     gaugeListEl = container.querySelector<HTMLElement>(
       '[data-field="string_gauges_inch"] .gauge-list',
@@ -282,7 +434,9 @@ export function createParameterPanelController(container: HTMLElement): Paramete
 
     container.querySelector('[data-action="add-gauge"]')?.addEventListener("click", handleAddGauge);
     container.querySelector('[data-action="reset"]')?.addEventListener("click", handleReset);
-    container.querySelector('[data-action="apply"]')?.addEventListener("click", handleApply);
+    container.querySelector('[data-action="apply"]')?.addEventListener("click", () => {
+      void handleApply();
+    });
 
     renderGaugeList();
     updateStatusUI();
@@ -300,6 +454,8 @@ export function createParameterPanelController(container: HTMLElement): Paramete
 
   return {
     load,
-    getAcceptedRequest: () => acceptedRequest,
+    getAcceptedRequest: () => (accepted ? buildParametersRequest(accepted) : null),
+    getAccepted: () => accepted,
+    getApplyStatus: () => applyStatus,
   };
 }

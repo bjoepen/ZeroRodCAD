@@ -6,9 +6,16 @@ local validation feedback, no automatic preview regeneration) is covered by auto
 document is the interactive click-through a human tester still needs to do — real WebView keyboard
 input, focus behavior, and visual layout cannot be fully proven by jsdom-based unit tests alone.
 
-This environment has no display/GUI access, so every item below is left **unchecked** rather than
-assumed, per the mandate's own allowance for this ("Claude leaves unchecked if human clicking
-unavailable").
+This environment had no display/GUI access when the checklist below was drafted, so every item was
+initially left **unchecked** rather than assumed, per the mandate's own allowance for this ("Claude
+leaves unchecked if human clicking unavailable").
+
+**Update:** the Project Owner has since performed this validation against the fresh release bundle
+built for M2 (`docs/migration/BUILD-023-M2-PARAMETER-CONTROLS.md`'s artifact, commit `d691d95`) and
+reported an overall **PASS**. That report did not itemize individual checklist rows, so the
+itemized checkboxes below are left unchecked rather than retroactively marked — the "Result" table's
+aggregate PASS is the authoritative record of what the Project Owner actually reported. No
+additional or repeat validation was performed by Claude to produce this update.
 
 ## Build under test
 
@@ -50,16 +57,15 @@ build.
 
 | Field | Value |
 |---|---|
-| Tester | *(pending)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Hardware | *(pending)* |
-| Result | **PENDING** |
-| Notes | Not yet performed — no interactive display available in the environment this milestone was engineered in. |
+| Tester | Project Owner |
+| Date | not separately itemized by the tester's report |
+| macOS | not separately itemized by the tester's report |
+| Hardware | not separately itemized by the tester's report |
+| Result | **PASS** |
+| Notes | Reported directly by the Project Owner as an overall PASS against the M2 release artifact (commit `d691d95`). Individual checklist rows above were not itemized in that report and are left unchecked rather than retroactively assumed — the aggregate PASS in this table is the actual recorded result. |
 
 ## Gate BUILD-023-M2 (human component)
 
-**PENDING.** Engineering criteria are covered by `scripts/validate-build023-m2.sh`; this checklist's
-completion is the remaining condition for the milestone's overall PASS, per the mandate's PARTIAL
-allowance for "engineering works but a clearly noncritical UI interaction remains pending human
-validation."
+**PASS**, as reported by the Project Owner. Combined with the engineering gate
+(`scripts/validate-build023-m2.sh`, PASS), **Gate BUILD-023-M2: PASS** overall — Milestone 2 is
+COMPLETE.

@@ -1,6 +1,9 @@
-// Build 023 M2 — local parameter draft state. Purely local: nothing here
-// ever calls invoke() or talks to the sidecar (that stays parameters.ts's
-// job, unused by this milestone's UI). Owns:
+// Build 023 M2 — local parameter draft state; extended in M3 with
+// `cloneValues`/`isGeometryUnchanged` for the accepted-state Apply flow
+// (parameter_panel.ts). Still purely local: nothing here ever calls
+// invoke() or talks to the sidecar (that stays parameters.ts's job — the
+// actual request happens in preview.ts, triggered by parameter_panel.ts's
+// Apply handler, not from this module). Owns:
 //   - the local "draft" a.k.a. "what's currently in the form controls"
 //   - dirty tracking (draft vs. the loaded/accepted baseline)
 //   - local structural validation (required/finite/positive-per-contract —
@@ -53,8 +56,25 @@ export interface ParameterDraftState {
   gaugeErrors: (string | null)[];
 }
 
-function cloneValues(values: ZeroRodParametersValues): ZeroRodParametersValues {
+export function cloneValues(values: ZeroRodParametersValues): ZeroRodParametersValues {
   return { ...values, string_gauges_inch: [...values.string_gauges_inch] };
+}
+
+/** True when every geometry-affecting field (everything except the
+ * `project_name` metadata field) is identical between `a` and `b` — used by
+ * Build 023 M3's Apply flow to skip the engine round trip entirely for a
+ * metadata-only change (§24 of the M3 mandate), since a request that only
+ * differs in `project_name` cannot produce a different mesh. */
+export function isGeometryUnchanged(a: ZeroRodParametersValues, b: ZeroRodParametersValues): boolean {
+  for (const field of SCALAR_FIELDS) {
+    if (field === "project_name") continue;
+    if (a[field] !== b[field]) return false;
+  }
+  if (a.string_gauges_inch.length !== b.string_gauges_inch.length) return false;
+  for (let i = 0; i < a.string_gauges_inch.length; i++) {
+    if (a.string_gauges_inch[i] !== b.string_gauges_inch[i]) return false;
+  }
+  return true;
 }
 
 /** Canonical string form used both to seed `raw`/`rawGauges` and to detect
@@ -197,10 +217,15 @@ export function removeGauge(draft: ParameterDraftState, index: number): Paramete
   return { ...draft, values, rawGauges, gaugeErrors };
 }
 
-/** Dirty means "the text currently in the form differs from the
- * loaded/accepted baseline" — including an invalid in-progress edit, which
- * is deliberately still "modified" even though it hasn't reached `values`
- * yet (§18 of the M2 mandate). */
+/** Dirty means "the text currently in the form differs from `baseline`" —
+ * including an invalid in-progress edit, which is deliberately still
+ * "modified" even though it hasn't reached `values` yet (§18 of the M2
+ * mandate). The caller decides what `baseline` means: M2 passed the loaded
+ * canonical defaults; Build 023 M3 instead passes the last successfully
+ * *accepted* parameter state (§26 of the M3 mandate — dirty means "differs
+ * from the last applied state," not "differs from startup defaults"). This
+ * function itself is unchanged between M2 and M3; only what callers pass in
+ * differs. */
 export function isDraftDirty(draft: ParameterDraftState, baseline: ZeroRodParametersValues): boolean {
   for (const field of SCALAR_FIELDS) {
     if (draft.raw[field] !== formatFieldValue(baseline[field] as string | number)) {

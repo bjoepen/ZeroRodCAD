@@ -21,7 +21,7 @@ const appEl = document.querySelector<HTMLDivElement>("#app")!;
 appEl.innerHTML = `
   <main class="foundation">
     <h1>ZeroRodCAD Desktop 2.0</h1>
-    <p class="subtitle">Build 023 — Milestone 2: Parameter Controls Foundation</p>
+    <p class="subtitle">Build 023 — Milestone 3: Parameter-to-Engine Integration</p>
     <div class="layout">
       <section class="sidebar">
         <section class="status-panel" id="status-panel"></section>
@@ -131,7 +131,10 @@ function handlePreviewStateChange(state: PreviewState, detail: string): void {
 }
 
 const preview = createPreviewController(viewportEl, handlePreviewStateChange);
-const parameterPanel = createParameterPanelController(parameterPanelEl);
+// Build 023 M3: the panel's Apply handler drives the same geometry-replacement
+// path the "Load / Refresh ZeroRod" button uses — preview.load() reused
+// as-is, just called with explicit parameter values instead of none.
+const parameterPanel = createParameterPanelController(parameterPanelEl, preview.load);
 
 document.querySelector<HTMLButtonElement>("#start-check-engine")!.addEventListener("click", () => {
   void handleStartCheckEngine();
