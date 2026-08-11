@@ -8,6 +8,7 @@ import {
   requestPreviewSummary,
   type LifecycleState,
 } from "./engine";
+import { createExportPanelController } from "./export_panel";
 import { createParameterPanelController } from "./parameter_panel";
 import { createPreviewController, previewStateToStatusValue, type PreviewState } from "./preview";
 import { renderStatusRows, type StatusRow, type StatusValue } from "./status";
@@ -21,7 +22,7 @@ const appEl = document.querySelector<HTMLDivElement>("#app")!;
 appEl.innerHTML = `
   <main class="foundation">
     <h1>ZeroRodCAD Desktop 2.0</h1>
-    <p class="subtitle">Build 023 — Milestone 4: Live Preview Behavior & UX</p>
+    <p class="subtitle">Build 024 — Milestone 2: Native Save Dialog &amp; Export Controls</p>
     <div class="layout">
       <section class="sidebar">
         <section class="status-panel" id="status-panel"></section>
@@ -33,7 +34,10 @@ appEl.innerHTML = `
         </section>
         <pre id="last-action" class="last-action"></pre>
       </section>
-      <section class="parameters" id="parameter-panel"></section>
+      <div class="parameters-column">
+        <section class="parameters" id="parameter-panel"></section>
+        <section class="export-panel-container" id="export-panel"></section>
+      </div>
       <section class="viewport" id="viewport"></section>
     </div>
   </main>
@@ -43,6 +47,7 @@ const statusPanelEl = document.querySelector<HTMLDivElement>("#status-panel")!;
 const lastActionEl = document.querySelector<HTMLPreElement>("#last-action")!;
 const viewportEl = document.querySelector<HTMLDivElement>("#viewport")!;
 const parameterPanelEl = document.querySelector<HTMLDivElement>("#parameter-panel")!;
+const exportPanelEl = document.querySelector<HTMLDivElement>("#export-panel")!;
 
 const rows: StatusRow[] = [
   { id: "shell", label: "Desktop shell", value: "READY" },
@@ -137,10 +142,27 @@ const preview = createPreviewController(viewportEl, handlePreviewStateChange);
 // mandate — but they need the fetch and commit steps separately so a
 // stale (superseded) result can be discarded before it ever reaches the
 // scene (see live_preview.ts and parameter_panel.ts's module doc comments).
-const parameterPanel = createParameterPanelController(parameterPanelEl, {
-  fetchPreview: preview.fetchPreview,
-  commitPreview: preview.commitPreview,
+// Build 024 M2: the export panel needs to react whenever `accepted` or the
+// live-preview status might have changed (its trigger's enablement depends
+// on both), but is created after `parameterPanel` while `parameterPanel`
+// itself needs the notify callback at construction time — this forward
+// reference (assigned synchronously, right below, before any async work can
+// run) breaks that ordering cycle without either module importing the
+// other's internals.
+let exportPanelRef: { refreshEnablement: () => void } | null = null;
+const parameterPanel = createParameterPanelController(
+  parameterPanelEl,
+  {
+    fetchPreview: preview.fetchPreview,
+    commitPreview: preview.commitPreview,
+  },
+  () => exportPanelRef?.refreshEnablement(),
+);
+const exportPanel = createExportPanelController(exportPanelEl, {
+  getAcceptedRequest: () => parameterPanel.getAcceptedRequest(),
+  getLivePreviewStatus: () => parameterPanel.getLivePreviewStatus(),
 });
+exportPanelRef = exportPanel;
 
 document.querySelector<HTMLButtonElement>("#start-check-engine")!.addEventListener("click", () => {
   void handleStartCheckEngine();
@@ -158,6 +180,7 @@ document.querySelector<HTMLButtonElement>("#load-zerorod")!.addEventListener("cl
 window.addEventListener("beforeunload", () => {
   preview.dispose();
   parameterPanel.dispose();
+  exportPanel.dispose();
 });
 
 async function init(): Promise<void> {

@@ -154,6 +154,48 @@ describe("initial state", () => {
   });
 });
 
+describe("onChange notification (Build 024 M2 — export panel enablement hook)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("calls onChange once defaults load and settle to up-to-date", async () => {
+    const onChange = vi.fn();
+    preloadDefaults();
+    const panel = createParameterPanelController(container, previewIO, onChange);
+    await panel.load();
+
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("calls onChange synchronously when a live-preview request starts (before it settles)", async () => {
+    let resolveFetch!: (value: FetchPreviewResult) => void;
+    fetchPreview.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const onChange = vi.fn();
+    preloadDefaults();
+    const panel = createParameterPanelController(container, previewIO, onChange);
+    await panel.load();
+    onChange.mockClear();
+
+    setValue(scalarInput(container, "body_width"), "60");
+    await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS);
+    await Promise.resolve();
+
+    expect(panel.getLivePreviewStatus()).toBe("updating");
+    expect(onChange).toHaveBeenCalled();
+
+    resolveFetch({ ok: true, data: FAKE_DATA });
+    await flushDebounceAndSettle();
+  });
+});
+
 describe("live preview scheduling — geometry vs. metadata vs. invalid", () => {
   beforeEach(() => {
     vi.useFakeTimers();

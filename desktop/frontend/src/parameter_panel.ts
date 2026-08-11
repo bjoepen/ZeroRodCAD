@@ -154,6 +154,7 @@ export interface ParameterPanelController {
 export function createParameterPanelController(
   container: HTMLElement,
   previewIO: PreviewIO,
+  onChange?: () => void,
 ): ParameterPanelController {
   let draft: ParameterDraftState | null = null;
   let defaults: ZeroRodParametersValues | null = null;
@@ -188,6 +189,16 @@ export function createParameterPanelController(
   function setLiveStatus(status: LivePreviewStatus, errorMessage?: string): void {
     livePreviewStatus = status;
     if (liveStatusEl) liveStatusEl.dataset.status = status;
+    // Build 024 M2: the export panel lives outside this module (§36 of the
+    // M2 mandate — export UI logic stays isolated, not mixed into parameter
+    // state) but its trigger's enablement depends on `accepted`/live-preview
+    // status, both of which only ever change together with a call here
+    // (including the synchronous onRequestStart -> "updating" transition, not
+    // just onSettle) — so notifying from this single point, rather than from
+    // updateStatusUI, is what actually keeps "disable export while preview is
+    // in flight" true for an Apply-triggered request too, not just automatic
+    // debounced edits.
+    onChange?.();
 
     if (updatingDisplayTimer !== null) {
       clearTimeout(updatingDisplayTimer);

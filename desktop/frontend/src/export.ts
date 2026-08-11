@@ -27,6 +27,21 @@ export interface ExportResult {
   timing: { export_seconds: number };
 }
 
+/** One expected/conflicting output filename, as returned by the sidecar's
+ * `export_preflight` command — `role` and `filename` only, never a
+ * directory listing. */
+export interface ExportPreflightFile {
+  role: string;
+  filename: string;
+}
+
+export interface ExportPreflightResult {
+  output_directory: string;
+  expected_files: ExportPreflightFile[];
+  conflicts: ExportPreflightFile[];
+  has_conflicts: boolean;
+}
+
 /** Shows the OS's native directory picker via the Rust-owned
  * `select_export_directory` command and returns the chosen path, or `null`
  * if the user cancelled — cancellation is a normal, non-error outcome (see
@@ -51,6 +66,26 @@ export async function requestExport(
   outputDirectory: string,
 ): Promise<ExportResult> {
   return await invoke<ExportResult>("engine_export", {
+    parameters: buildParametersRequest(values),
+    output_directory: outputDirectory,
+  });
+}
+
+/** Build 024 M2: checks which of `export`'s expected output filenames
+ * already exist in `outputDirectory`, without performing an export or
+ * granting the WebView any directory-listing capability — the sidecar
+ * checks only the fixed, known filename set (see
+ * docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md's `project_name`
+ * findings) and returns which ones already exist. Same argument shape as
+ * `requestExport`; call this first and only call `requestExport` directly
+ * (skipping a second preflight) once the caller has its own overwrite
+ * confirmation, if any conflicts were reported. Throws an `EngineError` on
+ * any structured failure (e.g. invalid destination), same as `requestExport`. */
+export async function requestExportPreflight(
+  values: Partial<ZeroRodParametersValues>,
+  outputDirectory: string,
+): Promise<ExportPreflightResult> {
+  return await invoke<ExportPreflightResult>("engine_export_preflight", {
     parameters: buildParametersRequest(values),
     output_directory: outputDirectory,
   });

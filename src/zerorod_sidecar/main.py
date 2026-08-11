@@ -230,6 +230,47 @@ def _run_export_command(parameters: dict) -> dict:
     }
 
 
+def _run_export_preflight_command(parameters: dict) -> dict:
+    """Build 024 M2 — pure, side-effect-free conflict check: which of
+    `export`'s expected output filenames already exist in `output_directory`.
+
+    Performs no export and no directory listing/enumeration; it only checks
+    the fixed, known set of filenames `export_project` would itself produce
+    (via `zerorodcad.export.expected_output_filenames`, the same
+    sanitization logic `export` uses, reused rather than duplicated — see
+    docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md's `project_name`
+    findings). Same request shape as `export` (minus performing the export
+    itself), so the frontend can preflight with the exact same accepted
+    parameters/destination it would otherwise export with.
+    """
+    from zerorod_sidecar.parameters_contract import parse_parameters_request
+    from zerorodcad.export import expected_output_filenames
+
+    output_directory = parameters.get("output_directory")
+    if not isinstance(output_directory, str) or not output_directory.strip():
+        raise SidecarError(
+            "invalid_destination",
+            "output_directory must be a non-empty string",
+            details={"field": "output_directory"},
+        )
+
+    # Level 1/2 only: this is a filename check, not an export — no domain
+    # (Level 3) validation is needed just to read `project_name` back out.
+    params = parse_parameters_request(parameters.get("parameters", {}))
+    expected = expected_output_filenames(params.project_name)
+
+    directory = Path(output_directory)
+    expected_files = [{"role": role, "filename": filename} for role, filename in expected.items()]
+    conflicts = [entry for entry in expected_files if (directory / entry["filename"]).is_file()]
+
+    return {
+        "output_directory": str(directory),
+        "expected_files": expected_files,
+        "conflicts": conflicts,
+        "has_conflicts": bool(conflicts),
+    }
+
+
 def _run_parameters_defaults_command(parameters: dict) -> dict:  # noqa: ARG001
     """Returns the canonical default ZeroRodParameters wrapped in the
     zerorod-parameters/v1 envelope — the single authoritative default set a
@@ -249,6 +290,7 @@ COMMANDS = {
     "status": _run_status_command,
     "preview": _run_preview_command,
     "export": _run_export_command,
+    "export_preflight": _run_export_preflight_command,
     "parameters_defaults": _run_parameters_defaults_command,
     "shutdown": _run_shutdown_command,
 }

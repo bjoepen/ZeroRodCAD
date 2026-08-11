@@ -8,7 +8,13 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import { PARAMETERS_SCHEMA } from "./parameters";
-import { requestExport, selectExportDirectory, type ExportResult } from "./export";
+import {
+  requestExport,
+  requestExportPreflight,
+  selectExportDirectory,
+  type ExportPreflightResult,
+  type ExportResult,
+} from "./export";
 
 beforeEach(() => {
   invokeMock.mockReset();
@@ -64,5 +70,51 @@ describe("requestExport", () => {
     invokeMock.mockRejectedValueOnce(engineError);
 
     await expect(requestExport({}, "/readonly")).rejects.toEqual(engineError);
+  });
+});
+
+describe("requestExportPreflight", () => {
+  it("invokes engine_export_preflight with a wrapped parameters envelope and the destination", async () => {
+    const result: ExportPreflightResult = {
+      output_directory: "/Users/example/exports",
+      expected_files: [
+        { role: "body_stl", filename: "cbg-open-g-body.stl" },
+        { role: "assembly_step", filename: "cbg-open-g-assembly.step" },
+        { role: "report_markdown", filename: "cbg-open-g-report.md" },
+      ],
+      conflicts: [],
+      has_conflicts: false,
+    };
+    invokeMock.mockResolvedValueOnce(result);
+
+    const returned = await requestExportPreflight({ body_width: 60.0 }, "/Users/example/exports");
+
+    expect(returned).toEqual(result);
+    expect(invokeMock).toHaveBeenCalledWith("engine_export_preflight", {
+      parameters: { schema: PARAMETERS_SCHEMA, values: { body_width: 60.0 } },
+      output_directory: "/Users/example/exports",
+    });
+  });
+
+  it("reports conflicts when expected output files already exist", async () => {
+    const result: ExportPreflightResult = {
+      output_directory: "/Users/example/exports",
+      expected_files: [{ role: "body_stl", filename: "cbg-open-g-body.stl" }],
+      conflicts: [{ role: "body_stl", filename: "cbg-open-g-body.stl" }],
+      has_conflicts: true,
+    };
+    invokeMock.mockResolvedValueOnce(result);
+
+    const returned = await requestExportPreflight({}, "/Users/example/exports");
+
+    expect(returned.has_conflicts).toBe(true);
+    expect(returned.conflicts).toHaveLength(1);
+  });
+
+  it("propagates a rejected invoke() call (structured EngineError) unchanged", async () => {
+    const engineError = { code: "invalid_destination", message: "output_directory must be a non-empty string" };
+    invokeMock.mockRejectedValueOnce(engineError);
+
+    await expect(requestExportPreflight({}, "")).rejects.toEqual(engineError);
   });
 });

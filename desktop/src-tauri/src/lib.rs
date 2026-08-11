@@ -31,6 +31,7 @@ pub fn run() {
             commands::engine_preview_mesh_with_parameters,
             commands::engine_parameters_defaults,
             commands::engine_export,
+            commands::engine_export_preflight,
             commands::select_export_directory,
             commands::engine_shutdown,
         ])

@@ -371,3 +371,92 @@ def test_export_unknown_field_name_rejected(tmp_path: Path) -> None:
     response = handle_request(_export_request(str(tmp_path), {"not_a_real_field": 1.0}))
     assert response["ok"] is False
     assert response["error"]["code"] == "invalid_parameters"
+
+
+# --- Build 024 M2: export_preflight --------------------------------------
+
+
+def _export_preflight_request(output_directory: str, values: dict | None = None) -> str:
+    parameters: dict = {"output_directory": output_directory}
+    if values is not None:
+        parameters["parameters"] = _params(values)
+    return _request(command="export_preflight", parameters=parameters)
+
+
+def test_export_preflight_no_conflict_in_empty_directory(tmp_path: Path) -> None:
+    response = handle_request(_export_preflight_request(str(tmp_path)))
+    assert response["ok"] is True
+    result = response["result"]
+    assert result["output_directory"] == str(tmp_path)
+    assert result["has_conflicts"] is False
+    assert result["conflicts"] == []
+    roles = {f["role"] for f in result["expected_files"]}
+    assert roles == {"body_stl", "assembly_step", "report_markdown"}
+
+
+def test_export_preflight_does_not_perform_an_export(tmp_path: Path) -> None:
+    handle_request(_export_preflight_request(str(tmp_path)))
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_export_preflight_reports_one_conflict(tmp_path: Path) -> None:
+    handle_request(_export_request(str(tmp_path)))
+    response = handle_request(_export_preflight_request(str(tmp_path)))
+    result = response["result"]
+    assert result["has_conflicts"] is True
+    assert len(result["conflicts"]) == 3  # all three real files now exist
+
+
+def test_export_preflight_reports_multiple_conflicts_partial(tmp_path: Path) -> None:
+    (tmp_path / "cbg-open-g-body.stl").write_bytes(b"x")
+    (tmp_path / "cbg-open-g-report.md").write_text("x")
+    response = handle_request(_export_preflight_request(str(tmp_path)))
+    result = response["result"]
+    assert result["has_conflicts"] is True
+    conflict_roles = {c["role"] for c in result["conflicts"]}
+    assert conflict_roles == {"body_stl", "report_markdown"}
+
+
+def test_export_preflight_sanitized_project_name_collision_detected(tmp_path: Path) -> None:
+    # "A!B" and "A?B" both sanitize to "a-b" (documented Build 024 M1
+    # finding) — preflight must naturally catch this via the same
+    # sanitization export uses, not a separate uniqueness check.
+    (tmp_path / "a-b-body.stl").write_bytes(b"x")
+    response = handle_request(_export_preflight_request(str(tmp_path), {"project_name": "A?B"}))
+    result = response["result"]
+    assert result["has_conflicts"] is True
+    assert any(c["filename"] == "a-b-body.stl" for c in result["conflicts"])
+
+
+def test_export_preflight_filenames_match_actual_export_output(tmp_path: Path) -> None:
+    preflight = handle_request(
+        _export_preflight_request(str(tmp_path), {"project_name": "My Custom Rod!"})
+    )["result"]
+    export_result = handle_request(
+        _export_request(str(tmp_path), {"project_name": "My Custom Rod!"})
+    )["result"]
+
+    preflight_filenames = {f["role"]: f["filename"] for f in preflight["expected_files"]}
+    export_filenames = {f["role"]: f["filename"] for f in export_result["files"]}
+    assert preflight_filenames == export_filenames
+
+
+def test_export_preflight_missing_output_directory_returns_invalid_destination_error() -> None:
+    response = handle_request(_request(command="export_preflight", parameters={}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_destination"
+
+
+def test_export_preflight_empty_output_directory_returns_invalid_destination_error() -> None:
+    response = handle_request(
+        _request(command="export_preflight", parameters={"output_directory": "   "})
+    )
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_destination"
+
+
+def test_export_preflight_result_is_json_serializable_and_has_no_traceback(tmp_path: Path) -> None:
+    response = handle_request(_export_preflight_request(str(tmp_path)))
+    serialized = json.dumps(response)
+    assert "Traceback" not in serialized
+    assert 'File "' not in serialized

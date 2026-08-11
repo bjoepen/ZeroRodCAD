@@ -220,6 +220,85 @@ class TestRealPersistentSubprocess:
             Path(default_files["body_stl"]).read_bytes() != Path(alt_files["body_stl"]).read_bytes()
         )
 
+    def test_real_subprocess_preflight_overwrite_confirm_sequence(self, tmp_path):
+        """Build 024 M2 §45: the real bundled-interpreter proof of the full
+        M2 overwrite UX sequence — preview defaults, preflight an empty
+        destination (no conflict), export into it, preflight the same
+        destination again (now a conflict, since export_preflight never
+        performs an export itself), export again (the "confirm overwrite"
+        request) and verify it actually replaced the content, then confirm
+        the sidecar is still healthy (another preview) before a clean
+        shutdown. No restart, no protocol corruption, no orphan."""
+        export_dir = tmp_path / "export"
+        export_params = {"output_directory": str(export_dir)}
+        alt_params = {
+            "output_directory": str(export_dir),
+            "parameters": {"schema": "zerorod-parameters/v1", "values": {"body_width": 60.0}},
+        }
+
+        lines = (
+            _req("preview-1", "preview")
+            + _req("preflight-empty", "export_preflight", export_params)
+            + _req("export-1", "export", export_params)
+            + _req("preflight-conflict", "export_preflight", export_params)
+            + _req("export-2", "export", alt_params)
+            + _req("preview-2", "preview")
+            + _req("bye", "shutdown")
+        )
+        result = self._run_subprocess(lines)
+        assert result.returncode == 0
+        responses = {
+            r["request_id"]: r
+            for r in (json.loads(line) for line in result.stdout.splitlines() if line.strip())
+        }
+        for request_id in (
+            "preview-1",
+            "preflight-empty",
+            "export-1",
+            "preflight-conflict",
+            "export-2",
+            "preview-2",
+            "bye",
+        ):
+            assert responses[request_id]["ok"] is True, responses[request_id]
+
+        assert responses["preflight-empty"]["result"]["has_conflicts"] is False
+        assert responses["preflight-empty"]["result"]["conflicts"] == []
+
+        for entry in responses["export-1"]["result"]["files"]:
+            path = Path(entry["path"])
+            assert path.is_file() and path.stat().st_size > 0
+
+        # export-1 already wrote all three files into export_dir, so
+        # preflighting the *same* destination again must now report all
+        # three as conflicts — proving preflight and export share the exact
+        # same naming logic (zerorodcad.export.expected_output_filenames),
+        # not a separately duplicated one.
+        conflict_result = responses["preflight-conflict"]["result"]
+        assert conflict_result["has_conflicts"] is True
+        assert len(conflict_result["conflicts"]) == 3
+
+        second_files = {
+            f["role"]: Path(f["path"]) for f in responses["export-2"]["result"]["files"]
+        }
+        for path in second_files.values():
+            assert path.is_file() and path.stat().st_size > 0
+        # Same filenames (same project_name) — real overwrite-in-place, not
+        # a second file set alongside the first (byte-level overwrite
+        # content is already proven directly, without the batched-subprocess
+        # read-only-after-the-fact limitation, by
+        # test_export_overwrites_existing_output_files_in_place in
+        # test_zerorod_sidecar_main.py). Here, the final on-disk report
+        # reflecting the *second* export's parameters (body_width: 60, not
+        # the default 38) is itself proof the overwrite actually happened
+        # rather than being silently skipped.
+        assert {p.name for p in second_files.values()} == {
+            "cbg-open-g-body.stl",
+            "cbg-open-g-assembly.step",
+            "cbg-open-g-report.md",
+        }
+        assert "60.00 mm" in second_files["report_markdown"].read_text()
+
     def test_real_subprocess_no_vtk_or_pyside6(self):
         probe = """
 import sys, json

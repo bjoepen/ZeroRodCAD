@@ -182,6 +182,30 @@ pub async fn engine_export(
     engine::request(&app, &state, "export", request_parameters).await
 }
 
+/// Build 024 M2: pure, side-effect-free overwrite-conflict check for the
+/// destination `engine_export` would write into — same request shape as
+/// `engine_export` (parameters + output_directory), minus performing the
+/// export itself. Rust does not interpret either value, exactly like
+/// `engine_export`; the actual filename/conflict logic lives sidecar-side
+/// (`export_preflight`, reusing `zerorodcad.export.expected_output_filenames`
+/// — the same sanitization `export` itself uses, never duplicated here or
+/// in the frontend). No directory enumeration crosses the IPC boundary,
+/// only the fixed, known set of expected output filenames and which of them
+/// already exist.
+#[tauri::command]
+pub async fn engine_export_preflight(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+    parameters: Value,
+    output_directory: String,
+) -> Result<Value, EngineError> {
+    let request_parameters = serde_json::json!({
+        "parameters": parameters,
+        "output_directory": output_directory,
+    });
+    engine::request(&app, &state, "export_preflight", request_parameters).await
+}
+
 /// Explicit shutdown command (also invoked automatically on app exit — see
 /// `lib.rs`'s `RunEvent::ExitRequested` handler).
 #[tauri::command]

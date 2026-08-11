@@ -87,13 +87,26 @@ h1 {
   overflow-y: auto;
 }
 
-.parameters {
+.parameters-column {
   width: 360px;
   flex: 0 0 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.parameters {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel-bg);
+}
+
+.export-panel-container {
+  flex: 0 0 auto;
 }
 
 .viewport {
@@ -429,4 +442,94 @@ h1 {
 .parameter-panel-actions button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Export panel (Build 024 M2) */
+
+.export-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+}
+
+.export-trigger {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.export-trigger:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.export-trigger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.export-note,
+.export-status {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--neutral);
+}
+
+.export-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--error);
+}
+
+.export-confirm,
+.export-success {
+  font-size: 0.8rem;
+}
+
+.export-confirm p,
+.export-success p {
+  margin: 0 0 0.3rem;
+}
+
+.export-confirm ul,
+.export-success ul {
+  margin: 0 0 0.5rem;
+  padding-left: 1.1rem;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--neutral);
+}
+
+.export-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.export-confirm-actions button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.export-confirm-actions button:hover {
+  background: var(--neutral-bg);
+}
+
+.export-confirm-actions [data-action="confirm-overwrite"] {
+  border-color: var(--warn);
+  color: var(--warn);
 }

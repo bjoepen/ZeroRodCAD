@@ -173,6 +173,34 @@ mod tests {
     }
 
     #[test]
+    fn build_request_line_forwards_export_preflight_combined_shape_verbatim() {
+        // Build 024 M2: commands.rs's engine_export_preflight wraps the
+        // caller's parameters and output_directory into the same combined
+        // shape engine_export uses — no separate wire shape for preflight.
+        let parameters = serde_json::json!({
+            "parameters": {
+                "schema": "zerorod-parameters/v1",
+                "values": {"project_name": "CBG Open G"},
+            },
+            "output_directory": "/tmp/some/chosen/dir",
+        });
+        let line = build_request_line("export_preflight", "rid-1", &parameters);
+        let value: Value = serde_json::from_str(line.trim_end()).unwrap();
+        assert_eq!(value["command"], "export_preflight");
+        assert_eq!(value["parameters"], parameters);
+    }
+
+    #[test]
+    fn parse_response_surfaces_export_preflight_conflict_result_shape() {
+        let line = format!(
+            r#"{{"schema":"{SIDECAR_SCHEMA}","request_id":"rid-1","ok":true,"result":{{"output_directory":"/tmp/out","expected_files":[{{"role":"body_stl","filename":"a.stl"}}],"conflicts":[{{"role":"body_stl","filename":"a.stl"}}],"has_conflicts":true}}}}"#
+        );
+        let result = parse_response(&line, "rid-1").unwrap();
+        assert_eq!(result["has_conflicts"], true);
+        assert_eq!(result["conflicts"][0]["role"], "body_stl");
+    }
+
+    #[test]
     fn parse_response_surfaces_export_result_shape() {
         let line = format!(
             r#"{{"schema":"{SIDECAR_SCHEMA}","request_id":"rid-1","ok":true,"result":{{"output_directory":"/tmp/out","files":[{{"role":"body_stl","filename":"a.stl","path":"/tmp/out/a.stl"}}]}}}}"#
