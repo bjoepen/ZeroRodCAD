@@ -15,7 +15,8 @@ Build 022:                 COMPLETE
 Desktop 2.0 Foundation:    ESTABLISHED
 Build 023:                 COMPLETE (M1-M5 COMPLETE — Gate BUILD-023: PASS)
 Parameters & Live Preview: ESTABLISHED
-Next:                      Build 024 — STL / STEP Export Workflow
+Build 024:                 IN PROGRESS (M1 COMPLETE — Gate BUILD-024-M1: PASS)
+Next:                      Build 024 / M2 — Native Save Dialog & Export Controls
 ```
 
 Die bisherige PySide6-Desktop-Anwendung ist weiterhin vollständig funktionsfähig und dient als aktuelle Referenz-, Feature-Parity- und Fallback-Implementierung, bis die Tauri-Migration vollständig validiert und eine ausdrückliche Entscheidung zur Ablösung getroffen ist. Sie wurde durch Build 022 und Build 023 nicht verändert oder entfernt.
@@ -304,7 +305,9 @@ Build 023 — Parameters & Live Preview: COMPLETE
   M4 — Live Preview Behavior & UX:                     COMPLETE — Gate PASS, Human PASS
   M5 — Integration & Build Completion:                 COMPLETE — Gate PASS
 Parameters & Live Preview: ESTABLISHED
-Next:                       Build 024 — STL / STEP Export Workflow
+Build 024 — STL / STEP Export Workflow: IN PROGRESS
+  M1 — Export Architecture & Contract Foundation: COMPLETE — Gate BUILD-024-M1: PASS
+Next:                       Build 024 / M2 — Native Save Dialog & Export Controls
 ```
 
 Die technische Frage, ob Tauri v2 + Three.js + Python Sidecar + No-VTK CadQuery/OCP grundsätzlich funktioniert, wurde positiv beantwortet — inklusive produktiv geeigneter Sidecar-Runtime-Strategie (persistent + onedir), optimierter Bundle-Größe und realer menschlicher Interaktionsvalidierung.
@@ -313,4 +316,6 @@ Build 022 ist vollständig abgeschlossen: Milestone 1 (produktive Tauri-v2-Proje
 
 Build 023 ist ebenfalls vollständig abgeschlossen: Milestone 1 (kanonischer `zerorod-parameters/v1`-Request-Contract, 16 Felder, End-to-End gegen den echten Sidecar bewiesen), Milestone 2 (produktives Parameter-Panel mit allen 16 Feldern, canonical Defaults, lokalem Draft-/Dirty-State, lokaler Validierung), Milestone 3 (Apply verbindet den Parameter-Draft mit der echten Engine — reale Geometrieänderung im Three.js-Viewport bewiesen), Milestone 4 (automatische, debounced Live-Vorschau mit generation-basiertem Stale-Response-Schutz, Request-Coalescing und kamera-schonendem Refit-Verhalten) und Milestone 5 (Gesamtsystem-Audit, Architektur-Konformitätsprüfung, finales Master-Validierungsgate) sind abgeschlossen, alle mit Gate PASS und — wo vorgesehen — menschlicher Validierung PASS durch den Project Owner. Details: [`docs/migration/BUILD-023-COMPLETION.md`](docs/migration/BUILD-023-COMPLETION.md).
 
-**Desktop 2.0 Foundation: ESTABLISHED. Parameters & Live Preview: ESTABLISHED.** Das bedeutet, dass die neue Architektur real, getestet und produktiv gebaut funktioniert und dass Parameter-Editing samt echter, engine-getriebener Live-Regenerierung jetzt ebenfalls real, getestet und produktiv ist — nicht, dass die vollständige Migration der bestehenden Anwendung abgeschlossen ist. Nächster Schritt: [Build 024 – STL / STEP Export Workflow](docs/migration/BUILD-024-HANDOFF.md).
+**Desktop 2.0 Foundation: ESTABLISHED. Parameters & Live Preview: ESTABLISHED.** Das bedeutet, dass die neue Architektur real, getestet und produktiv gebaut funktioniert und dass Parameter-Editing samt echter, engine-getriebener Live-Regenerierung jetzt ebenfalls real, getestet und produktiv ist — nicht, dass die vollständige Migration der bestehenden Anwendung abgeschlossen ist.
+
+Build 024 (STL / STEP Export Workflow) ist gestartet: Milestone 1 (Export Architecture & Contract Foundation) ist abgeschlossen — der bestehende, unveränderte `export_project`-Engine-Aufruf ist jetzt über einen dedizierten Sidecar-Befehl (`export`) und einen dedizierten Rust-Befehl (`engine_export`) sicher und getestet erreichbar, inklusive eines schmalen, dokumentierten Native-Dialog-Sicherheitsgrenzen-Deltas (`dialog:allow-open`, keine Filesystem-Berechtigung für die WebView). Noch keine finale Export-UI — das ist Milestone 2. Details: [`docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md`](docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md).

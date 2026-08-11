@@ -155,6 +155,43 @@ mod tests {
     }
 
     #[test]
+    fn build_request_line_forwards_export_combined_shape_verbatim() {
+        // Build 024 M1: commands.rs's engine_export wraps the caller's
+        // parameters and output_directory into this exact combined object —
+        // proving the wire shape independent of a running sidecar/app.
+        let parameters = serde_json::json!({
+            "parameters": {
+                "schema": "zerorod-parameters/v1",
+                "values": {"body_width": 60.0},
+            },
+            "output_directory": "/tmp/some/chosen/dir",
+        });
+        let line = build_request_line("export", "rid-1", &parameters);
+        let value: Value = serde_json::from_str(line.trim_end()).unwrap();
+        assert_eq!(value["command"], "export");
+        assert_eq!(value["parameters"], parameters);
+    }
+
+    #[test]
+    fn parse_response_surfaces_export_result_shape() {
+        let line = format!(
+            r#"{{"schema":"{SIDECAR_SCHEMA}","request_id":"rid-1","ok":true,"result":{{"output_directory":"/tmp/out","files":[{{"role":"body_stl","filename":"a.stl","path":"/tmp/out/a.stl"}}]}}}}"#
+        );
+        let result = parse_response(&line, "rid-1").unwrap();
+        assert_eq!(result["output_directory"], "/tmp/out");
+        assert_eq!(result["files"][0]["role"], "body_stl");
+    }
+
+    #[test]
+    fn parse_response_surfaces_export_specific_error_codes() {
+        let line = format!(
+            r#"{{"schema":"{SIDECAR_SCHEMA}","request_id":"rid-1","ok":false,"error":{{"code":"export_permission_denied","message":"denied"}}}}"#
+        );
+        let err = parse_response(&line, "rid-1").unwrap_err();
+        assert_eq!(err.code, "export_permission_denied");
+    }
+
+    #[test]
     fn new_request_id_is_non_empty_and_varies() {
         let a = new_request_id();
         let b = new_request_id();

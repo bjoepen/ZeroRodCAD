@@ -27,14 +27,19 @@ BUILD 023 COMPLETE
   M4 — Live Preview Behavior & UX:                     COMPLETE — Gate BUILD-023-M4: PASS, Human PASS
   M5 — Integration & Build Completion:                 COMPLETE — Gate BUILD-023: PASS
 PARAMETERS & LIVE PREVIEW: ESTABLISHED
-NEXT: BUILD 024 — STL / STEP EXPORT WORKFLOW
+BUILD 024 — STL / STEP EXPORT WORKFLOW: IN PROGRESS
+  M1 — Export Architecture & Contract Foundation: COMPLETE — Gate BUILD-024-M1: PASS
+NEXT: BUILD 024 / M2 — NATIVE SAVE DIALOG & EXPORT CONTROLS
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
 reproducibly packaged. **Parameters & Live Preview established** (Build 023) means parameter editing
 and real, engine-driven live regeneration are now real, tested, and productive too — not that the
-full migration from the existing PySide6 application is complete. Export UI and full feature parity
-remain explicitly Build 024–026 scope, not yet built.
+full migration from the existing PySide6 application is complete. Build 024 M1 (COMPLETE) exposes
+the existing `export_project` engine capability through a tested, dedicated sidecar/Rust command
+boundary and a narrow native-dialog security delta — not a finished export UI, which is M2's scope.
+Full feature parity remains explicitly Build 025–026 scope, not yet built. See
+[`BUILD-024-M1-EXPORT-FOUNDATION.md`](BUILD-024-M1-EXPORT-FOUNDATION.md) for the full record.
 
 ## Why migrate
 
@@ -206,5 +211,19 @@ and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
     ending in `BUILD-023 CONSISTENCY GATE: PASS`.
 
 **Build 023 Final Gate: PASS.** See `docs/migration/BUILD-023-COMPLETION.md` for the full record and
-`docs/migration/BUILD-024-HANDOFF.md` for what comes next: **Build 024 — STL / STEP Export
-Workflow** (not started; requires explicit Project Owner approval).
+`docs/migration/BUILD-024-HANDOFF.md` for the Build 024 handoff.
+
+- **Build 024 — STL / STEP Export Workflow: IN PROGRESS.**
+  - M1 — Export Architecture & Contract Foundation: COMPLETE / Gate PASS
+    (`BUILD-024-M1-EXPORT-FOUNDATION.md`) — the existing, unmodified
+    `zerorodcad.export.export_project` exposed through a dedicated sidecar `export` command and a
+    dedicated Rust `engine_export` command; canonical export-source semantics decided (the
+    frontend's `accepted` state); real default and alternate-parameter export proven end to end
+    against a real persistent sidecar process; a discovered CadQuery silent-failure mode on
+    unwritable directories addressed with sidecar-side post-export verification; silent
+    overwrite-in-place established; a narrow native-dialog security delta (`dialog:allow-open`
+    only, no filesystem permission granted to the WebView); export timing measured safe against
+    the existing 30 s timeout; no export UI yet — that is M2's scope.
+
+**Next: Build 024 / M2 — Native Save Dialog & Export Controls** (requires explicit Project Owner
+approval to start, per the mandate's stop condition after M1).

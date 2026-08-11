@@ -4,6 +4,10 @@ for zerorod-parameters/v1 in Build 023 M1)."""
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
+
+import pytest
 
 from zerorod_sidecar.main import handle_request
 from zerorod_sidecar.parameters_contract import PARAMETERS_SCHEMA
@@ -217,3 +221,153 @@ def test_parameters_error_response_never_contains_traceback_text():
     serialized = json.dumps(response)
     assert "Traceback" not in serialized
     assert 'File "' not in serialized
+
+
+# --- Build 024 M1: export -----------------------------------------------
+
+
+def _export_request(output_directory: str, values: dict | None = None) -> str:
+    parameters: dict = {"output_directory": output_directory}
+    if values is not None:
+        parameters["parameters"] = _params(values)
+    return _request(command="export", parameters=parameters)
+
+
+def test_export_with_canonical_defaults_produces_expected_output_inventory(tmp_path: Path) -> None:
+    response = handle_request(_export_request(str(tmp_path)))
+    assert response["ok"] is True
+    result = response["result"]
+    assert result["output_directory"] == str(tmp_path)
+    roles = {f["role"] for f in result["files"]}
+    assert roles == {"body_stl", "assembly_step", "report_markdown"}
+    for entry in result["files"]:
+        path = Path(entry["path"])
+        assert path.is_file()
+        assert path.stat().st_size > 0
+        assert entry["filename"].startswith("cbg-open-g-")
+    assert "timing" in result
+    assert result["timing"]["export_seconds"] >= 0
+
+
+def test_export_result_is_json_serializable_and_has_no_traceback(tmp_path: Path) -> None:
+    response = handle_request(_export_request(str(tmp_path)))
+    serialized = json.dumps(response)
+    assert "Traceback" not in serialized
+    assert 'File "' not in serialized
+
+
+def test_export_alternate_parameters_produce_different_geometry(tmp_path: Path) -> None:
+    default_dir = tmp_path / "default"
+    alt_dir = tmp_path / "alt"
+    default_dir.mkdir()
+    alt_dir.mkdir()
+
+    handle_request(_export_request(str(default_dir)))
+    handle_request(_export_request(str(alt_dir), {"body_width": 60.0}))
+
+    default_stl = (default_dir / "cbg-open-g-body.stl").read_bytes()
+    alt_stl = (alt_dir / "cbg-open-g-body.stl").read_bytes()
+    assert default_stl != alt_stl
+
+    default_report = (default_dir / "cbg-open-g-report.md").read_text()
+    alt_report = (alt_dir / "cbg-open-g-report.md").read_text()
+    assert "38.00 mm" in default_report
+    assert "60.00 mm" in alt_report
+
+
+def test_export_project_name_shapes_generated_filenames(tmp_path: Path) -> None:
+    response = handle_request(_export_request(str(tmp_path), {"project_name": "My Custom Rod!"}))
+    assert response["ok"] is True
+    filenames = {f["filename"] for f in response["result"]["files"]}
+    assert filenames == {
+        "my-custom-rod-body.stl",
+        "my-custom-rod-assembly.step",
+        "my-custom-rod-report.md",
+    }
+
+
+def test_export_missing_output_directory_returns_invalid_destination_error() -> None:
+    response = handle_request(_request(command="export", parameters={}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_destination"
+
+
+def test_export_empty_output_directory_returns_invalid_destination_error() -> None:
+    response = handle_request(_request(command="export", parameters={"output_directory": "   "}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_destination"
+
+
+def test_export_rejects_invalid_domain_parameters(tmp_path: Path) -> None:
+    response = handle_request(
+        _export_request(str(tmp_path), {"groove_diameter": 5.0, "rod_diameter": 3.0})
+    )
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameters_domain"
+    assert "errors" in response["error"]["details"]
+
+
+def test_export_rejects_wrong_field_type(tmp_path: Path) -> None:
+    response = handle_request(_export_request(str(tmp_path), {"body_width": "wide"}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameter_type"
+
+
+def test_export_destination_that_is_an_existing_file_returns_error(tmp_path: Path) -> None:
+    conflicting_file = tmp_path / "not-a-directory"
+    conflicting_file.write_text("x")
+    response = handle_request(_export_request(str(conflicting_file)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "export_invalid_destination"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits only")
+def test_export_permission_denied_directory_returns_structured_error(tmp_path: Path) -> None:
+    read_only_dir = tmp_path / "readonly"
+    read_only_dir.mkdir()
+    read_only_dir.chmod(0o500)
+    try:
+        response = handle_request(_export_request(str(read_only_dir)))
+    finally:
+        read_only_dir.chmod(0o700)
+    assert response["ok"] is False
+    # CadQuery's STL/STEP exporters can silently no-op on an unwritable
+    # directory (Build 024 M1 discovery) rather than raising PermissionError
+    # themselves — export_incomplete is the backstop that catches that case;
+    # export_permission_denied is the direct-raise case (e.g. the plain
+    # Python report.md write). Either is an acceptable structured outcome
+    # here, unlike an unhandled exception or a false "ok": true.
+    assert response["error"]["code"] in {"export_permission_denied", "export_incomplete"}
+
+
+def test_export_overwrites_existing_output_files_in_place(tmp_path: Path) -> None:
+    handle_request(_export_request(str(tmp_path)))
+    first_stl_bytes = (tmp_path / "cbg-open-g-body.stl").read_bytes()
+
+    response = handle_request(_export_request(str(tmp_path), {"body_width": 60.0}))
+    assert response["ok"] is True
+
+    # Same filenames (same project_name) get overwritten in place, not
+    # duplicated alongside the old ones — the new content wins.
+    files_in_dir = {p.name for p in tmp_path.iterdir()}
+    assert files_in_dir == {
+        "cbg-open-g-body.stl",
+        "cbg-open-g-assembly.step",
+        "cbg-open-g-report.md",
+    }
+    assert (tmp_path / "cbg-open-g-body.stl").read_bytes() != first_stl_bytes
+    assert "60.00 mm" in (tmp_path / "cbg-open-g-report.md").read_text()
+
+
+def test_export_valid_after_a_failed_export_request(tmp_path: Path) -> None:
+    bad_values = {"groove_diameter": 5.0, "rod_diameter": 3.0}
+    bad = handle_request(_export_request(str(tmp_path), bad_values))
+    good = handle_request(_export_request(str(tmp_path)))
+    assert bad["ok"] is False
+    assert good["ok"] is True
+
+
+def test_export_unknown_field_name_rejected(tmp_path: Path) -> None:
+    response = handle_request(_export_request(str(tmp_path), {"not_a_real_field": 1.0}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameters"

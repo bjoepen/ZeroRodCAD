@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
-  "description": "ZeroRodCAD Desktop 2.0: the WebView gets no shell/process/broad-filesystem permission at all, per ADR-022-001's security boundary. It can only call the app's own narrow, app-registered commands (core:default) — M2 adds sidecar-lifecycle commands here, never a general shell/process grant.",
+  "description": "ZeroRodCAD Desktop 2.0: the WebView gets no shell/process/broad-filesystem permission at all, per ADR-022-001's security boundary. It can only call the app's own narrow, app-registered commands (core:default) — M2 adds sidecar-lifecycle commands here, never a general shell/process grant. Build 024 M1 adds exactly one narrow addition: dialog:allow-open, which lets the WebView ask the OS to show its native open/folder-picker dialog and receive back the single path the user chose. It grants no save-dialog, no message/ask/confirm dialogs, and — critically — no filesystem read/write/list capability of its own; the WebView still cannot read a directory listing or a file's contents directly, only receive an opaque path string and hand it back to the Rust-owned engine_export command, which is the only thing that ever reads/writes bundled with the user-chosen destination.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:allow-open"]
 }

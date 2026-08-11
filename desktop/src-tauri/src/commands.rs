@@ -5,6 +5,7 @@
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, State};
+use tauri_plugin_dialog::{DialogExt, FilePath};
 
 use crate::engine::{self, EngineState, EngineStatusInfo};
 use crate::mesh;
@@ -125,6 +126,60 @@ pub async fn engine_parameters_defaults(
     state: State<'_, EngineState>,
 ) -> Result<Value, EngineError> {
     engine::request(&app, &state, "parameters_defaults", serde_json::json!({})).await
+}
+
+/// Build 024 M1: the one narrow filesystem-adjacent capability the WebView
+/// gets — asking Rust to show the OS's own native directory picker and
+/// relaying back only the single path the user chose (or `None` on
+/// cancellation, distinguished from an error — see
+/// docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md "Dialog cancellation").
+/// The WebView never receives a directory-listing or file-read/write
+/// capability itself; this command's only output is the opaque path string,
+/// which the frontend can then pass back into `engine_export` unmodified.
+/// Directory selection (not file selection) matches `export_project`'s own
+/// shape — it always writes a fixed *set* of files into a chosen directory,
+/// never a single chosen output file.
+#[tauri::command]
+pub async fn select_export_directory(app: AppHandle) -> Result<Option<String>, EngineError> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
+        .file()
+        .pick_folder(move |folder: Option<FilePath>| {
+            let _ = tx.send(folder);
+        });
+    let folder = rx.await.map_err(|_| {
+        EngineError::new(
+            "dialog_channel_closed",
+            "directory dialog callback channel closed before responding",
+        )
+    })?;
+    Ok(folder.map(|path| path.to_string()))
+}
+
+/// Build 024 M1: requests the sidecar's `export` command for an explicit
+/// zerorod-parameters/v1 `parameters` object (the caller's job to supply —
+/// see docs/migration/BUILD-024-HANDOFF.md: the frontend's `accepted` state
+/// is the intended source, not an arbitrary draft) and a `output_directory`
+/// obtained from `select_export_directory` above (never a WebView-typed raw
+/// path). Rust does not interpret either value — both are forwarded
+/// verbatim inside a single combined object, matching how
+/// `engine_preview_mesh_with_parameters` already forwards `parameters`
+/// without inspecting its shape. Same serialized-request-queue behavior as
+/// every other `engine::request` call: an export queues behind (or after) a
+/// live-preview request already in flight, by construction, with no new
+/// concurrency code.
+#[tauri::command]
+pub async fn engine_export(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+    parameters: Value,
+    output_directory: String,
+) -> Result<Value, EngineError> {
+    let request_parameters = serde_json::json!({
+        "parameters": parameters,
+        "output_directory": output_directory,
+    });
+    engine::request(&app, &state, "export", request_parameters).await
 }
 
 /// Explicit shutdown command (also invoked automatically on app exit — see

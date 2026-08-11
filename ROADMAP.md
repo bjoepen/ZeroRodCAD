@@ -221,7 +221,8 @@ BUILD 022 COMPLETE (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 COMPL
 DESKTOP 2.0 FOUNDATION ESTABLISHED
 BUILD 023 COMPLETE (M1 COMPLETE, M2 COMPLETE, M3 COMPLETE, M4 COMPLETE, M5 COMPLETE)
 PARAMETERS & LIVE PREVIEW ESTABLISHED
-NEXT: BUILD 024 — STL / STEP EXPORT WORKFLOW
+BUILD 024 IN PROGRESS (M1 COMPLETE — Gate BUILD-024-M1: PASS)
+NEXT: BUILD 024 / M2 — NATIVE SAVE DIALOG & EXPORT CONTROLS
 ```
 
 ### Current
@@ -287,12 +288,12 @@ project persistence, PySide6 removal, signing/notarization.
 
 ### Build 024 – STL / STEP Export Workflow
 
-- [ ] productive STL export
-- [ ] productive STEP export
-- [ ] native dialogs
-- [ ] export status
-- [ ] error handling
+Handoff document: [`docs/migration/BUILD-024-HANDOFF.md`](docs/migration/BUILD-024-HANDOFF.md).
+
+- [x] M1 — Export Architecture & Contract Foundation — `docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md` — the existing, unmodified `zerorodcad.export.export_project` exposed through a dedicated sidecar `export` command and a dedicated Rust `engine_export` command (same "new command, not an overloaded flag" pattern as `engine_preview_mesh_with_parameters`); canonical export-source semantics decided (the frontend's `accepted` state, not the draft); real default and alternate-parameter export proven end to end against a real persistent sidecar process; empirical discovery that CadQuery's STL/STEP exporters can silently no-op on an unwritable directory, addressed with a post-export file-existence/non-empty verification step in the sidecar boundary (`export_incomplete`); silent-overwrite-in-place behavior established; a new, narrow native-dialog security-boundary delta (`tauri-plugin-dialog`, `dialog:allow-open` only, no filesystem permission granted to the WebView); STL/STEP export timing measured (~0.13 s warm, ~1.45 s cold) against the existing 30 s timeout — classified SAFE, retained unchanged; no export UI yet — Gate BUILD-024-M1: PASS
+- [ ] M2 — native save dialog wired into a real Export UI trigger, export status/progress presentation, structured-error display, the overwrite-confirmation product decision M1 deliberately left open
 - [ ] regression comparison with the PySide6 reference app
+- [ ] production STL/STEP export UI polish
 
 ### Build 025 – Desktop Feature Parity
 

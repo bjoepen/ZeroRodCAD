@@ -4,8 +4,11 @@
 // (`app_info`). M2 added the persistent Python sidecar's process/IPC layer
 // (`engine`/`protocol`/`mesh`) and its Tauri commands. M3 adds one more
 // command (`engine_preview_mesh`, returning the full validated mesh payload)
-// so the frontend's Three.js consumer has something to render — no
-// parameter UI or export UI yet (Build 023/024).
+// so the frontend's Three.js consumer has something to render. Build 024 M1
+// adds the export command boundary (`engine_export`) and the one narrow
+// native-dialog command (`select_export_directory`) that lets the WebView
+// obtain a user-chosen filesystem path without ever receiving filesystem
+// permission itself — see docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md.
 
 mod commands;
 mod engine;
@@ -16,6 +19,7 @@ mod protocol;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(engine::EngineState::default())
         .invoke_handler(tauri::generate_handler![
             commands::app_info,
@@ -26,6 +30,8 @@ pub fn run() {
             commands::engine_preview_mesh,
             commands::engine_preview_mesh_with_parameters,
             commands::engine_parameters_defaults,
+            commands::engine_export,
+            commands::select_export_directory,
             commands::engine_shutdown,
         ])
         .build(tauri::generate_context!())

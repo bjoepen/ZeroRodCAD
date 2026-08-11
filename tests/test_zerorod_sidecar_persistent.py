@@ -176,6 +176,50 @@ class TestRealPersistentSubprocess:
         assert responses[2]["ok"] is True
         assert responses[3]["ok"] is True
 
+    def test_real_subprocess_preview_export_preview_export_shutdown_sequence(self, tmp_path):
+        """Build 024 M1 §42/§32: the real bundled-interpreter proof that
+        export works end to end through the actual persistent process loop,
+        and that preview keeps working after an export (and after a second
+        export with different parameters) in the same process — no
+        restart, no protocol corruption, no orphan."""
+        default_dir = tmp_path / "default"
+        alt_dir = tmp_path / "alt"
+        alt_params = {"schema": "zerorod-parameters/v1", "values": {"body_width": 60.0}}
+        export_default_params = {"output_directory": str(default_dir)}
+        export_alt_params = {"output_directory": str(alt_dir), "parameters": alt_params}
+
+        lines = (
+            _req("preview-1", "preview")
+            + _req("export-1", "export", export_default_params)
+            + _req("preview-2", "preview")
+            + _req("export-2", "export", export_alt_params)
+            + _req("preview-3", "preview")
+            + _req("bye", "shutdown")
+        )
+        result = self._run_subprocess(lines)
+        assert result.returncode == 0
+        responses = {
+            r["request_id"]: r
+            for r in (json.loads(line) for line in result.stdout.splitlines() if line.strip())
+        }
+        assert responses["preview-1"]["ok"] is True
+        assert responses["export-1"]["ok"] is True
+        assert responses["preview-2"]["ok"] is True
+        assert responses["export-2"]["ok"] is True
+        assert responses["preview-3"]["ok"] is True
+        assert responses["bye"]["ok"] is True
+
+        default_files = {f["role"]: f["path"] for f in responses["export-1"]["result"]["files"]}
+        alt_files = {f["role"]: f["path"] for f in responses["export-2"]["result"]["files"]}
+        for role in ("body_stl", "assembly_step", "report_markdown"):
+            default_path = Path(default_files[role])
+            alt_path = Path(alt_files[role])
+            assert default_path.is_file() and default_path.stat().st_size > 0
+            assert alt_path.is_file() and alt_path.stat().st_size > 0
+        assert (
+            Path(default_files["body_stl"]).read_bytes() != Path(alt_files["body_stl"]).read_bytes()
+        )
+
     def test_real_subprocess_no_vtk_or_pyside6(self):
         probe = """
 import sys, json

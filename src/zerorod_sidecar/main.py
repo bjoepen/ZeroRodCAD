@@ -122,6 +122,114 @@ def _run_preview_command(parameters: dict) -> dict:
     return payload
 
 
+def _run_export_command(parameters: dict) -> dict:
+    """Build 024 M1 — exposes the existing, unmodified
+    `zerorodcad.export.export_project` through the sidecar boundary.
+
+    Request shape (nested under the outer envelope's `parameters`):
+        {
+          "parameters": {"schema": "zerorod-parameters/v1", "values": {...}},
+          "output_directory": "<user-selected absolute path>"
+        }
+
+    `parameters.parameters` reuses `parse_parameters_request` unmodified — an
+    empty/omitted object still resolves to canonical defaults, exactly like
+    `preview`. `output_directory` is new surface specific to `export`: it
+    crosses the boundary as a plain string chosen by the user through the
+    Rust-owned native directory dialog (see commands.rs) — this handler only
+    ever writes to the path it is given, never lists or browses a directory.
+    """
+    from zerorod_sidecar.parameters_contract import parse_parameters_request
+    from zerorodcad.export import export_project
+    from zerorodcad.validation import validate_parameters
+
+    output_directory = parameters.get("output_directory")
+    if not isinstance(output_directory, str) or not output_directory.strip():
+        raise SidecarError(
+            "invalid_destination",
+            "output_directory must be a non-empty string",
+            details={"field": "output_directory"},
+        )
+
+    # Level 1/2: identical parsing path to `preview` — no second parser.
+    params = parse_parameters_request(parameters.get("parameters", {}))
+
+    # Level 3: same domain validator `preview` uses. `export_project` itself
+    # re-validates internally (existing engine behavior, unchanged) — this
+    # earlier check exists so a domain-invalid request fails with the same
+    # structured `invalid_parameters_domain` shape `preview` already uses,
+    # rather than surfacing as a generic `export_failed`.
+    validation = validate_parameters(params)
+    if not validation.is_valid:
+        raise SidecarError(
+            "invalid_parameters_domain",
+            "; ".join(validation.errors),
+            details={"errors": list(validation.errors)},
+        )
+
+    export_started = time.perf_counter()
+    try:
+        body_path, assembly_path, report_path = export_project(output_directory, params)
+    except FileExistsError as exc:
+        raise SidecarError(
+            "export_invalid_destination",
+            f"export destination is not usable: {exc}",
+        ) from exc
+    except PermissionError as exc:
+        raise SidecarError(
+            "export_permission_denied",
+            f"permission denied writing to export destination: {exc}",
+        ) from exc
+    except OSError as exc:
+        raise SidecarError(
+            "export_write_failed",
+            f"export destination could not be written: {exc}",
+        ) from exc
+    except ValueError as exc:
+        # export_project's own internal validate_parameters re-check
+        # (defense in depth in the engine, not duplicated here) — reached
+        # only if Level 3 above somehow disagreed with it.
+        raise SidecarError("invalid_parameters_domain", str(exc)) from exc
+    except Exception as exc:
+        raise SidecarError(
+            "export_failed",
+            f"export failed: {type(exc).__name__}: {exc}",
+        ) from exc
+    export_duration = time.perf_counter() - export_started
+
+    # Empirically (Build 024 M1 discovery), CadQuery's STL/STEP exporters can
+    # silently no-op into a directory they cannot actually write to (no
+    # exception, no file) even though a plain Python file write
+    # (`report.md`) correctly raises `PermissionError` for the same
+    # directory. `export_project` is therefore not trusted to have written
+    # everything just because it returned without raising — every expected
+    # output is verified to actually exist and be non-empty before this
+    # handler reports success.
+    named_outputs = (
+        ("body_stl", body_path),
+        ("assembly_step", assembly_path),
+        ("report_markdown", report_path),
+    )
+    missing = [
+        role for role, path in named_outputs if not path.is_file() or path.stat().st_size == 0
+    ]
+    if missing:
+        raise SidecarError(
+            "export_incomplete",
+            "export reported success but did not produce all expected output files: "
+            + ", ".join(missing),
+            details={"missing": missing},
+        )
+
+    return {
+        "output_directory": str(Path(output_directory)),
+        "files": [
+            {"role": role, "filename": path.name, "path": str(path)} for role, path in named_outputs
+        ],
+        "timing": {"export_seconds": export_duration},
+    }
+
+
 def _run_parameters_defaults_command(parameters: dict) -> dict:  # noqa: ARG001
     """Returns the canonical default ZeroRodParameters wrapped in the
     zerorod-parameters/v1 envelope — the single authoritative default set a
@@ -140,6 +248,7 @@ COMMANDS = {
     "ping": _run_ping_command,
     "status": _run_status_command,
     "preview": _run_preview_command,
+    "export": _run_export_command,
     "parameters_defaults": _run_parameters_defaults_command,
     "shutdown": _run_shutdown_command,
 }
