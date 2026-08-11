@@ -29,17 +29,22 @@ BUILD 023 COMPLETE
 PARAMETERS & LIVE PREVIEW: ESTABLISHED
 BUILD 024 — STL / STEP EXPORT WORKFLOW: IN PROGRESS
   M1 — Export Architecture & Contract Foundation: COMPLETE — Gate BUILD-024-M1: PASS
-NEXT: BUILD 024 / M2 — NATIVE SAVE DIALOG & EXPORT CONTROLS
+  M2 — Native Save Dialog & Export Controls:      engineering COMPLETE — Gate BUILD-024-M2: PASS,
+                                                   Human Validation PENDING
+NEXT: BUILD 024 / M2 HUMAN VALIDATION, then BUILD 024 / M3 (requires Project Owner approval)
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
 reproducibly packaged. **Parameters & Live Preview established** (Build 023) means parameter editing
 and real, engine-driven live regeneration are now real, tested, and productive too — not that the
-full migration from the existing PySide6 application is complete. Build 024 M1 (COMPLETE) exposes
+full migration from the existing PySide6 application is complete. Build 024 M1 (COMPLETE) exposed
 the existing `export_project` engine capability through a tested, dedicated sidecar/Rust command
-boundary and a narrow native-dialog security delta — not a finished export UI, which is M2's scope.
-Full feature parity remains explicitly Build 025–026 scope, not yet built. See
-[`BUILD-024-M1-EXPORT-FOUNDATION.md`](BUILD-024-M1-EXPORT-FOUNDATION.md) for the full record.
+boundary and a narrow native-dialog security delta. Build 024 M2 (engineering COMPLETE) wires that
+boundary into a real "Export Model…" UI trigger, a backend-driven overwrite-conflict preflight, and
+a small isolated export state machine — Human Validation of the fresh release build is PENDING. Full
+feature parity remains explicitly Build 025–026 scope, not yet built. See
+[`BUILD-024-M1-EXPORT-FOUNDATION.md`](BUILD-024-M1-EXPORT-FOUNDATION.md) and
+[`BUILD-024-M2-EXPORT-CONTROLS.md`](BUILD-024-M2-EXPORT-CONTROLS.md) for the full record.
 
 ## Why migrate
 
@@ -224,6 +229,19 @@ and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
     overwrite-in-place established; a narrow native-dialog security delta (`dialog:allow-open`
     only, no filesystem permission granted to the WebView); export timing measured safe against
     the existing 30 s timeout; no export UI yet — that is M2's scope.
+  - M2 — Native Save Dialog & Export Controls: engineering COMPLETE / Gate BUILD-024-M2: PASS
+    (`BUILD-024-M2-EXPORT-CONTROLS.md`) — a real "Export Model…" trigger sourcing the accepted
+    parameter state, the M1 native directory dialog wired in, a new backend-driven
+    overwrite-conflict preflight (sidecar `export_preflight` + Rust `engine_export_preflight`,
+    reusing the engine's own filename sanitization rather than duplicating it), an in-panel
+    overwrite confirmation (no new dialog capability — `dialog:allow-open` remains the only
+    delta from Build 023), and an isolated `export_panel.ts` state machine that stays disabled
+    while live preview is pending so "Export" always means the model on screen; real end-to-end
+    proof (preview → preflight → export → preflight-detects-conflict → export-overwrites →
+    preview → shutdown) against the real persistent sidecar; fresh release `.app` built and
+    measured (285.9 MiB, +0.6 MiB vs. the Build 022/023 baseline, fully explained by the dialog
+    plugin's native macOS bindings). Human Validation **PENDING**
+    (`BUILD-024-M2-HUMAN-VALIDATION.md`).
 
-**Next: Build 024 / M2 — Native Save Dialog & Export Controls** (requires explicit Project Owner
-approval to start, per the mandate's stop condition after M1).
+**Next: Build 024 / M2 Human Validation**, then **Build 024 / M3** (requires explicit Project
+Owner approval to start, per the mandate's stop condition after M2).
