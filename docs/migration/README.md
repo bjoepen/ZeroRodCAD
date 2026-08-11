@@ -30,8 +30,10 @@ PARAMETERS & LIVE PREVIEW: ESTABLISHED
 BUILD 024 — STL / STEP EXPORT WORKFLOW: IN PROGRESS
   M1 — Export Architecture & Contract Foundation: COMPLETE — Gate BUILD-024-M1: PASS
   M2 — Native Save Dialog & Export Controls:      engineering COMPLETE — Gate BUILD-024-M2: PASS,
-                                                   Human Validation PENDING
-NEXT: BUILD 024 / M2 HUMAN VALIDATION, then BUILD 024 / M3 (requires Project Owner approval)
+                                                   Round 1 Human Validation FAIL (fixed, see
+                                                   BUILD-024-M2-EXPORT-BUGFIX.md),
+                                                   Round 2 Human Validation PENDING
+NEXT: BUILD 024 / M2 HUMAN VALIDATION (Round 2), then BUILD 024 / M3 (requires Project Owner approval)
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
@@ -240,8 +242,12 @@ and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
     proof (preview → preflight → export → preflight-detects-conflict → export-overwrites →
     preview → shutdown) against the real persistent sidecar; fresh release `.app` built and
     measured (285.9 MiB, +0.6 MiB vs. the Build 022/023 baseline, fully explained by the dialog
-    plugin's native macOS bindings). Human Validation **PENDING**
+    plugin's native macOS bindings). **Round 1 Human Validation FAIL**: a real Tauri IPC
+    argument-binding defect (`output_directory`/`outputDirectory` mismatch in `engine_export`/
+    `engine_export_preflight`) reached the real app; fixed with `rename_all = "snake_case"`,
+    new real-IPC-dispatch regression tests, and a validation-gate blind-spot fix — see
+    `BUILD-024-M2-EXPORT-BUGFIX.md`. Round 2 Human Validation **PENDING**
     (`BUILD-024-M2-HUMAN-VALIDATION.md`).
 
-**Next: Build 024 / M2 Human Validation**, then **Build 024 / M3** (requires explicit Project
-Owner approval to start, per the mandate's stop condition after M2).
+**Next: Build 024 / M2 Human Validation (Round 2)**, then **Build 024 / M3** (requires
+explicit Project Owner approval to start, per the mandate's stop condition after M2).

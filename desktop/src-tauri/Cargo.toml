@@ -19,3 +19,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["time"] }
 tauri-plugin-dialog = "2"
+
+[dev-dependencies]
+# Build 024 M2 bugfix: lets tests dispatch a real IPC request through Tauri's
+# actual generated command deserializer (tauri::test::get_ipc_response),
+# instead of only asserting what our own frontend code passes to a mocked
+# invoke() — the gap that let the real outputDirectory/output_directory
+# argument-binding mismatch reach Human Validation undetected.
+tauri = { version = "2", features = ["test"] }

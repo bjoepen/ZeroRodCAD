@@ -10,13 +10,50 @@ a human tester still needs to do — the actual native macOS directory dialog, t
 overwrite-confirmation UX, and general "does this feel right" judgment are not something a
 unit test (running under jsdom, no real WebView, no real OS dialog) can substitute for.
 
-This environment had no display/GUI access when this checklist was drafted, so every item is
-left **unchecked** rather than assumed, per the same allowance Build 023's own human
-validation documents used ("Claude leaves unchecked if human clicking unavailable").
+## Round 1 — FAIL (real defect found)
+
+The Project Owner tested the first engineering build (commit `1a7e722`, feature commit
+`31d1d11`) and found a real, reproducible runtime error:
+
+```text
+invalid args `outputDirectory` for command `engine_export_preflight`:
+command engine_export_preflight missing required key outputDirectory
+```
+
+Additionally reported: a target/Downloads folder could not be correctly selected/used for
+export in the real app.
+
+**Root cause and fix**: see `docs/migration/BUILD-024-M2-EXPORT-BUGFIX.md` for the full
+record — both symptoms were the same underlying defect (a Tauri IPC argument-name mismatch
+between `export.ts`'s `output_directory` payload key and `engine_export`/
+`engine_export_preflight`'s default camelCase-only argument binding; the native directory
+dialog itself was not defective). Fixed by adding
+`#[tauri::command(rename_all = "snake_case")]` to both affected Rust commands, with new
+regression tests (`desktop/src-tauri/src/commands.rs`'s `ipc_argument_binding` module) that
+dispatch a real IPC request through Tauri's actual command deserializer — verified to
+reproduce the exact reported error when the fix is reverted, and to pass once it's applied.
+`scripts/validate-build024-m2.sh` itself had a blind spot (nothing in it previously dispatched
+a real IPC request through the Rust/Tauri argument-binding layer) — also fixed, documented in
+the bugfix record.
+
+| Field | Value |
+|---|---|
+| Tester | Project Owner |
+| Result | **FAIL** |
+| Defect | `engine_export_preflight` (and, by identical construction, `engine_export`) rejected the real frontend payload — `outputDirectory` argument-binding mismatch |
+| Fix record | `docs/migration/BUILD-024-M2-EXPORT-BUGFIX.md` |
+
+## Round 2 — retest (this checklist, reset to PENDING)
+
+This environment had no display/GUI access when this checklist was drafted or updated, so
+every item below is left **unchecked** rather than assumed, per the same allowance Build
+023's own human validation documents used ("Claude leaves unchecked if human clicking
+unavailable"). The fix is not assumed to make the flow work end to end from a human's
+perspective — only a real re-test can confirm that.
 
 ## Build under test
 
-A fresh release bundle was built from this milestone's exact HEAD via:
+A fresh release bundle was built from the corrected M2 HEAD via:
 
 ```
 ./scripts/build-productive-desktop-app.sh release
@@ -38,6 +75,24 @@ open "/Users/bernd/Projekte/ZeroRodCAD-App/desktop/src-tauri/target/release/bund
 
 ## Checklist
 
+Regression items for the specific reported defect, first:
+
+- [ ] Export Model… opens native directory dialog
+- [ ] A normal directory can be selected (try `~/Downloads` or `~/Documents` specifically —
+      the originally reported case)
+- [ ] Selected directory is accepted
+- [ ] No `outputDirectory`/`output_directory` argument error occurs
+- [ ] Export completes
+- [ ] STL exists
+- [ ] STEP exists
+- [ ] report exists
+- [ ] overwrite warning works
+- [ ] cancel works
+- [ ] preview remains functional
+- [ ] app quits cleanly
+
+Full checklist:
+
 - [ ] App starts
 - [ ] Current ZeroRod visible
 - [ ] Parameters/live preview still work
@@ -50,7 +105,8 @@ open "/Users/bernd/Projekte/ZeroRodCAD-App/desktop/src-tauri/target/release/bund
 - [ ] Cancel closes dialog cleanly
 - [ ] Cancel produces no error
 
-- [ ] Select an empty destination
+- [ ] Select an empty destination (try a normal user folder such as `~/Downloads` or
+      `~/Documents`, or an engineering-safe subfolder of one — the originally reported case)
 - [ ] Export completes
 - [ ] Success state appears
 - [ ] STL file exists
@@ -95,9 +151,11 @@ open "/Users/bernd/Projekte/ZeroRodCAD-App/desktop/src-tauri/target/release/bund
 | macOS | *(pending)* |
 | Hardware | *(pending)* |
 | Result | **PENDING** |
-| Notes | *(pending — awaiting Project Owner click-through of the fresh release build above)* |
+| Notes | *(pending — awaiting Project Owner re-test of the corrected release build above; Round 1's specific failure is not assumed fixed from engineering evidence alone)* |
 
 ## Gate BUILD-024-M2 (human component)
 
-**PENDING.** The engineering gate (`scripts/validate-build024-m2.sh`) is expected to PASS
-independently of this checklist; overall Milestone 2 completion requires both.
+**PENDING** (Round 2). Round 1 was **FAIL** — see above. The engineering gate
+(`scripts/validate-build024-m2.sh`) re-passes after the fix, including new regression
+coverage for the exact defect class found; overall Milestone 2 completion still requires a
+real human re-test to PASS.

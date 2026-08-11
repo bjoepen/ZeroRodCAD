@@ -168,7 +168,21 @@ pub async fn select_export_directory(app: AppHandle) -> Result<Option<String>, E
 /// every other `engine::request` call: an export queues behind (or after) a
 /// live-preview request already in flight, by construction, with no new
 /// concurrency code.
-#[tauri::command]
+///
+/// Build 024 M2 bugfix: `#[tauri::command]`'s default argument binding
+/// expects the JS invoke() payload's keys in camelCase, derived from each
+/// Rust parameter name (so a plain `#[tauri::command]` here would require
+/// the frontend to send `outputDirectory`, not `output_directory`) — a
+/// mismatch Human Validation caught as a real runtime
+/// `missing required key outputDirectory` error, since `export.ts`'s
+/// `requestExport`/`requestExportPreflight` (correctly, matching every JSON
+/// field name elsewhere in this app's `zerorod-parameters/v1`/
+/// `zerorod-sidecar/v1` contracts, and the very `"output_directory"` JSON
+/// key this function forwards to the sidecar two lines below) send
+/// `output_directory`. `rename_all = "snake_case"` makes the invoke-argument
+/// binding match the app's one existing wire convention instead of
+/// introducing a second, camelCase one only at this boundary.
+#[tauri::command(rename_all = "snake_case")]
 pub async fn engine_export(
     app: AppHandle,
     state: State<'_, EngineState>,
@@ -192,7 +206,11 @@ pub async fn engine_export(
 /// in the frontend). No directory enumeration crosses the IPC boundary,
 /// only the fixed, known set of expected output filenames and which of them
 /// already exist.
-#[tauri::command]
+///
+/// Same `rename_all = "snake_case"` bugfix as `engine_export` above (see its
+/// doc comment) — this command has the identical `output_directory`
+/// argument and was affected by the identical defect.
+#[tauri::command(rename_all = "snake_case")]
 pub async fn engine_export_preflight(
     app: AppHandle,
     state: State<'_, EngineState>,
@@ -224,5 +242,132 @@ mod tests {
         assert_eq!(info.build, "022");
         assert_eq!(info.milestone, "M3");
         assert!(!info.version.is_empty());
+    }
+
+    // Build 024 M2 bugfix regression tests — real IPC dispatch through
+    // Tauri's actual generated command deserializer
+    // (`tauri::test::get_ipc_response`), not a mocked helper one layer
+    // below the actual invoke() call.
+    //
+    // The original defect (`missing required key outputDirectory`) was
+    // invisible to every prior test because the frontend's own tests mock
+    // `@tauri-apps/api/core`'s `invoke()` entirely (proving only what our
+    // TypeScript *sends*, never what Tauri's generated command deserializer
+    // actually *accepts*), and no Rust test exercised the real
+    // `#[tauri::command]`-generated argument binding at all.
+    //
+    // These tests cannot dispatch `engine_export`/`engine_export_preflight`
+    // literally: both take `app: AppHandle` (the plain, non-generic alias,
+    // which — like every other command in this file — resolves to
+    // `AppHandle<Wry>`, since `engine::request` itself is written against
+    // the concrete `AppHandle`/`EngineState`, and `engine.rs` is a
+    // deliberately unchanged invariant this repository's own validation
+    // gates check across builds). `tauri::test::get_ipc_response` requires
+    // `MockRuntime`, which `AppHandle<Wry>` cannot satisfy — so, rather than
+    // making `engine.rs` generic over `Runtime` purely to make this
+    // testable (a real architectural change well outside a narrow
+    // argument-binding bugfix), this test dispatches a local twin command
+    // with the *exact* same `#[tauri::command(rename_all = "snake_case")]`
+    // attribute and the *exact* same `(parameters: Value, output_directory:
+    // String)` parameter list/types as both real commands — proving the
+    // real mechanism that broke (macro-attribute + parameter-name
+    // combination) accepts export.ts's real payload and rejects the
+    // camelCase variant, through the real IPC dispatch path, without
+    // re-testing (or duplicating any logic of) the sidecar call itself.
+    mod ipc_argument_binding {
+        use tauri::ipc::{CallbackFn, InvokeBody};
+        use tauri::test::{get_ipc_response, mock_builder, mock_context, noop_assets, INVOKE_KEY};
+        use tauri::webview::InvokeRequest;
+        use tauri::WebviewWindowBuilder;
+
+        /// Byte-for-byte the same attribute and argument list as
+        /// `engine_export`/`engine_export_preflight` in this file — see the
+        /// module doc comment above for why a twin command, not the literal
+        /// production one, is what's dispatched here.
+        #[tauri::command(rename_all = "snake_case")]
+        fn export_args_binding_twin(
+            parameters: serde_json::Value,
+            output_directory: String,
+        ) -> serde_json::Value {
+            serde_json::json!({"parameters": parameters, "output_directory": output_directory})
+        }
+
+        fn dispatch(body: serde_json::Value) -> Result<serde_json::Value, serde_json::Value> {
+            let app = mock_builder()
+                .invoke_handler(tauri::generate_handler![export_args_binding_twin])
+                .build(mock_context(noop_assets()))
+                .unwrap();
+            let webview = WebviewWindowBuilder::new(&app, "main", Default::default())
+                .build()
+                .unwrap();
+
+            let request = InvokeRequest {
+                cmd: "export_args_binding_twin".into(),
+                callback: CallbackFn(0),
+                error: CallbackFn(1),
+                // `tauri://localhost` (not `http://tauri.localhost`) is
+                // what `mock_context`'s `MockRuntime` actually recognizes
+                // as the local origin (confirmed against tauri's own
+                // `remote_origin_blocked_for_custom_commands_without_app_manifest`
+                // test in webview/mod.rs) — a remote-looking origin here
+                // would make ACL enforcement kick in and reject even a
+                // correctly-shaped payload for an unrelated reason.
+                url: "tauri://localhost".parse().unwrap(),
+                body: InvokeBody::from(body),
+                headers: Default::default(),
+                invoke_key: INVOKE_KEY.to_string(),
+            };
+
+            get_ipc_response(&webview, request)
+                .map(|response_body| response_body.deserialize::<serde_json::Value>().unwrap())
+        }
+
+        #[test]
+        fn accepts_the_exact_payload_export_ts_sends_for_preflight_and_export() {
+            // Mirrors desktop/frontend/src/export.ts's requestExport /
+            // requestExportPreflight invoke() calls byte-for-byte:
+            // {"parameters": ..., "output_directory": ...}.
+            let body = serde_json::json!({
+                "parameters": {"schema": "zerorod-parameters/v1", "values": {}},
+                "output_directory": "/tmp/zerorodcad-test-export",
+            });
+            let result =
+                dispatch(body.clone()).expect("export.ts's real payload shape must be accepted");
+            assert_eq!(result["output_directory"], "/tmp/zerorodcad-test-export");
+            assert_eq!(result["parameters"], body["parameters"]);
+        }
+
+        #[test]
+        fn rejects_camel_case_output_directory() {
+            // Locks down the one canonical (snake_case) invocation shape —
+            // proves `rename_all = "snake_case"` is actually in effect,
+            // rather than Tauri's default camelCase binding silently still
+            // being accepted alongside (or instead of) it. This is exactly
+            // the payload shape a naive Tauri-default-convention frontend
+            // change could reintroduce.
+            let body = serde_json::json!({
+                "parameters": {"schema": "zerorod-parameters/v1", "values": {}},
+                "outputDirectory": "/tmp/zerorodcad-test-export",
+            });
+            let error = dispatch(body).expect_err("camelCase outputDirectory must be rejected");
+            let message = error.as_str().unwrap_or_default();
+            assert!(
+                message.contains("output_directory"),
+                "expected an argument-binding error naming output_directory, got: {message}"
+            );
+        }
+
+        #[test]
+        fn rejects_a_missing_output_directory() {
+            let body = serde_json::json!({
+                "parameters": {"schema": "zerorod-parameters/v1", "values": {}},
+            });
+            let error =
+                dispatch(body).expect_err("a missing output_directory key must be rejected");
+            assert!(error
+                .as_str()
+                .unwrap_or_default()
+                .contains("output_directory"));
+        }
     }
 }

@@ -1,6 +1,9 @@
 # Build 024 M2 — Native Save Dialog & Export Controls
 
-Status: **engineering COMPLETE / Gate BUILD-024-M2: PASS** — Human Validation **PENDING**.
+Status: **engineering COMPLETE / Gate BUILD-024-M2: PASS** — Human Validation **PENDING**
+(Round 2 — Round 1 found a real defect, since fixed; see
+`docs/migration/BUILD-024-M2-EXPORT-BUGFIX.md` for the root cause, fix, and the validation-gate
+blind spot that was closed alongside it).
 
 ## Objective
 

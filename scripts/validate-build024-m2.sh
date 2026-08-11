@@ -12,6 +12,16 @@
 # (see docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md and
 # docs/migration/BUILD-024-M2-EXPORT-CONTROLS.md). Never touches
 # experiments/te002-tauri or the legacy PySide6 app.
+#
+# Post-Human-Validation bugfix (see docs/migration/BUILD-024-M2-EXPORT-BUGFIX.md):
+# the version of this script that first reported PASS did not catch a real
+# `missing required key outputDirectory` runtime defect at the WebView
+# invoke() -> Tauri command argument-binding boundary, because nothing in
+# the prior gate dispatched a real IPC request through that exact layer —
+# the frontend suite mocks invoke() itself, and the packaging smoke test
+# talks to the sidecar binary's stdin/stdout directly, bypassing Rust
+# entirely. The "Rust — real IPC argument-binding regression" section below
+# closes that gap.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -74,9 +84,35 @@ section "Python — full repository regression suite"
 "${PY}" -m pytest -q
 
 section "Rust — cargo test / fmt / clippy"
-(cd desktop/src-tauri && cargo test)
+RUST_TEST_LOG="${REPORT_DIR}/cargo-test.log"
+(cd desktop/src-tauri && cargo test) | tee "${RUST_TEST_LOG}"
 (cd desktop/src-tauri && cargo fmt --check)
 (cd desktop/src-tauri && cargo clippy --all-targets -- -D warnings)
+
+section "Rust — real IPC argument-binding regression (Build 024 M2 bugfix, see BUILD-024-M2-EXPORT-BUGFIX.md)"
+# This is the specific gap that let the original 'missing required key
+# outputDirectory' defect reach Human Validation while this whole script
+# still reported PASS: the frontend suite mocks @tauri-apps/api/core's
+# invoke() entirely (so it only proves what our TypeScript SENDS, never what
+# Tauri's generated command deserializer ACTUALLY ACCEPTS), and the
+# packaging smoke test below drives the real sidecar binary's stdin/stdout
+# DIRECTLY — it never goes through the Rust/Tauri command layer at all, so
+# it could never have caught an argument-binding mismatch at that layer.
+# commands.rs's ipc_argument_binding tests (run above as part of `cargo
+# test`) are the only check that dispatches a real IPC request through
+# Tauri's actual generated deserializer (tauri::test::get_ipc_response) —
+# assert they actually ran, not just that `cargo test` as a whole passed
+# (which would also pass if the module were accidentally excluded).
+check "ipc_argument_binding regression tests actually ran (not silently excluded)" \
+  'grep -q "commands::tests::ipc_argument_binding::accepts_the_exact_payload_export_ts_sends_for_preflight_and_export ... ok" "'"${RUST_TEST_LOG}"'" \
+   && grep -q "commands::tests::ipc_argument_binding::rejects_camel_case_output_directory ... ok" "'"${RUST_TEST_LOG}"'" \
+   && grep -q "commands::tests::ipc_argument_binding::rejects_a_missing_output_directory ... ok" "'"${RUST_TEST_LOG}"'"'
+check "engine_export uses rename_all = snake_case (matches export.ts's output_directory key)" \
+  'grep -B3 "pub async fn engine_export(" desktop/src-tauri/src/commands.rs | grep -q "rename_all = \"snake_case\""'
+check "engine_export_preflight uses rename_all = snake_case (matches export.ts's output_directory key)" \
+  'grep -B3 "pub async fn engine_export_preflight(" desktop/src-tauri/src/commands.rs | grep -q "rename_all = \"snake_case\""'
+check "export.ts's invoke() payloads use the output_directory (snake_case) key, matching commands.rs's rename_all = snake_case" \
+  '[ "$(grep -c "output_directory: outputDirectory" desktop/frontend/src/export.ts)" -eq 2 ]'
 
 section "Frontend — vitest / TypeScript / build"
 (cd desktop/frontend && npm run test)
@@ -161,6 +197,15 @@ check "0 VTK references added under src/zerorodcad/export.py" \
   '! grep -riq "vtkmodules\|import vtk" src/zerorodcad/export.py'
 
 section "Packaging — productive onedir sidecar rebuild + fresh release .app (best-effort; see docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md Known limitations #1)"
+# NOTE (Build 024 M2 bugfix): the smoke test below writes JSON request lines
+# directly to the sidecar binary's own stdin and reads its stdout — it
+# never goes through the WebView invoke() -> Tauri command -> engine::request
+# path at all, so it CANNOT catch an argument-binding mismatch at the
+# Rust/Tauri IPC layer (which is exactly what the original 'missing required
+# key outputDirectory' defect was). That layer is covered above, by the
+# "Rust — real IPC argument-binding regression" section. This smoke test's
+# job is proving the Python sidecar side of export/preflight is real and
+# correct, not the IPC boundary.
 BUNDLE_VENV=".venv-novtk-bundle"
 BUNDLE_PYTHON="${BUNDLE_VENV}/bin/python"
 SIDECAR_DIST="desktop/sidecar-dist"
