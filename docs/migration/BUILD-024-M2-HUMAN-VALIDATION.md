@@ -43,13 +43,23 @@ the bugfix record.
 | Defect | `engine_export_preflight` (and, by identical construction, `engine_export`) rejected the real frontend payload — `outputDirectory` argument-binding mismatch |
 | Fix record | `docs/migration/BUILD-024-M2-EXPORT-BUGFIX.md` |
 
-## Round 2 — retest (this checklist, reset to PENDING)
+## Round 2 — PASS
 
-This environment had no display/GUI access when this checklist was drafted or updated, so
-every item below is left **unchecked** rather than assumed, per the same allowance Build
-023's own human validation documents used ("Claude leaves unchecked if human clicking
-unavailable"). The fix is not assumed to make the flow work end to end from a human's
-perspective — only a real re-test can confirm that.
+The Project Owner re-tested the corrected build and confirmed: native directory selection
+works, export succeeds, STL/STEP/report are generated, and the exported model can be opened
+successfully — exactly the sequence Round 1 broke on. This confirmation was reported directly
+(not observed interactively by Claude — no display/GUI access exists in this environment), so
+only the specific checklist items with a clear, direct match to what was reported are marked
+`[x]` below; items not explicitly covered by that report are left unchecked rather than
+assumed, even where plausibly implied — the same discipline
+`BUILD-023-M4-HUMAN-VALIDATION.md` already established for this migration. No repeat
+validation was performed by Claude to produce this update.
+
+| Field | Value |
+|---|---|
+| Tester | Project Owner |
+| Result | **PASS** |
+| Notes | Native directory selection works; export succeeds; STL/STEP/report are generated; the exported model can be opened successfully. Confirms the Round 1 `outputDirectory` defect is resolved. |
 
 ## Build under test
 
@@ -77,15 +87,15 @@ open "/Users/bernd/Projekte/ZeroRodCAD-App/desktop/src-tauri/target/release/bund
 
 Regression items for the specific reported defect, first:
 
-- [ ] Export Model… opens native directory dialog
-- [ ] A normal directory can be selected (try `~/Downloads` or `~/Documents` specifically —
+- [x] Export Model… opens native directory dialog
+- [x] A normal directory can be selected (try `~/Downloads` or `~/Documents` specifically —
       the originally reported case)
-- [ ] Selected directory is accepted
-- [ ] No `outputDirectory`/`output_directory` argument error occurs
-- [ ] Export completes
-- [ ] STL exists
-- [ ] STEP exists
-- [ ] report exists
+- [x] Selected directory is accepted
+- [x] No `outputDirectory`/`output_directory` argument error occurs
+- [x] Export completes
+- [x] STL exists
+- [x] STEP exists
+- [x] report exists
 - [ ] overwrite warning works
 - [ ] cancel works
 - [ ] preview remains functional
@@ -93,25 +103,25 @@ Regression items for the specific reported defect, first:
 
 Full checklist:
 
-- [ ] App starts
+- [x] App starts
 - [ ] Current ZeroRod visible
 - [ ] Parameters/live preview still work
 - [ ] Export control visible
 - [ ] Export control wording understandable
 
-- [ ] Click Export
-- [ ] Native macOS directory dialog opens
-- [ ] Dialog allows directory selection
+- [x] Click Export
+- [x] Native macOS directory dialog opens
+- [x] Dialog allows directory selection
 - [ ] Cancel closes dialog cleanly
 - [ ] Cancel produces no error
 
-- [ ] Select an empty destination (try a normal user folder such as `~/Downloads` or
+- [x] Select an empty destination (try a normal user folder such as `~/Downloads` or
       `~/Documents`, or an engineering-safe subfolder of one — the originally reported case)
-- [ ] Export completes
+- [x] Export completes
 - [ ] Success state appears
-- [ ] STL file exists
-- [ ] STEP file exists
-- [ ] Markdown report exists
+- [x] STL file exists
+- [x] STEP file exists
+- [x] Markdown report exists
 
 - [ ] Generated filenames are understandable
 - [ ] Exported model corresponds to currently visible model
@@ -146,16 +156,16 @@ Full checklist:
 
 | Field | Value |
 |---|---|
-| Tester | *(pending)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Hardware | *(pending)* |
-| Result | **PENDING** |
-| Notes | *(pending — awaiting Project Owner re-test of the corrected release build above; Round 1's specific failure is not assumed fixed from engineering evidence alone)* |
+| Tester | Project Owner |
+| Date | *(not separately itemized by the tester's report)* |
+| macOS | *(not separately itemized by the tester's report)* |
+| Hardware | *(not separately itemized by the tester's report)* |
+| Result | **PASS** (Round 2) |
+| Notes | Native directory selection works, export succeeds, STL/STEP/report are generated, and the exported model opens successfully. Items above with a clear, direct match to this report are marked `[x]`; items not explicitly covered (overwrite flow, cancellation, project_name edge cases, live-preview-pending behavior, quit/orphan cleanup) are left unchecked rather than assumed. |
 
 ## Gate BUILD-024-M2 (human component)
 
-**PENDING** (Round 2). Round 1 was **FAIL** — see above. The engineering gate
-(`scripts/validate-build024-m2.sh`) re-passes after the fix, including new regression
-coverage for the exact defect class found; overall Milestone 2 completion still requires a
-real human re-test to PASS.
+**PASS** (Round 2), as reported by the Project Owner. Round 1 was **FAIL** — see above; the
+underlying defect is fixed and re-confirmed working end to end. Combined with the engineering
+gate (`scripts/validate-build024-m2.sh`, PASS), **Gate BUILD-024-M2: PASS** overall — Milestone
+2 is COMPLETE.

@@ -8,6 +8,7 @@ use tauri::{AppHandle, State};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 
 use crate::engine::{self, EngineState, EngineStatusInfo};
+use crate::export_result::{validate_export_preflight_result, validate_export_result};
 use crate::mesh;
 use crate::protocol::EngineError;
 
@@ -193,7 +194,17 @@ pub async fn engine_export(
         "parameters": parameters,
         "output_directory": output_directory,
     });
-    engine::request(&app, &state, "export", request_parameters).await
+    let payload = engine::request(&app, &state, "export", request_parameters).await?;
+    // Build 024 M3: the sidecar is a trusted local process, but nothing
+    // previously checked the *shape* of its export result before relaying
+    // it to the WebView as a success value — a missing/wrong-typed field
+    // would have reached the frontend's success-rendering path unchecked.
+    // Mirrors `engine_preview_mesh`'s existing `mesh::validate_and_summarize`
+    // guard for the same reason: a malformed result must never read as
+    // success (docs/migration/BUILD-024-M3-EXPORT-ROBUSTNESS.md).
+    validate_export_result(&payload)
+        .map_err(|problems| EngineError::new("invalid_export_result", problems.join("; ")))?;
+    Ok(payload)
 }
 
 /// Build 024 M2: pure, side-effect-free overwrite-conflict check for the
@@ -221,7 +232,12 @@ pub async fn engine_export_preflight(
         "parameters": parameters,
         "output_directory": output_directory,
     });
-    engine::request(&app, &state, "export_preflight", request_parameters).await
+    let payload = engine::request(&app, &state, "export_preflight", request_parameters).await?;
+    // Build 024 M3: same structural-validation guard as `engine_export`
+    // above — see its doc comment.
+    validate_export_preflight_result(&payload)
+        .map_err(|problems| EngineError::new("invalid_export_result", problems.join("; ")))?;
+    Ok(payload)
 }
 
 /// Explicit shutdown command (also invoked automatically on app exit — see

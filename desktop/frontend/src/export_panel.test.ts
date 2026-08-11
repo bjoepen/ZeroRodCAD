@@ -324,3 +324,81 @@ describe("overwrite conflict flow", () => {
     expect(panelState()).toBe("success");
   });
 });
+
+describe("Build 024 M3 — robustness and error recovery", () => {
+  it("a malformed/invalid export result (Rust-side validation rejection) never shows success", async () => {
+    // Build 024 M3: commands.rs now structurally validates the sidecar's
+    // export result before it can ever resolve as a success from invoke()
+    // — a malformed shape surfaces as a rejected promise with this code,
+    // never as a resolved-but-broken ExportResult object.
+    selectExportDirectoryMock.mockResolvedValueOnce("/dest");
+    requestExportPreflightMock.mockResolvedValueOnce(noConflictPreflight("/dest"));
+    requestExportMock.mockRejectedValueOnce({
+      code: "invalid_export_result",
+      message: "'files' is required",
+    });
+    createExportPanelController(container, io);
+
+    triggerButton().click();
+    await flush();
+
+    expect(panelState()).toBe("error");
+    expect(container.querySelector(".export-success")).toBeFalsy();
+    expect(container.querySelector(".export-error")?.textContent).toContain("unexpected result");
+  });
+
+  it("a stale error clears once a subsequent export succeeds", async () => {
+    selectExportDirectoryMock.mockResolvedValueOnce("/dest");
+    requestExportPreflightMock.mockResolvedValueOnce(noConflictPreflight("/dest"));
+    requestExportMock.mockRejectedValueOnce({ code: "export_write_failed", message: "disk error" });
+    createExportPanelController(container, io);
+
+    triggerButton().click();
+    await flush();
+    expect(panelState()).toBe("error");
+
+    selectExportDirectoryMock.mockResolvedValueOnce("/dest");
+    requestExportPreflightMock.mockResolvedValueOnce(noConflictPreflight("/dest"));
+    requestExportMock.mockResolvedValueOnce(EXPORT_RESULT);
+
+    triggerButton().click();
+    await flush();
+
+    expect(panelState()).toBe("success");
+    expect(container.querySelector(".export-error")).toBeFalsy();
+  });
+
+  it("a stale success/error note clears once the user starts a new export attempt", async () => {
+    selectExportDirectoryMock.mockResolvedValueOnce(null);
+    createExportPanelController(container, io);
+
+    triggerButton().click();
+    await flush();
+    expect(container.querySelector(".export-note")?.textContent).toContain("cancelled");
+
+    selectExportDirectoryMock.mockResolvedValueOnce("/dest");
+    requestExportPreflightMock.mockResolvedValueOnce(noConflictPreflight("/dest"));
+    requestExportMock.mockResolvedValueOnce(EXPORT_RESULT);
+
+    triggerButton().click();
+    await flush();
+
+    expect(panelState()).toBe("success");
+    expect(container.querySelector(".export-note")).toBeFalsy();
+  });
+
+  it("preflight rejecting with invalid_export_result is a structured error, not a crash", async () => {
+    selectExportDirectoryMock.mockResolvedValueOnce("/dest");
+    requestExportPreflightMock.mockRejectedValueOnce({
+      code: "invalid_export_result",
+      message: "'has_conflicts' must be a boolean",
+    });
+    createExportPanelController(container, io);
+
+    triggerButton().click();
+    await flush();
+
+    expect(requestExportMock).not.toHaveBeenCalled();
+    expect(panelState()).toBe("error");
+  });
+});

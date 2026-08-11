@@ -9,9 +9,14 @@
 // native-dialog command (`select_export_directory`) that lets the WebView
 // obtain a user-chosen filesystem path without ever receiving filesystem
 // permission itself — see docs/migration/BUILD-024-M1-EXPORT-FOUNDATION.md.
+// Build 024 M3 adds `export_result`, structurally validating the sidecar's
+// export/export_preflight results before they ever reach the WebView as a
+// success value (mirroring `mesh`'s existing `validate_and_summarize`
+// pattern) — see docs/migration/BUILD-024-M3-EXPORT-ROBUSTNESS.md.
 
 mod commands;
 mod engine;
+mod export_result;
 mod mesh;
 mod protocol;
 

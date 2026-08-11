@@ -305,6 +305,9 @@ def test_export_rejects_invalid_domain_parameters(tmp_path: Path) -> None:
     assert response["ok"] is False
     assert response["error"]["code"] == "invalid_parameters_domain"
     assert "errors" in response["error"]["details"]
+    # Build 024 M3 §22: validation happens before export_project is ever
+    # called — no partial/stray output may exist for a rejected request.
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_export_rejects_wrong_field_type(tmp_path: Path) -> None:
@@ -460,3 +463,159 @@ def test_export_preflight_result_is_json_serializable_and_has_no_traceback(tmp_p
     serialized = json.dumps(response)
     assert "Traceback" not in serialized
     assert 'File "' not in serialized
+
+
+# --- Build 024 M3: export robustness & edge cases ------------------------
+
+
+def test_export_incomplete_when_a_written_output_is_zero_bytes(tmp_path: Path, monkeypatch) -> None:
+    """A file that exists but is zero-byte is a distinct failure mode from a
+    file that's missing entirely — both must be caught by post-export
+    verification (§8/§23 of the M3 mandate). CadQuery cannot reliably be
+    forced to produce this outcome at the OS level, so it's simulated via a
+    monkeypatched export_project (§41's explicit allowance for failure
+    injection that can't safely be reproduced at the OS level)."""
+
+    def fake_export_project(output_directory: str, parameters):
+        directory = Path(output_directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        body_path = directory / "cbg-open-g-body.stl"
+        assembly_path = directory / "cbg-open-g-assembly.step"
+        report_path = directory / "cbg-open-g-report.md"
+        body_path.write_bytes(b"not empty")
+        assembly_path.write_bytes(b"")  # zero-byte, simulating a silent no-op
+        report_path.write_text("report")
+        return body_path, assembly_path, report_path
+
+    monkeypatch.setattr("zerorodcad.export.export_project", fake_export_project)
+    response = handle_request(_export_request(str(tmp_path)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "export_incomplete"
+    assert response["error"]["details"]["missing"] == ["assembly_step"]
+
+
+def test_export_write_failed_maps_a_simulated_disk_full_oserror(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """§29 of the M3 mandate: real OS-level disk-full is not safely
+    testable here without manipulating the real disk — this proves the
+    error-mapping path at a controlled write boundary instead, which is
+    honestly the limit of what can be verified in this environment
+    (classified SIMULATED, not empirically verified against a real full
+    disk, in the M3 documentation)."""
+    import errno
+
+    def fake_export_project(output_directory: str, parameters):
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    monkeypatch.setattr("zerorodcad.export.export_project", fake_export_project)
+    response = handle_request(_export_request(str(tmp_path)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "export_write_failed"
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_export_empty_project_name_falls_back_to_zerorod_end_to_end(tmp_path: Path) -> None:
+    """§21 of the M3 mandate: the empty/pathological safe-name case is
+    reachable end to end (project_name has no domain validation rule
+    rejecting an empty string) and must resolve to the existing engine
+    fallback ("zerorod"), not an unusable/empty filename stem — proven
+    through the real export pipeline, not just the pure filename helper."""
+    response = handle_request(_export_request(str(tmp_path), {"project_name": "   "}))
+    assert response["ok"] is True
+    filenames = {f["filename"] for f in response["result"]["files"]}
+    assert filenames == {"zerorod-body.stl", "zerorod-assembly.step", "zerorod-report.md"}
+    for entry in response["result"]["files"]:
+        path = Path(entry["path"])
+        assert path.is_file() and path.stat().st_size > 0
+
+
+def test_export_unicode_project_name_succeeds_end_to_end(tmp_path: Path) -> None:
+    """§19/§20 of the M3 mandate: a Unicode project name must export
+    successfully and produce real, usable, non-ASCII-transliterated
+    filenames (documented Build 024 M1 behavior: Unicode letters are kept
+    lowercase as-is, not transliterated)."""
+    response = handle_request(_export_request(str(tmp_path), {"project_name": "ZeroRod – Prüfung"}))
+    assert response["ok"] is True
+    filenames = {f["filename"] for f in response["result"]["files"]}
+    assert filenames == {
+        "zerorod-prüfung-body.stl",
+        "zerorod-prüfung-assembly.step",
+        "zerorod-prüfung-report.md",
+    }
+    for entry in response["result"]["files"]:
+        path = Path(entry["path"])
+        assert path.is_file() and path.stat().st_size > 0
+
+
+def test_export_into_a_directory_with_spaces_succeeds(tmp_path: Path) -> None:
+    """§18 of the M3 mandate: no shell is ever involved in export, so a
+    destination directory name containing spaces must work without any
+    escaping concern."""
+    destination = tmp_path / "ZeroRod Export Test"
+    response = handle_request(_export_request(str(destination)))
+    assert response["ok"] is True
+    for entry in response["result"]["files"]:
+        path = Path(entry["path"])
+        assert path.is_file() and path.stat().st_size > 0
+        assert "ZeroRod Export Test" in str(path)
+
+
+def test_export_succeeds_even_if_directory_was_removed_after_a_prior_preflight(
+    tmp_path: Path,
+) -> None:
+    """§15 of the M3 mandate ("destination disappears after selection"):
+    empirically, this is not actually a failure case — export_project's own
+    `mkdir(parents=True, exist_ok=True)` self-heals by recreating the
+    directory (documented in Build 024 M1's "Path semantics" already; this
+    proves it end to end through the sidecar boundary specifically for the
+    "selected via a real preflight, then removed" sequence)."""
+    destination = tmp_path / "will-disappear"
+    destination.mkdir()
+    preflight = handle_request(_export_preflight_request(str(destination)))
+    assert preflight["ok"] is True
+
+    destination.rmdir()
+    assert not destination.exists()
+
+    response = handle_request(_export_request(str(destination)))
+    assert response["ok"] is True
+    for entry in response["result"]["files"]:
+        path = Path(entry["path"])
+        assert path.is_file() and path.stat().st_size > 0
+
+
+def test_export_repeated_identical_parameters_produce_consistent_output(tmp_path: Path) -> None:
+    """Supports the M3 §24-26 retry-safety decision: export_project always
+    fully rewrites each output file from scratch (no partial/append writes,
+    no cumulative state), so a repeated call with identical parameters can
+    never produce a corrupted half-old/half-new file. Empirically, STL
+    (pure tessellation) and the Markdown report (a pure text template) are
+    fully byte-identical across repeated identical-parameter calls — but
+    the STEP assembly export is NOT: CadQuery/OCP's STEP writer assigns
+    internal entity IDs and STYLED_ITEM color references in an order that
+    is not guaranteed stable across repeated `Assembly.export()` calls in
+    the same process (observed directly: identical geometry, but a handful
+    of differing NEXT_ASSEMBLY_USAGE_OCCURRENCE/STYLED_ITEM/COLOUR_RGB
+    entity lines between two otherwise-identical exports). This is real,
+    documented evidence, not assumed — see
+    docs/migration/BUILD-024-M3-EXPORT-ROBUSTNESS.md's retry-policy section.
+    The STEP file size (not content) is still checked for consistency here,
+    since export_project always writes the same shape for the same
+    parameters."""
+    first = handle_request(_export_request(str(tmp_path)))
+    first_files = {entry["role"]: Path(entry["path"]) for entry in first["result"]["files"]}
+    stl_bytes_1 = first_files["body_stl"].read_bytes()
+    report_text_1 = first_files["report_markdown"].read_text()
+    step_size_1 = first_files["assembly_step"].stat().st_size
+
+    second = handle_request(_export_request(str(tmp_path)))
+    second_files = {entry["role"]: Path(entry["path"]) for entry in second["result"]["files"]}
+    stl_bytes_2 = second_files["body_stl"].read_bytes()
+    report_text_2 = second_files["report_markdown"].read_text()
+    step_size_2 = second_files["assembly_step"].stat().st_size
+
+    assert stl_bytes_1 == stl_bytes_2
+    assert report_text_1 == report_text_2
+    assert step_size_1 == step_size_2
+    assert step_size_2 > 0

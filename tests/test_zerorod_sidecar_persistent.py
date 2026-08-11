@@ -299,6 +299,94 @@ class TestRealPersistentSubprocess:
         }
         assert "60.00 mm" in second_files["report_markdown"].read_text()
 
+    def test_real_subprocess_paths_and_interleaving_sequence(self, tmp_path):
+        """Build 024 M3 §17/§18/§19/§32: real evidence, through the actual
+        VTK-free persistent interpreter, that export/preview interleaving
+        never exports stale geometry, and that spaces/Unicode destination
+        paths work with no shell involved (no escaping relevant — this is
+        pure subprocess stdin/stdout, never a shell command)."""
+        spaces_dir = tmp_path / "ZeroRod Export Test"
+        unicode_dir = tmp_path / "ZeroRod – Prüfung"
+        alt_params = {"schema": "zerorod-parameters/v1", "values": {"body_width": 60.0}}
+
+        lines = (
+            _req("preview-1", "preview")
+            + _req("export-1", "export", {"output_directory": str(spaces_dir)})
+            + _req("preview-2", "preview", alt_params)
+            + _req(
+                "export-2",
+                "export",
+                {"output_directory": str(unicode_dir), "parameters": alt_params},
+            )
+            + _req("preview-3", "preview")
+            + _req("bye", "shutdown")
+        )
+        result = self._run_subprocess(lines)
+        assert result.returncode == 0
+        responses = {
+            r["request_id"]: r
+            for r in (json.loads(line) for line in result.stdout.splitlines() if line.strip())
+        }
+        for request_id in ("preview-1", "export-1", "preview-2", "export-2", "preview-3", "bye"):
+            assert responses[request_id]["ok"] is True, responses[request_id]
+
+        # export-1 (default params) went into the spaces path.
+        default_report = None
+        for entry in responses["export-1"]["result"]["files"]:
+            path = Path(entry["path"])
+            assert path.is_file() and path.stat().st_size > 0
+            assert "ZeroRod Export Test" in str(path)
+            if entry["role"] == "report_markdown":
+                default_report = path.read_text()
+        assert "38.00 mm" in default_report
+
+        # export-2 (body_width=60) went into the Unicode path — proving the
+        # accepted geometry at the time of THIS export call (not whatever
+        # preview-1/export-1 last showed) is what actually got exported.
+        alt_report = None
+        for entry in responses["export-2"]["result"]["files"]:
+            path = Path(entry["path"])
+            assert path.is_file() and path.stat().st_size > 0
+            assert "Prüfung" in str(path)
+            if entry["role"] == "report_markdown":
+                alt_report = path.read_text()
+        assert "60.00 mm" in alt_report
+
+    def test_real_subprocess_repeated_export_stress(self, tmp_path):
+        """Build 024 M3 §31: a bounded repeated-export sequence (20 real
+        exports, alternating destinations to also exercise overwrite-free
+        and overwrite paths) through the same persistent process — proves
+        no request corruption and a clean final shutdown. Memory growth
+        during a comparable repeated-request sequence was already measured
+        as part of Build 023 M4's own benchmark (≈0.18% RSS growth over 20
+        requests); this test's focus is correctness/stability, not memory,
+        which docs/migration/BUILD-024-M3-EXPORT-ROBUSTNESS.md's
+        Performance/Memory section addresses separately."""
+        export_count = 20
+        lines = ""
+        for i in range(export_count):
+            destination = tmp_path / f"run-{i % 4}"  # 4 destinations, reused -> real overwrites
+            lines += _req(f"export-{i}", "export", {"output_directory": str(destination)})
+        lines += _req("preview-final", "preview") + _req("bye", "shutdown")
+
+        result = self._run_subprocess(lines)
+        assert result.returncode == 0
+        responses = {
+            r["request_id"]: r
+            for r in (json.loads(line) for line in result.stdout.splitlines() if line.strip())
+        }
+        assert len(responses) == export_count + 2
+        for i in range(export_count):
+            assert responses[f"export-{i}"]["ok"] is True, responses[f"export-{i}"]
+        assert responses["preview-final"]["ok"] is True
+        assert responses["bye"]["ok"] is True
+
+        for i in range(4):
+            destination = tmp_path / f"run-{i}"
+            files = list(destination.iterdir())
+            assert len(files) == 3
+            assert all(f.stat().st_size > 0 for f in files)
+
     def test_real_subprocess_no_vtk_or_pyside6(self):
         probe = """
 import sys, json

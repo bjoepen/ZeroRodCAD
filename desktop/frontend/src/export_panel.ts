@@ -98,6 +98,13 @@ function formatExportError(error: unknown): string {
     case "invalid_parameters":
     case "invalid_parameters_schema":
       return "The current model parameters are invalid; fix them before exporting.";
+    case "invalid_export_result":
+      // Build 024 M3 (§10/§23/§34 of the mandate): the sidecar's response
+      // failed Rust-side structural validation (commands.rs's
+      // validate_export_result/validate_export_preflight_result) — treated
+      // as a hard failure, never partial success, exactly like
+      // export_incomplete above.
+      return "Export failed: the engine returned an unexpected result. Try again.";
     default:
       return `Export failed: ${error.message}`;
   }
