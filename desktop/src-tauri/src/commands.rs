@@ -20,13 +20,22 @@ pub struct AppInfo {
     pub milestone: String,
 }
 
+// Build 025 M1 identity fix: this pair (`build`/`milestone`) is the single
+// source of truth for the app's visible build/milestone identity — nowhere
+// else hardcodes it (main.ts's status panel is the only renderer, reading
+// these two fields; it used to also carry a second, independently-drifting
+// copy in a static subtitle string, which was the actual cause of the
+// Project Owner seeing a stale "Build 024 — Milestone 2" label while
+// validating this M1 build — see docs/migration/
+// BUILD-025-M1-ARTIFACT-IDENTITY-FIX.md). Update both fields together, here
+// only, at the start of each new milestone.
 #[tauri::command]
 pub fn app_info() -> AppInfo {
     AppInfo {
         name: "ZeroRodCAD Desktop".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        build: "022".to_string(),
-        milestone: "M3".to_string(),
+        build: "025".to_string(),
+        milestone: "M1".to_string(),
     }
 }
 
@@ -355,11 +364,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn app_info_reports_build_022_m3() {
+    fn app_info_reports_build_025_m1() {
         let info = app_info();
-        assert_eq!(info.build, "022");
-        assert_eq!(info.milestone, "M3");
+        assert_eq!(info.build, "025");
+        assert_eq!(info.milestone, "M1");
         assert!(!info.version.is_empty());
+    }
+
+    // Build 025 M1 artifact-identity-fix regression: the specific stale
+    // pair the Project Owner actually saw in the built .app must never come
+    // back together (each value alone is fine in other contexts — e.g. a
+    // doc comment — the *pair*, as what app_info() reports, is the bug).
+    #[test]
+    fn app_info_never_reports_a_stale_024_m2_pair() {
+        let info = app_info();
+        assert!(
+            !(info.build == "024" && info.milestone == "M2"),
+            "app_info() must not report the stale Build 024 / M2 identity"
+        );
     }
 
     // Build 024 M2 bugfix regression tests — real IPC dispatch through

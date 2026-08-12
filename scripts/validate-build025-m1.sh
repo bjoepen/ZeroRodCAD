@@ -105,6 +105,22 @@ section "Frontend — vitest / TypeScript / build"
 (cd desktop/frontend && npm run typecheck)
 (cd desktop/frontend && npm run build)
 
+section "Visible build/milestone identity (Project Owner reported a stale 'Build 024 — Milestone 2' label in the M1 artifact — see docs/migration/BUILD-025-M1-ARTIFACT-IDENTITY-FIX.md)"
+check "app_info() reports the current build/milestone pair (single source, commands.rs)" \
+  'grep -q "build: \"025\".to_string()" desktop/src-tauri/src/commands.rs \
+   && grep -q "milestone: \"M1\".to_string()" desktop/src-tauri/src/commands.rs'
+check "app_info() does not report the stale 024/M2 pair" \
+  '! (grep -q "build: \"024\".to_string()" desktop/src-tauri/src/commands.rs && grep -q "milestone: \"M2\".to_string()" desktop/src-tauri/src/commands.rs)'
+check "main.ts's rendered DOM shell no longer contains a hardcoded 'subtitle' element (the actual old bug — history-recording source comments elsewhere in the file, including ones that quote the old stale text for the record, are expected and fine)" \
+  '! grep -q "class=\"subtitle\"" desktop/frontend/src/main.ts'
+check "main.ts renders build/milestone from the single live app_info() response only" \
+  'grep -q "info.build} \${info.milestone}" desktop/frontend/src/main.ts'
+check "the freshly built frontend bundle contains no visible '024 — Milestone 2' / '024 M2' label" \
+  '! grep -RqE "024[^0-9]{0,12}(Milestone 2|M2\b)" desktop/frontend/dist/assets/*.js'
+check "app_info regression tests exist and pin the current pair, not a stale one" \
+  'grep -q "fn app_info_reports_build_025_m1" desktop/src-tauri/src/commands.rs \
+   && grep -q "fn app_info_never_reports_a_stale_024_m2_pair" desktop/src-tauri/src/commands.rs'
+
 section "Project persistence surface — commands, UI, and existing-format reuse"
 check "project.py reused unmodified (no new project format invented)" \
   'git diff --quiet -- src/zerorodcad/project.py 2>/dev/null'
@@ -259,6 +275,27 @@ PYEOF
       APP_PATH="desktop/src-tauri/target/release/bundle/macos/ZeroRodCAD.app"
       if [ -d "${APP_PATH}" ]; then
         echo "OK   fresh release .app built: ${APP_PATH}"
+        BUILT_BINARY="${APP_PATH}/Contents/MacOS/zerorod-desktop"
+        if [ -f "${BUILT_BINARY}" ]; then
+          # A release/stripped Rust binary merges short serde field-name/value
+          # string constants ("025", "M1", "build", "milestone") into one
+          # contiguous blob with no clean boundaries `strings(1)` can isolate
+          # (confirmed directly: `versionbuildmilestonepathsscaleFactor}` is
+          # one run) — so short-token byte-grepping is unreliable evidence
+          # either way for those specific values. The old subtitle string was
+          # long and distinctive enough to be reliably found by `strings`
+          # when it existed; its reliable ABSENCE now (a longer, exact-text
+          # search, immune to the short-token merging problem) is the
+          # trustworthy artifact-level proof instead — the mandate's own
+          # Proof 3 ("0 visible-product matches" for "024 M2" in the final
+          # bundle). The `app_info()` compiled logic itself is proven by the
+          # Rust unit tests above, which actually execute it, rather than by
+          # inspecting its raw compiled bytes.
+          check "the built binary contains no trace of the old hardcoded subtitle text" \
+            '! strings "'"${BUILT_BINARY}"'" | grep -qE "Build 024.{0,3}Milestone 2|Native Save Dialog"'
+        else
+          echo "  WARNING: built binary not found at ${BUILT_BINARY}, skipping identity string check"
+        fi
       else
         echo "  FAIL release .app not found after build. Log: ${REPORT_DIR}/app-build.log" >&2
         FAILED=1
