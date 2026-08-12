@@ -80,7 +80,7 @@ check "mesh contract still zerorod-mesh/v1 (Python)" \
 check "mesh contract still zerorod-mesh/v1 (Rust)" \
   'grep -q "zerorod-mesh/v1" desktop/src-tauri/src/mesh.rs'
 check "invalid_export_result is additive within the existing {code,message,details} envelope (no new envelope field)" \
-  'grep -q "invalid_export_result" desktop/src-tauri/src/export_result.rs'
+  'grep -q "invalid_export_result" desktop/src-tauri/src/commands.rs'
 
 section "Architecture conformance — ADR-022-001 (current, integrated state)"
 check "Tauri v2 CLI/API pinned" \
