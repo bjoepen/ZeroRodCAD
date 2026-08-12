@@ -63,13 +63,7 @@ body {
 h1 {
   color: var(--text-h);
   font-size: 1.3rem;
-  margin: 0 0 0.15rem;
-}
-
-.subtitle {
   margin: 0 0 1rem;
-  color: var(--neutral);
-  font-size: 0.9rem;
 }
 
 .layout {

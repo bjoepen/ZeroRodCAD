@@ -21,10 +21,20 @@ const appEl = document.querySelector<HTMLDivElement>("#app")!;
 // panel and the last-action text update afterward — never the whole #app
 // innerHTML — because the viewport div holds a live Three.js canvas that a
 // full re-render would tear down and silently orphan on every status change.
+// Build 025 M1 identity fix: this shell used to also carry a second,
+// independently hardcoded "Build 024 — Milestone 2: ..." subtitle string
+// here — a separate copy of the same build/milestone identity `app_info()`
+// (Rust) already reports, which drifted out of sync across Build 024
+// M3/M4 and Build 025 Discovery/M1 and was the actual root cause of the
+// Project Owner seeing a stale label while validating this M1 build (see
+// docs/migration/BUILD-025-M1-ARTIFACT-IDENTITY-FIX.md). There is now
+// exactly one place a build/milestone label is rendered — the status
+// panel's "Rust bridge" row below, populated from the real `app_info()`
+// response in `init()` — so a future milestone only ever needs to update
+// commands.rs's `app_info()` for this identity to stay correct everywhere.
 appEl.innerHTML = `
   <main class="foundation">
     <h1>ZeroRodCAD Desktop 2.0</h1>
-    <p class="subtitle">Build 024 — Milestone 2: Native Save Dialog &amp; Export Controls</p>
     <div class="layout">
       <section class="sidebar">
         <section class="status-panel" id="status-panel"></section>
@@ -225,7 +235,10 @@ async function init(): Promise<void> {
 
   try {
     const info = await fetchAppInfo();
-    setRow("rust-bridge", "READY", `${info.name} ${info.version} (${info.milestone})`);
+    // Build 025 M1 identity fix: Build/Milestone now only ever comes from
+    // this one live app_info() response — see the module doc comment above
+    // the DOM shell for why (docs/migration/BUILD-025-M1-ARTIFACT-IDENTITY-FIX.md).
+    setRow("rust-bridge", "READY", `${info.name} ${info.version} — Build ${info.build} ${info.milestone}`);
   } catch (error) {
     setRow("rust-bridge", "ERROR", String(error));
   }
