@@ -9,6 +9,20 @@ from .report import save_report
 from .validation import validate_parameters
 
 
+def expected_output_filenames(project_name: str) -> dict[str, str]:
+    """Returns the filenames `export_project` would produce for each output
+    role, without touching the filesystem or performing an export. Reuses
+    the exact same sanitization `export_project` itself uses, so a preflight
+    conflict check (Build 024 M2) can never drift from actual export
+    behavior."""
+    safe_name = _safe_name(project_name)
+    return {
+        "body_stl": f"{safe_name}-body.stl",
+        "assembly_step": f"{safe_name}-assembly.step",
+        "report_markdown": f"{safe_name}-report.md",
+    }
+
+
 def export_project(
     output_directory: str | Path,
     parameters: ZeroRodParameters,
@@ -27,10 +41,10 @@ def export_project(
     directory = Path(output_directory)
     directory.mkdir(parents=True, exist_ok=True)
 
-    safe_name = _safe_name(parameters.project_name)
-    body_path = directory / f"{safe_name}-body.stl"
-    assembly_path = directory / f"{safe_name}-assembly.step"
-    report_path = directory / f"{safe_name}-report.md"
+    filenames = expected_output_filenames(parameters.project_name)
+    body_path = directory / filenames["body_stl"]
+    assembly_path = directory / filenames["assembly_step"]
+    report_path = directory / filenames["report_markdown"]
 
     exporters.export(build_body(parameters), str(body_path))
 

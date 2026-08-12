@@ -1,0 +1,646 @@
+:root {
+  --text: #3a3640;
+  --text-h: #08060d;
+  --bg: #fff;
+  --panel-bg: #fafafa;
+  --border: #e5e4e7;
+  --ok: #1a7f37;
+  --ok-bg: rgba(26, 127, 55, 0.1);
+  --neutral: #6b6375;
+  --neutral-bg: rgba(107, 99, 117, 0.1);
+  --error: #cf222e;
+  --error-bg: rgba(207, 34, 46, 0.1);
+  --warn: #9a6700;
+  --warn-bg: rgba(154, 103, 0, 0.12);
+  --focus: #2563eb;
+
+  font: 16px/145% system-ui, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #d9d7dd;
+    --text-h: #f4f3f6;
+    --bg: #16141a;
+    --panel-bg: #1c1a21;
+    --border: #2c2933;
+    --warn: #d29922;
+    --warn-bg: rgba(210, 153, 34, 0.15);
+    --focus: #58a6ff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+}
+
+#app {
+  flex: 1;
+  display: flex;
+}
+
+.foundation {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1.5rem;
+  min-height: 0;
+}
+
+h1 {
+  color: var(--text-h);
+  font-size: 1.3rem;
+  margin: 0 0 0.15rem;
+}
+
+.subtitle {
+  margin: 0 0 1rem;
+  color: var(--neutral);
+  font-size: 0.9rem;
+}
+
+.layout {
+  flex: 1;
+  display: flex;
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 280px;
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.parameters-column {
+  width: 360px;
+  flex: 0 0 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.parameters {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+}
+
+.export-panel-container {
+  flex: 0 0 auto;
+}
+
+.project-panel-container {
+  flex: 0 0 auto;
+}
+
+.viewport {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1e1e1e;
+  position: relative;
+}
+
+.viewport canvas {
+  display: block;
+}
+
+.status-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel-bg);
+}
+
+.status-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.status-row:last-child {
+  border-bottom: none;
+}
+
+.status-label {
+  flex: 1 0 auto;
+  font-weight: 500;
+}
+
+.status-value {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.status-value--ok {
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.status-value--neutral {
+  color: var(--neutral);
+  background: var(--neutral-bg);
+}
+
+.status-value--error {
+  color: var(--error);
+  background: var(--error-bg);
+}
+
+.status-detail {
+  color: var(--neutral);
+  font-size: 0.8rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background: var(--neutral-bg);
+}
+
+.last-action {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 1.2em;
+  color: var(--neutral);
+}
+
+/* Parameter panel (Build 023 M2, live-preview status line added in M4) */
+
+.parameter-panel-status {
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--neutral);
+}
+
+.parameter-panel-status[data-state="error"] {
+  color: var(--error);
+}
+
+.parameter-panel-error-detail {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.75rem;
+  word-break: break-word;
+}
+
+.parameter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.parameter-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.parameter-panel-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-h);
+}
+
+/* Build 023 M4 — a single, calm, always-visible status line replaces M3's
+   separate dirty badge and apply-outcome message: one place, one truth,
+   updated in place rather than popping in/out (§27 of the M4 mandate asks
+   for exactly this — no "hektische" badge that appears/disappears). */
+.parameter-live-status {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--neutral-bg);
+  color: var(--neutral);
+  white-space: nowrap;
+}
+
+.parameter-live-status[data-status="pending"],
+.parameter-live-status[data-status="updating"] {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.parameter-live-status[data-status="error"] {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.parameter-panel-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--neutral);
+}
+
+.parameter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.parameter-group {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem 0.75rem;
+  margin: 0;
+}
+
+.parameter-group legend {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-h);
+  padding: 0 0.3rem;
+}
+
+.parameter-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.parameter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.parameter-field label,
+.parameter-field-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.parameter-metadata-badge {
+  margin-left: 0.4rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--neutral);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+
+.parameter-field-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.parameter-field-control input,
+.gauge-item input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-family: ui-monospace, Consolas, monospace;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+}
+
+.parameter-field-control input:focus-visible,
+.gauge-item input:focus-visible,
+.parameter-panel-actions button:focus-visible,
+.gauge-add:focus-visible,
+.gauge-remove:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.parameter-field-control input[aria-invalid="true"],
+.gauge-item input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.parameter-unit {
+  font-size: 0.75rem;
+  color: var(--neutral);
+  white-space: nowrap;
+}
+
+.parameter-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--error);
+  min-height: 1em;
+}
+
+.parameter-description {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--neutral);
+}
+
+.gauge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.gauge-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.gauge-item .parameter-error {
+  flex-basis: 100%;
+}
+
+.gauge-add,
+.gauge-remove {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.gauge-add:hover,
+.gauge-remove:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.gauge-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.parameter-panel-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.parameter-panel-actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.parameter-panel-actions button:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.parameter-panel-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Export panel (Build 024 M2) */
+
+.export-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+}
+
+.export-trigger {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.export-trigger:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.export-trigger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.export-note,
+.export-status {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--neutral);
+}
+
+.export-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--error);
+}
+
+.export-confirm,
+.export-success {
+  font-size: 0.8rem;
+}
+
+.export-confirm p,
+.export-success p {
+  margin: 0 0 0.3rem;
+}
+
+.export-confirm ul,
+.export-success ul {
+  margin: 0 0 0.5rem;
+  padding-left: 1.1rem;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--neutral);
+}
+
+.export-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.export-confirm-actions button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.export-confirm-actions button:hover {
+  background: var(--neutral-bg);
+}
+
+.export-confirm-actions [data-action="confirm-overwrite"] {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+/* Project panel (Build 025 M1) */
+
+.project-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+}
+
+.project-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.project-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.project-dirty-indicator {
+  color: var(--warn);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.project-actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.project-actions button:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.project-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.project-note,
+.project-status {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--neutral);
+}
+
+.project-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--error);
+}
+
+.project-confirm {
+  font-size: 0.8rem;
+}
+
+.project-confirm p {
+  margin: 0 0 0.3rem;
+}
+
+.project-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.project-confirm-actions button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.project-confirm-actions button:hover {
+  background: var(--neutral-bg);
+}
+
+.project-confirm-actions [data-action="guard-discard"] {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.project-confirm-actions [data-action="guard-save"] {
+  border-color: var(--neutral);
+  font-weight: 600;
+}

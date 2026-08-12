@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "ZeroRodCAD Desktop 2.0: the WebView gets no shell/process/broad-filesystem permission at all, per ADR-022-001's security boundary. It can only call the app's own narrow, app-registered commands (core:default) — M2 adds sidecar-lifecycle commands here, never a general shell/process grant. Build 024 M1 added dialog:allow-open, which lets the WebView ask the OS to show its native open/folder-picker dialog and receive back the single path the user chose; Build 025 M1 reuses it (unchanged) for the project-open file picker (tauri-plugin-dialog's ACL gates the whole 'open' command, not file-vs-folder pickers separately) and adds dialog:allow-save for the project Save As file picker. Neither grants message/ask/confirm dialogs, and — critically — neither grants filesystem read/write/list capability of its own; the WebView still cannot read a directory listing or a file's contents directly, only receive an opaque path string and hand it back to the Rust-owned engine_export/engine_project_open/engine_project_save commands, which are the only things that ever read/write bundled with a user-chosen path.",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open", "dialog:allow-save"]
+}

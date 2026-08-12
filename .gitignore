@@ -39,17 +39,28 @@ exports/
 *.dmg
 *.pkg
 
-# Node.js (TE-002 PoC frontend)
+# Node.js (TE-002 PoC frontend, Build 022 productive desktop/frontend)
 node_modules/
 
-# Rust (TE-002 PoC src-tauri)
+# Rust (TE-002 PoC src-tauri, Build 022 productive desktop/src-tauri)
 target/
 
 # PyInstaller-built sidecar binaries (TE-002 PoC, rebuilt from tools/poc/tauri/sidecar.spec)
 experiments/*/src-tauri/binaries/
 
+# PyInstaller-built onedir sidecar (TE-002.1 PoC, rebuilt from tools/poc/tauri/sidecar-onedir.spec)
+experiments/*/onedir-dist/
+experiments/*/src-tauri/resources/
+
 # Tauri-generated schemas (TE-002 PoC, regenerated automatically on build)
 experiments/*/src-tauri/gen/
+
+# PyInstaller-built onedir sidecar (Build 022, rebuilt from packaging/tauri/sidecar-onedir.spec)
+desktop/sidecar-dist/
+desktop/src-tauri/resources/
+
+# Tauri-generated schemas (Build 022 productive desktop app, regenerated automatically on build)
+desktop/src-tauri/gen/
 
 # Generated reports and logs
 *.log

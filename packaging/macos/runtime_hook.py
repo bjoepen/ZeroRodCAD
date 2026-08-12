@@ -9,7 +9,9 @@ import sys
 from pathlib import Path
 
 from zerorod_analysis.runtime.schema import (
+    PROFILE_ERROR_PROBE,
     PROFILE_EXPORT_PROBE,
+    PROFILE_PREVIEW_ALT_PROBE,
     PROFILE_PREVIEW_PROBE,
     TRACE_BUNDLE_ROOT_ENV,
     TRACE_ENABLE_ENV,
@@ -82,6 +84,36 @@ def _run_trace_stimulus(recorder: _RuntimeRecorder) -> None:
             created = export_project(output, ZeroRodParameters())
             if not created or any(not path.is_file() for path in created):
                 raise RuntimeError("export stimulus did not create all expected files")
+        elif profile == PROFILE_PREVIEW_ALT_PROBE:
+            # Same alternate parameter set already proven valid by
+            # tests/test_preview.py::test_virtual_strings_follow_string_count
+            # (4 strings instead of the default 3) — not a new geometry
+            # assumption, just exercised here for import/dependency evidence.
+            from zerorodcad.parameters import ZeroRodParameters
+            from zerorodcad.preview import build_preview_scene
+
+            alt_params = ZeroRodParameters(
+                string_gauges_inch=(0.040, 0.030, 0.020, 0.012),
+                string_spacing=8.0,
+            )
+            scene = build_preview_scene(alt_params)
+            if not scene.meshes:
+                raise RuntimeError("preview-alt stimulus returned no meshes")
+        elif profile == PROFILE_ERROR_PROBE:
+            # Same invalid parameter set already proven to raise ValueError by
+            # tests/test_export.py::test_export_rejects_invalid_parameters —
+            # exercises the validation error path, not a real failure.
+            from zerorodcad.export import export_project
+            from zerorodcad.parameters import ZeroRodParameters
+
+            output = Path(os.environ[TRACE_STIMULUS_DIR_ENV])
+            invalid_params = ZeroRodParameters(body_width=0)
+            try:
+                export_project(output, invalid_params)
+            except ValueError as exc:
+                recorder.write("stimulus-expected-error", profile=profile, message=str(exc))
+            else:
+                raise RuntimeError("error-probe stimulus did not raise ValueError as expected")
         recorder.write("stimulus-complete", profile=profile)
     except Exception as exc:
         recorder.write("recorder-error", message=f"stimulus: {type(exc).__name__}: {exc}")

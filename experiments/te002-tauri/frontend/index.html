@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ZeroRodCAD TE-002</title>
+    <title>ZeroRodCAD TE-002.1</title>
     <style>
       html, body { margin: 0; padding: 0; height: 100%; background: #1e1e1e; color: #ddd; font-family: system-ui, sans-serif; }
       #app { display: flex; flex-direction: column; height: 100%; }
@@ -19,8 +19,11 @@
   <body>
     <div id="app">
       <div id="toolbar">
-        <button id="load-button">Load ZeroRod</button>
+        <button id="load-button">Load / Refresh ZeroRod</button>
         <span id="status" data-state="idle">Idle</span>
+        <span id="runtime-mode" style="margin-left: auto; font-size: 12px; color: #6a6a6a;">
+          Sidecar runtime: persistent + onedir (TE-002.1)
+        </span>
       </div>
       <div id="viewport"></div>
     </div>
