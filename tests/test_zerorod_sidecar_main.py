@@ -619,3 +619,260 @@ def test_export_repeated_identical_parameters_produce_consistent_output(tmp_path
     assert report_text_1 == report_text_2
     assert step_size_1 == step_size_2
     assert step_size_2 > 0
+
+
+# --- Build 025 M1: project persistence -----------------------------------
+
+
+def _project_save_request(path: str, values: dict | None = None) -> str:
+    parameters: dict = {"path": path}
+    if values is not None:
+        parameters["parameters"] = _params(values)
+    return _request(command="project_save", parameters=parameters)
+
+
+def _project_open_request(path: str) -> str:
+    return _request(command="project_open", parameters={"path": path})
+
+
+def test_project_save_writes_a_zerorod_file_and_returns_its_path(tmp_path: Path) -> None:
+    target = tmp_path / "my-project.zerorod"
+    response = handle_request(_project_save_request(str(target)))
+    assert response["ok"] is True
+    assert response["result"]["path"] == str(target)
+    assert target.is_file()
+    payload = json.loads(target.read_text())
+    assert payload["format"] == "ZeroRodCAD Project"
+    assert payload["version"] == 1
+
+
+def test_project_save_forces_zerorod_suffix_like_project_py(tmp_path: Path) -> None:
+    target = tmp_path / "my-project"
+    response = handle_request(_project_save_request(str(target)))
+    assert response["ok"] is True
+    assert response["result"]["path"] == str(target.with_suffix(".zerorod"))
+
+
+def test_project_save_then_open_roundtrips_canonical_defaults(tmp_path: Path) -> None:
+    target = tmp_path / "defaults.zerorod"
+    saved = handle_request(_project_save_request(str(target)))
+    defaults = handle_request(_request(command="parameters_defaults"))["result"]["values"]
+
+    opened = handle_request(_project_open_request(str(target)))
+    assert opened["ok"] is True
+    assert opened["result"]["values"] == defaults
+    assert saved["result"]["parameters"]["values"] == defaults
+
+
+def test_project_save_then_open_roundtrips_all_16_fields_for_an_alternate_project(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "alternate.zerorod"
+    alternate_values = {
+        "project_name": "Roundtrip Test",
+        "body_width": 60.0,
+        "body_depth": 11.0,
+        "fretboard_height": 7.1,
+        "rod_diameter": 3.5,
+        "groove_diameter": 3.1,
+        "rod_center_z_offset": -0.5,
+        "groove_front_clearance": 0.02,
+        "string_gauges_inch": [0.042, 0.032, 0.024, 0.016],
+        "string_spacing": 12.0,
+        "string_inlet_y": 0.1,
+        "string_inlet_z": 3.0,
+        "channel_diameter": 1.3,
+        "channel_overrun_at_inlet": 0.9,
+        "channel_rod_clearance": 0.06,
+        "minimum_wall": 1.4,
+    }
+    handle_request(_project_save_request(str(target), alternate_values))
+
+    opened = handle_request(_project_open_request(str(target)))
+    assert opened["ok"] is True
+    assert opened["result"]["values"] == alternate_values
+
+
+def test_project_open_missing_path_returns_error() -> None:
+    response = handle_request(_request(command="project_open", parameters={}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_request"
+
+
+def test_project_save_missing_path_returns_error() -> None:
+    response = handle_request(_request(command="project_save", parameters={}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_request"
+
+
+def test_project_open_nonexistent_file_returns_project_not_found(tmp_path: Path) -> None:
+    response = handle_request(_project_open_request(str(tmp_path / "does-not-exist.zerorod")))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_not_found"
+
+
+def test_project_open_rejects_invalid_json(tmp_path: Path) -> None:
+    target = tmp_path / "broken.zerorod"
+    target.write_text("this is not { valid json")
+    response = handle_request(_project_open_request(str(target)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_invalid"
+
+
+def test_project_open_rejects_valid_json_with_wrong_top_level_shape(tmp_path: Path) -> None:
+    target = tmp_path / "wrong-shape.zerorod"
+    target.write_text(json.dumps([1, 2, 3]))
+    response = handle_request(_project_open_request(str(target)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_invalid"
+
+
+def test_project_open_rejects_wrong_format_string(tmp_path: Path) -> None:
+    target = tmp_path / "wrong-format.zerorod"
+    target.write_text(json.dumps({"format": "Not ZeroRodCAD", "version": 1, "parameters": {}}))
+    response = handle_request(_project_open_request(str(target)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_invalid"
+
+
+def test_project_open_rejects_missing_parameters_key(tmp_path: Path) -> None:
+    target = tmp_path / "no-parameters.zerorod"
+    target.write_text(json.dumps({"format": "ZeroRodCAD Project", "version": 1}))
+    response = handle_request(_project_open_request(str(target)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_invalid"
+
+
+def test_project_open_rejects_unsupported_version(tmp_path: Path) -> None:
+    target = tmp_path / "future-version.zerorod"
+    target.write_text(json.dumps({"format": "ZeroRodCAD Project", "version": 99, "parameters": {}}))
+    response = handle_request(_project_open_request(str(target)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_version_unsupported"
+
+
+def test_project_open_rejects_unknown_parameter_field(tmp_path: Path) -> None:
+    target = tmp_path / "unknown-field.zerorod"
+    target.write_text(
+        json.dumps(
+            {
+                "format": "ZeroRodCAD Project",
+                "version": 1,
+                "parameters": {"body_width": 38.0, "not_a_real_field": 1},
+            }
+        )
+    )
+    response = handle_request(_project_open_request(str(target)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_invalid"
+
+
+def test_project_open_rejects_domain_invalid_hand_edited_file(tmp_path: Path) -> None:
+    # A hand-edited file can be structurally valid (every field the right
+    # JSON type) but still violate a cross-parameter domain rule — Open must
+    # not commit this to the frontend as a loadable project (§12 atomicity).
+    target = tmp_path / "domain-invalid.zerorod"
+    from zerorodcad.parameters import ZeroRodParameters
+
+    bad_params = ZeroRodParameters(groove_diameter=5.0, rod_diameter=3.0)
+    target.write_text(
+        json.dumps(
+            {
+                "format": "ZeroRodCAD Project",
+                "version": 1,
+                "parameters": bad_params.to_dict(),
+            }
+        )
+    )
+    response = handle_request(_project_open_request(str(target)))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameters_domain"
+
+
+def test_project_save_rejects_domain_invalid_parameters(tmp_path: Path) -> None:
+    target = tmp_path / "should-not-be-written.zerorod"
+    response = handle_request(
+        _project_save_request(str(target), {"groove_diameter": 5.0, "rod_diameter": 3.0})
+    )
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameters_domain"
+    assert not target.exists()
+
+
+def test_project_save_rejects_wrong_field_type(tmp_path: Path) -> None:
+    target = tmp_path / "should-not-be-written.zerorod"
+    response = handle_request(_project_save_request(str(target), {"body_width": "wide"}))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameter_type"
+    assert not target.exists()
+
+
+def test_project_open_and_save_responses_are_json_serializable_with_no_traceback(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "clean.zerorod"
+    save_response = handle_request(_project_save_request(str(target)))
+    open_response = handle_request(_project_open_request(str(target)))
+    error_response = handle_request(_project_open_request(str(tmp_path / "missing.zerorod")))
+    for response in (save_response, open_response, error_response):
+        serialized = json.dumps(response)
+        assert "Traceback" not in serialized
+        assert 'File "' not in serialized
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits only")
+def test_project_save_permission_denied_returns_structured_error(tmp_path: Path) -> None:
+    read_only_dir = tmp_path / "readonly"
+    read_only_dir.mkdir()
+    read_only_dir.chmod(0o500)
+    target = read_only_dir / "project.zerorod"
+    try:
+        response = handle_request(_project_save_request(str(target)))
+    finally:
+        read_only_dir.chmod(0o700)
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_permission_denied"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits only")
+def test_project_open_permission_denied_returns_structured_error(tmp_path: Path) -> None:
+    target = tmp_path / "unreadable.zerorod"
+    handle_request(_project_save_request(str(target)))
+    target.chmod(0o200)
+    try:
+        response = handle_request(_project_open_request(str(target)))
+    finally:
+        target.chmod(0o600)
+    assert response["ok"] is False
+    assert response["error"]["code"] == "project_permission_denied"
+
+
+def test_project_open_then_preview_pipeline_shows_matching_geometry(tmp_path: Path) -> None:
+    """§31 of the mandate: a real geometry proof, not just a JSON round trip
+    — default project (body_width 38) vs. an alternate project (body_width
+    60) must produce a measurably different mesh through the real
+    preview pipeline, exactly like the parameter-editing path already
+    proves for direct parameter changes."""
+    default_target = tmp_path / "default.zerorod"
+    alternate_target = tmp_path / "alternate.zerorod"
+    handle_request(_project_save_request(str(default_target)))
+    handle_request(_project_save_request(str(alternate_target), {"body_width": 60.0}))
+
+    default_values = handle_request(_project_open_request(str(default_target)))["result"]["values"]
+    alternate_values = handle_request(_project_open_request(str(alternate_target)))["result"][
+        "values"
+    ]
+
+    default_mesh = handle_request(_request(command="preview", parameters=_params(default_values)))
+    alternate_mesh = handle_request(
+        _request(command="preview", parameters=_params(alternate_values))
+    )
+
+    def x_extent(mesh_response: dict) -> float:
+        bounds = mesh_response["result"]["bounds"]
+        return bounds["max"][0] - bounds["min"][0]
+
+    default_extent = x_extent(default_mesh)
+    alternate_extent = x_extent(alternate_mesh)
+    assert alternate_extent > default_extent
+    assert alternate_extent - default_extent == pytest.approx(60.0 - 38.0, abs=1.0)

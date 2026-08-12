@@ -271,6 +271,138 @@ def _run_export_preflight_command(parameters: dict) -> dict:
     }
 
 
+def _run_project_open_command(parameters: dict) -> dict:
+    """Build 025 M1 — exposes the existing, unmodified
+    `zerorodcad.project.load_project` through the sidecar boundary.
+
+    Request shape: {"path": "<absolute .zerorod path>"}. `path` crosses the
+    boundary as a plain string obtained from the Rust-owned native open
+    dialog (see commands.rs) — this handler only ever reads the path it is
+    given, never lists or browses a directory.
+
+    Re-validates the loaded parameters (Level 3, the same
+    `zerorodcad.validation.validate_parameters` `preview`/`export` already
+    use) before returning — a `.zerorod` file did not necessarily come from
+    this app's own Save (it could be hand-edited), so a domain-invalid file
+    must fail here, atomically, rather than reach the frontend as a
+    committed project state (docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md
+    "Open must be atomic").
+    """
+    from zerorod_sidecar.parameters_contract import parameters_to_contract
+    from zerorodcad.project import load_project
+    from zerorodcad.validation import validate_parameters
+
+    path = parameters.get("path")
+    if not isinstance(path, str) or not path.strip():
+        raise SidecarError(
+            "invalid_request",
+            "path must be a non-empty string",
+            details={"field": "path"},
+        )
+
+    target = Path(path)
+    if not target.is_file():
+        raise SidecarError("project_not_found", f"project file not found: {path}")
+
+    try:
+        params = load_project(target)
+    except PermissionError as exc:
+        raise SidecarError(
+            "project_permission_denied",
+            f"permission denied reading project file: {exc}",
+        ) from exc
+    except OSError as exc:
+        raise SidecarError(
+            "project_read_failed",
+            f"project file could not be read: {exc}",
+        ) from exc
+    except ValueError as exc:
+        message = str(exc)
+        if message.startswith("Unsupported project version"):
+            raise SidecarError("project_version_unsupported", message) from exc
+        raise SidecarError("project_invalid", message) from exc
+    except (AttributeError, TypeError, KeyError) as exc:
+        # project.py has no dedicated guard for well-formed-JSON-but-wrong-
+        # shape payloads (e.g. a top-level JSON array/string/number, or a
+        # missing "parameters" key) — reused unmodified (§4), so this call
+        # site maps that class of failure the same as any other
+        # structurally-invalid project file rather than letting it surface
+        # as an unhandled internal_error.
+        raise SidecarError(
+            "project_invalid",
+            f"project file is not a valid ZeroRodCAD project: {exc}",
+        ) from exc
+
+    validation = validate_parameters(params)
+    if not validation.is_valid:
+        raise SidecarError(
+            "invalid_parameters_domain",
+            "; ".join(validation.errors),
+            details={"errors": list(validation.errors)},
+        )
+
+    return parameters_to_contract(params)
+
+
+def _run_project_save_command(parameters: dict) -> dict:
+    """Build 025 M1 — exposes the existing, unmodified
+    `zerorodcad.project.save_project` through the sidecar boundary.
+
+    Request shape (nested under the outer envelope's `parameters`):
+        {
+          "parameters": {"schema": "zerorod-parameters/v1", "values": {...}},
+          "path": "<user-selected absolute destination path>"
+        }
+
+    `parameters.parameters` reuses `parse_parameters_request` unmodified —
+    the same Level 1/2 parsing `preview`/`export` already use. `path` is new
+    surface specific to `project_save`: a plain string chosen by the user
+    through the Rust-owned native save dialog (see commands.rs); this
+    handler only ever writes to the path it is given.
+    """
+    from zerorod_sidecar.parameters_contract import parameters_to_contract, parse_parameters_request
+    from zerorodcad.project import save_project
+    from zerorodcad.validation import validate_parameters
+
+    path = parameters.get("path")
+    if not isinstance(path, str) or not path.strip():
+        raise SidecarError(
+            "invalid_request",
+            "path must be a non-empty string",
+            details={"field": "path"},
+        )
+
+    # Level 1/2: identical parsing path to preview/export — no second parser.
+    params = parse_parameters_request(parameters.get("parameters", {}))
+
+    # Level 3: defense in depth. The frontend only ever submits `accepted`
+    # (already engine-validated) state (docs/migration/
+    # BUILD-025-M1-PROJECT-PERSISTENCE.md "Canonical Save State"), but this
+    # handler never trusts that blindly — mirrors `export`'s own re-check.
+    validation = validate_parameters(params)
+    if not validation.is_valid:
+        raise SidecarError(
+            "invalid_parameters_domain",
+            "; ".join(validation.errors),
+            details={"errors": list(validation.errors)},
+        )
+
+    try:
+        written_path = save_project(path, params)
+    except PermissionError as exc:
+        raise SidecarError(
+            "project_permission_denied",
+            f"permission denied writing project file: {exc}",
+        ) from exc
+    except OSError as exc:
+        raise SidecarError(
+            "project_write_failed",
+            f"project file could not be written: {exc}",
+        ) from exc
+
+    return {"path": str(written_path), "parameters": parameters_to_contract(params)}
+
+
 def _run_parameters_defaults_command(parameters: dict) -> dict:  # noqa: ARG001
     """Returns the canonical default ZeroRodParameters wrapped in the
     zerorod-parameters/v1 envelope — the single authoritative default set a
@@ -292,6 +424,8 @@ COMMANDS = {
     "export": _run_export_command,
     "export_preflight": _run_export_preflight_command,
     "parameters_defaults": _run_parameters_defaults_command,
+    "project_open": _run_project_open_command,
+    "project_save": _run_project_save_command,
     "shutdown": _run_shutdown_command,
 }
 

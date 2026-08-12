@@ -224,7 +224,9 @@ PARAMETERS & LIVE PREVIEW ESTABLISHED
 BUILD 024 COMPLETE (M1 COMPLETE, M2 COMPLETE — Human PASS, M3 COMPLETE — Human PASS,
   M4 COMPLETE — Integration & Build Completion)
 STL / STEP EXPORT WORKFLOW ESTABLISHED
-NEXT: BUILD 025 — DESKTOP FEATURE PARITY
+BUILD 025 IN PROGRESS (Discovery COMPLETE — Gate PASS, M1 engineering COMPLETE — Gate
+  BUILD-025-M1: engineering PASS, Human Validation PENDING)
+NEXT: BUILD 025 / M1 HUMAN VALIDATION, THEN M2
 ```
 
 ### Current
@@ -306,10 +308,30 @@ parity, signing/notarization, PySide6 removal.
 ### Build 025 – Desktop Feature Parity
 
 Handoff document: [`docs/migration/BUILD-025-HANDOFF.md`](docs/migration/BUILD-025-HANDOFF.md).
+Discovery: [`docs/migration/BUILD-025-FEATURE-PARITY-MATRIX.md`](docs/migration/BUILD-025-FEATURE-PARITY-MATRIX.md)
+and companion documents — Gate `BUILD-025 DISCOVERY GATE: PASS`.
 
-- [ ] remaining application workflows
+- [x] Discovery — feature parity matrix, lifecycle/project-persistence/desktop-integration
+  analyses, gap report; milestone plan (M1–M4 + Final) proposed and approved
+- [x] M1 — Project Persistence — `docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md` — New/Open/
+  Save/Save As against the existing, unmodified `.zerorod` format (`src/zerorodcad/project.py`);
+  a new project-session model (`project_state.ts`) with `project_dirty` derived from `accepted`
+  vs. the last-saved baseline (never from the draft); an uncommitted-draft check kept explicitly
+  separate from `project_dirty`; a Save/Discard/Cancel unsaved-changes guard covering New, Open,
+  and Quit/window-close alike; a new narrow `dialog:allow-save` WebView capability (Open reuses
+  the existing `dialog:allow-open`); sidecar `project_open`/`project_save` commands and Rust
+  `engine_project_open`/`engine_project_save`/`select_project_open_file`/
+  `select_project_save_file` commands, each new snake_case-argument command backed by a real
+  `tauri::test::get_ipc_response` IPC-binding regression test from the start — Gate
+  BUILD-025-M1: engineering PASS; Human Validation PENDING
+  (`docs/migration/BUILD-025-M1-HUMAN-VALIDATION.md`)
+- [ ] M2 — Product UI Productization & Lifecycle Polish (relocate technical/dev-only controls to
+  a Diagnostics view, automatic initial preview load, friendly startup-failure surface)
+- [ ] M3 — Preview & Report Parity (manual reset/fit-view control, Body/Rod/Strings visibility
+  toggles, live Instrument Report view)
+- [ ] M4 — Desktop Shell (native macOS menus, shortcuts, About dialog)
+- [ ] Final — Integration & Build Completion
 - [ ] settings
-- [ ] project open/save
 - [ ] shortcuts
 - [ ] desktop integration
 - [ ] accessibility

@@ -39,7 +39,11 @@ BUILD 024 — STL / STEP EXPORT WORKFLOW: COMPLETE
                                                    Human Validation PASS
   M4 — Integration & Build Completion:            COMPLETE — Gate BUILD-024: PASS
 STL / STEP EXPORT WORKFLOW: ESTABLISHED
-NEXT: BUILD 025 — DESKTOP FEATURE PARITY
+BUILD 025 — DESKTOP FEATURE PARITY: IN PROGRESS
+  Discovery: COMPLETE — Gate BUILD-025 DISCOVERY GATE: PASS
+  M1 — Project Persistence: engineering COMPLETE — Gate BUILD-025-M1: engineering PASS,
+                             Human Validation PENDING
+NEXT: BUILD 025 / M1 HUMAN VALIDATION, THEN M2
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
@@ -66,6 +70,18 @@ yet built. See
 [`BUILD-024-M2-EXPORT-CONTROLS.md`](BUILD-024-M2-EXPORT-CONTROLS.md),
 [`BUILD-024-M3-EXPORT-ROBUSTNESS.md`](BUILD-024-M3-EXPORT-ROBUSTNESS.md), and
 [`BUILD-024-COMPLETION.md`](BUILD-024-COMPLETION.md) for the full record.
+
+**Build 025 (Desktop Feature Parity)** began with a full Discovery phase — a legacy-PySide6-vs-Tauri
+feature parity matrix, lifecycle/project-persistence/desktop-integration analyses, and a gap
+report (`BUILD-025-FEATURE-PARITY-MATRIX.md` and companions) — ending in
+`BUILD-025 DISCOVERY GATE: PASS`, and a Project-Owner-approved milestone plan (M1–M4 + Final).
+Milestone 1 (Project Persistence) is engineering-complete: New/Open/Save/Save As against the
+existing, unmodified `.zerorod` project format, a new project-session model with `project_dirty`
+derived from `accepted` vs. the last-saved baseline (deliberately never the draft), and a
+Save/Discard/Cancel unsaved-changes guard covering New, Open, and Quit/window-close alike — see
+[`BUILD-025-M1-PROJECT-PERSISTENCE.md`](BUILD-025-M1-PROJECT-PERSISTENCE.md). Human Validation is
+**PENDING** ([`BUILD-025-M1-HUMAN-VALIDATION.md`](BUILD-025-M1-HUMAN-VALIDATION.md)) — per the
+mandate's own stop condition, M2 does not start until it passes.
 
 ## Why migrate
 
@@ -297,4 +313,30 @@ and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
 **Build 024 Final Gate: PASS.** See `docs/migration/BUILD-024-COMPLETION.md` for the full record
 and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
 
-**Next: Build 025 — Desktop Feature Parity.**
+- **Build 025 — Desktop Feature Parity: IN PROGRESS.**
+  - Discovery: COMPLETE / Gate PASS (`BUILD-025-FEATURE-PARITY-MATRIX.md`,
+    `BUILD-025-LIFECYCLE-ANALYSIS.md`, `BUILD-025-PROJECT-PERSISTENCE-ANALYSIS.md`,
+    `BUILD-025-DESKTOP-INTEGRATION-ANALYSIS.md`, `BUILD-025-GAP-REPORT.md`) — a full
+    legacy-PySide6-vs-Tauri feature inventory (54 rows, every legacy claim evidence-cited), the
+    lifecycle/project-persistence/desktop-integration/accessibility/security analyses the mandate
+    required, and a Project-Owner-approved milestone plan (M1 Project Persistence, M2 Product-UI/
+    Diagnostics, M3 Preview/Report Parity, M4 Desktop Shell, Final Integration).
+  - M1 — Project Persistence: engineering COMPLETE / Gate BUILD-025-M1: engineering PASS
+    (`BUILD-025-M1-PROJECT-PERSISTENCE.md`) — New/Open/Save/Save As against the existing,
+    unmodified `.zerorod` format (`src/zerorodcad/project.py`); Save always sources `accepted`,
+    never the draft (the same rule Build 024 M1 established for export); a new project-session
+    model (`project_state.ts`) with `project_dirty = accepted != last_saved_state` (never
+    `draft != saved`), and an uncommitted-draft check kept explicitly separate from it; a
+    Save/Discard/Cancel unsaved-changes guard for New, Open, and Quit/window-close (the window's
+    `onCloseRequested` event, documented as equivalent to app-quit for this single-window,
+    menu-less build); atomic Open (a failed open leaves the current project completely
+    untouched); a new, narrow `dialog:allow-save` WebView capability (Open reuses the existing
+    `dialog:allow-open`); sidecar `project_open`/`project_save` and Rust
+    `engine_project_open`/`engine_project_save`/`select_project_open_file`/
+    `select_project_save_file` commands, each backed by a real `tauri::test::get_ipc_response`
+    IPC-argument-binding regression test from the start (the Build 024 M2 lesson applied
+    proactively). Human Validation is **PENDING**
+    (`BUILD-025-M1-HUMAN-VALIDATION.md`) — M2 does not start until it passes, per the mandate's
+    own stop condition.
+
+**Next: Build 025 / Milestone 1 Human Validation, then Build 025 / Milestone 2.**

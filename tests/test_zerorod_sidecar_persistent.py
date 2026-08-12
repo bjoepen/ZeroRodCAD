@@ -387,6 +387,90 @@ class TestRealPersistentSubprocess:
             assert len(files) == 3
             assert all(f.stat().st_size > 0 for f in files)
 
+    def test_real_subprocess_project_save_open_preview_export_sequence(self, tmp_path):
+        """Build 025 M1 §31/§32/§38 "Real Pipeline": the real bundled-
+        interpreter proof that project persistence works end to end through
+        the actual persistent process loop, in the same session as preview
+        and export — no restart, no protocol corruption, no orphan. Also the
+        mandate's §31 "Real Geometry Proof": a default project (body_width
+        38) vs. an alternate saved-then-opened project (body_width 60) must
+        produce a measurably different mesh through the real preview
+        pipeline after a real Open, not just a JSON round trip."""
+        default_path = tmp_path / "default.zerorod"
+        alternate_path = tmp_path / "alternate.zerorod"
+        alt_params = {"schema": "zerorod-parameters/v1", "values": {"body_width": 60.0}}
+        export_dir = tmp_path / "export"
+
+        lines = (
+            _req("preview-1", "preview")
+            + _req("save-default", "project_save", {"path": str(default_path)})
+            + _req(
+                "save-alt", "project_save", {"path": str(alternate_path), "parameters": alt_params}
+            )
+            + _req("preview-2", "preview")
+            + _req("open-default", "project_open", {"path": str(default_path)})
+            + _req("open-alt", "project_open", {"path": str(alternate_path)})
+            + _req(
+                "export-alt",
+                "export",
+                {"output_directory": str(export_dir), "parameters": alt_params},
+            )
+            + _req("preview-3", "preview")
+            + _req("bye", "shutdown")
+        )
+        result = self._run_subprocess(lines)
+        assert result.returncode == 0
+        responses = {
+            r["request_id"]: r
+            for r in (json.loads(line) for line in result.stdout.splitlines() if line.strip())
+        }
+        for request_id in (
+            "preview-1",
+            "save-default",
+            "save-alt",
+            "preview-2",
+            "open-default",
+            "open-alt",
+            "export-alt",
+            "preview-3",
+            "bye",
+        ):
+            assert responses[request_id]["ok"] is True, responses[request_id]
+
+        assert default_path.is_file()
+        assert alternate_path.is_file()
+
+        default_values = responses["open-default"]["result"]["values"]
+        alternate_values = responses["open-alt"]["result"]["values"]
+        assert default_values["body_width"] == 38.0
+        assert alternate_values["body_width"] == 60.0
+
+        # §31: a real geometry proof, not just a JSON round trip — request a
+        # preview for each opened project's own values and compare the
+        # resulting mesh bounds.
+        preview_default = self._run_subprocess(
+            _req("p", "preview", {"schema": "zerorod-parameters/v1", "values": default_values})
+            + _req("bye", "shutdown")
+        )
+        preview_alt = self._run_subprocess(
+            _req("p", "preview", {"schema": "zerorod-parameters/v1", "values": alternate_values})
+            + _req("bye", "shutdown")
+        )
+        default_mesh = json.loads(preview_default.stdout.splitlines()[0])["result"]
+        alt_mesh = json.loads(preview_alt.stdout.splitlines()[0])["result"]
+        default_extent = default_mesh["bounds"]["max"][0] - default_mesh["bounds"]["min"][0]
+        alt_extent = alt_mesh["bounds"]["max"][0] - alt_mesh["bounds"]["min"][0]
+        assert alt_extent > default_extent
+
+        # export-alt exported the ALTERNATE (body_width=60) project, proving
+        # export still works correctly interleaved with project operations
+        # in the same session.
+        for entry in responses["export-alt"]["result"]["files"]:
+            path = Path(entry["path"])
+            assert path.is_file() and path.stat().st_size > 0
+            if entry["role"] == "report_markdown":
+                assert "60.00 mm" in path.read_text()
+
     def test_real_subprocess_no_vtk_or_pyside6(self):
         probe = """
 import sys, json

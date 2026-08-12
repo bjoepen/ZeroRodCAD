@@ -109,6 +109,10 @@ h1 {
   flex: 0 0 auto;
 }
 
+.project-panel-container {
+  flex: 0 0 auto;
+}
+
 .viewport {
   flex: 1;
   min-width: 0;
@@ -532,4 +536,111 @@ h1 {
 .export-confirm-actions [data-action="confirm-overwrite"] {
   border-color: var(--warn);
   color: var(--warn);
+}
+
+/* Project panel (Build 025 M1) */
+
+.project-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+}
+
+.project-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.project-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.project-dirty-indicator {
+  color: var(--warn);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.project-actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.project-actions button:hover:not(:disabled) {
+  background: var(--neutral-bg);
+}
+
+.project-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.project-note,
+.project-status {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--neutral);
+}
+
+.project-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--error);
+}
+
+.project-confirm {
+  font-size: 0.8rem;
+}
+
+.project-confirm p {
+  margin: 0 0 0.3rem;
+}
+
+.project-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.project-confirm-actions button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.project-confirm-actions button:hover {
+  background: var(--neutral-bg);
+}
+
+.project-confirm-actions [data-action="guard-discard"] {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.project-confirm-actions [data-action="guard-save"] {
+  border-color: var(--neutral);
+  font-weight: 600;
 }

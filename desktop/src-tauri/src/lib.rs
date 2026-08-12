@@ -13,6 +13,13 @@
 // export/export_preflight results before they ever reach the WebView as a
 // success value (mirroring `mesh`'s existing `validate_and_summarize`
 // pattern) — see docs/migration/BUILD-024-M3-EXPORT-ROBUSTNESS.md.
+// Build 025 M1 adds project persistence: `select_project_open_file`/
+// `select_project_save_file` (the narrow native-dialog commands — the
+// latter needs a new `dialog:allow-save` capability, the former reuses
+// Build 024 M1's `dialog:allow-open`) and `engine_project_open`/
+// `engine_project_save` (the sidecar command boundary, reusing
+// `zerorodcad.project` unmodified) — see
+// docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md.
 
 mod commands;
 mod engine;
@@ -38,6 +45,10 @@ pub fn run() {
             commands::engine_export,
             commands::engine_export_preflight,
             commands::select_export_directory,
+            commands::select_project_open_file,
+            commands::select_project_save_file,
+            commands::engine_project_open,
+            commands::engine_project_save,
             commands::engine_shutdown,
         ])
         .build(tauri::generate_context!())

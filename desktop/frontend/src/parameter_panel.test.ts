@@ -670,3 +670,102 @@ describe("Enter key does not trigger extra requests", () => {
     expect(fetchPreview).not.toHaveBeenCalled();
   });
 });
+
+// --- Build 025 M1: hasUncommittedDraft / loadProjectValues ---------------
+
+describe("hasUncommittedDraft (§22 of the M1 mandate)", () => {
+  it("is false immediately after load", async () => {
+    const panel = await loadPanel();
+    expect(panel.hasUncommittedDraft()).toBe(false);
+  });
+
+  it("is true the moment a field is edited, before the debounce fires", async () => {
+    const panel = await loadPanel();
+    setValue(scalarInput(container, "body_width"), "60");
+    expect(panel.hasUncommittedDraft()).toBe(true);
+  });
+
+  it("is true for an INVALID in-progress edit too, not just a valid one", async () => {
+    const panel = await loadPanel();
+    setValue(scalarInput(container, "body_width"), "not-a-number");
+    expect(panel.hasUncommittedDraft()).toBe(true);
+    expect(fetchPreview).not.toHaveBeenCalled();
+  });
+
+  it("returns to false once the draft is edited back to the accepted value", async () => {
+    const panel = await loadPanel();
+    setValue(scalarInput(container, "body_width"), "60");
+    expect(panel.hasUncommittedDraft()).toBe(true);
+    setValue(scalarInput(container, "body_width"), String(DEFAULT_VALUES.body_width));
+    expect(panel.hasUncommittedDraft()).toBe(false);
+  });
+
+  it("is true again after a successful Apply followed by a further edit", async () => {
+    vi.useFakeTimers();
+    try {
+      const panel = await loadPanel();
+      fetchPreview.mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
+      setValue(scalarInput(container, "body_width"), "60");
+      clickApply(container);
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(panel.hasUncommittedDraft()).toBe(false);
+
+      setValue(scalarInput(container, "body_depth"), "11");
+      expect(panel.hasUncommittedDraft()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("loadProjectValues (§10/§13 of the M1 mandate)", () => {
+  const ALTERNATE_VALUES: ZeroRodParametersValues = {
+    ...DEFAULT_VALUES,
+    project_name: "Alternate Project",
+    body_width: 60.0,
+  };
+
+  it("rebuilds the form/accepted state from the given values and renders a real preview", async () => {
+    const panel = await loadPanel();
+    fetchPreview.mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
+
+    const result = await panel.loadProjectValues(ALTERNATE_VALUES);
+
+    expect(result.ok).toBe(true);
+    expect(fetchPreview).toHaveBeenCalledWith(ALTERNATE_VALUES);
+    expect(commitPreview).toHaveBeenCalledWith(FAKE_DATA);
+    expect(panel.getAccepted()).toEqual(ALTERNATE_VALUES);
+    expect(scalarInput(container, "body_width").value).toBe("60");
+    expect(panel.hasUncommittedDraft()).toBe(false);
+  });
+
+  it("does NOT change the Reset-to-Defaults target — Reset still restores canonical defaults, not the loaded project", async () => {
+    const panel = await loadPanel();
+    fetchPreview.mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
+    await panel.loadProjectValues(ALTERNATE_VALUES);
+
+    clickReset(container);
+    expect(scalarInput(container, "body_width").value).toBe(String(DEFAULT_VALUES.body_width));
+    expect(scalarInput(container, "project_name").value).toBe(DEFAULT_VALUES.project_name);
+  });
+
+  it("surfaces a preview/geometry failure as a structured error without throwing", async () => {
+    const panel = await loadPanel();
+    fetchPreview.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "geometry_error", message: "boom" },
+    });
+
+    const result = await panel.loadProjectValues(ALTERNATE_VALUES);
+
+    expect(result.ok).toBe(false);
+    // The project's parameter values are still committed (§ "New project
+    // created, but the preview could not be rendered" — a Level-4 geometry
+    // failure is not the same class of problem as a project-file validation
+    // failure, and does not roll back the already-validated parameter set).
+    expect(panel.getAccepted()).toEqual(ALTERNATE_VALUES);
+    expect(commitPreview).not.toHaveBeenCalled();
+  });
+});

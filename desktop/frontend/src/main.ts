@@ -1,3 +1,4 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./style.css";
 import { fetchAppInfo } from "./app_info";
 import {
@@ -11,6 +12,7 @@ import {
 import { createExportPanelController } from "./export_panel";
 import { createParameterPanelController } from "./parameter_panel";
 import { createPreviewController, previewStateToStatusValue, type PreviewState } from "./preview";
+import { createProjectPanelController } from "./project_panel";
 import { renderStatusRows, type StatusRow, type StatusValue } from "./status";
 
 const appEl = document.querySelector<HTMLDivElement>("#app")!;
@@ -35,6 +37,7 @@ appEl.innerHTML = `
         <pre id="last-action" class="last-action"></pre>
       </section>
       <div class="parameters-column">
+        <section class="project-panel-container" id="project-panel"></section>
         <section class="parameters" id="parameter-panel"></section>
         <section class="export-panel-container" id="export-panel"></section>
       </div>
@@ -48,6 +51,7 @@ const lastActionEl = document.querySelector<HTMLPreElement>("#last-action")!;
 const viewportEl = document.querySelector<HTMLDivElement>("#viewport")!;
 const parameterPanelEl = document.querySelector<HTMLDivElement>("#parameter-panel")!;
 const exportPanelEl = document.querySelector<HTMLDivElement>("#export-panel")!;
+const projectPanelEl = document.querySelector<HTMLDivElement>("#project-panel")!;
 
 const rows: StatusRow[] = [
   { id: "shell", label: "Desktop shell", value: "READY" },
@@ -148,21 +152,34 @@ const preview = createPreviewController(viewportEl, handlePreviewStateChange);
 // itself needs the notify callback at construction time — this forward
 // reference (assigned synchronously, right below, before any async work can
 // run) breaks that ordering cycle without either module importing the
-// other's internals.
+// other's internals. Build 025 M1 extends the same forward-reference
+// pattern to the project panel (its dirty indicator/Save enablement depend
+// on the same `accepted`/live-preview-status changes).
 let exportPanelRef: { refreshEnablement: () => void } | null = null;
+let projectPanelRef: { refreshEnablement: () => void } | null = null;
 const parameterPanel = createParameterPanelController(
   parameterPanelEl,
   {
     fetchPreview: preview.fetchPreview,
     commitPreview: preview.commitPreview,
   },
-  () => exportPanelRef?.refreshEnablement(),
+  () => {
+    exportPanelRef?.refreshEnablement();
+    projectPanelRef?.refreshEnablement();
+  },
 );
 const exportPanel = createExportPanelController(exportPanelEl, {
   getAcceptedRequest: () => parameterPanel.getAcceptedRequest(),
   getLivePreviewStatus: () => parameterPanel.getLivePreviewStatus(),
 });
 exportPanelRef = exportPanel;
+const projectPanel = createProjectPanelController(projectPanelEl, {
+  getAccepted: () => parameterPanel.getAccepted(),
+  hasUncommittedDraft: () => parameterPanel.hasUncommittedDraft(),
+  getLivePreviewStatus: () => parameterPanel.getLivePreviewStatus(),
+  loadProjectValues: (values) => parameterPanel.loadProjectValues(values),
+});
+projectPanelRef = projectPanel;
 
 document.querySelector<HTMLButtonElement>("#start-check-engine")!.addEventListener("click", () => {
   void handleStartCheckEngine();
@@ -181,6 +198,26 @@ window.addEventListener("beforeunload", () => {
   preview.dispose();
   parameterPanel.dispose();
   exportPanel.dispose();
+  projectPanel.dispose();
+});
+
+// Build 025 M1 (§19/§20 of the mandate): ZeroRodCAD has exactly one window
+// and no menu bar yet (native menus are Build 025 M4's job) — closing that
+// window IS quitting the app for this build, so this is the single,
+// documented interception point for the unsaved-changes guard, not assumed
+// equivalent by accident. Tauri awaits this async handler before deciding
+// whether the close proceeds (the documented onCloseRequested pattern:
+// `event.preventDefault()` is called ONLY to cancel — omitting it lets the
+// close continue normally), so a resolved "proceed" needs no explicit close
+// call here at all; it simply falls through into Tauri's own close, which
+// continues into the existing, unchanged `RunEvent::ExitRequested` →
+// `engine::kill_if_running` path (lib.rs) — Build 022's shutdown logic is
+// neither duplicated nor bypassed.
+void getCurrentWindow().onCloseRequested(async (event) => {
+  const proceed = await projectPanel.confirmQuit();
+  if (!proceed) {
+    event.preventDefault();
+  }
 });
 
 async function init(): Promise<void> {

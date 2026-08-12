@@ -65,7 +65,10 @@ Architecture:                               ACCEPTED
 Build 022 — Desktop 2.0 Foundation:         COMPLETE (M1-M5, Gate PASS)
 Build 023 — Parameters & Live Preview:      COMPLETE (M1-M5, Gate PASS, Human PASS)
 Build 024 — STL/STEP Export Workflow:       COMPLETE (M1-M4, Gate PASS, Human PASS)
-Next:                                       Build 025 — Desktop Feature Parity
+Build 025 — Desktop Feature Parity:         IN PROGRESS (Discovery PASS, M1 engineering COMPLETE
+                                             — Gate BUILD-025-M1: engineering PASS, Human
+                                             Validation PENDING)
+Next:                                       Build 025 / M1 Human Validation, then M2
 ```
 
 Build 022 etablierte die produktive Desktop-2.0-Foundation (Tauri-v2-Shell, WebView↔Rust-IPC,
@@ -80,10 +83,19 @@ produktseitig relevant, mit PASS durch den Project Owner abgeschlossen. Details 
 [`docs/migration/BUILD-023-COMPLETION.md`](docs/migration/BUILD-023-COMPLETION.md),
 [`docs/migration/BUILD-024-COMPLETION.md`](docs/migration/BUILD-024-COMPLETION.md).
 
-**Was noch fehlt** (bewusst, spätere Builds): Projekt-Persistenz (Open/Save), vollständige
-Feature-Parität mit der PySide6-Referenzanwendung, Settings, Shortcuts, Desktop-Integration
-(Build 025), sowie Signing/Notarization (Build 026). Details:
-[`docs/migration/BUILD-025-HANDOFF.md`](docs/migration/BUILD-025-HANDOFF.md).
+Build 025 (Desktop Feature Parity) begann mit einer vollständigen Discovery-Phase
+(`docs/migration/BUILD-025-FEATURE-PARITY-MATRIX.md` und Begleitdokumente, Gate PASS) und geht nun
+Milestone für Milestone vor. Milestone 1 (Project Persistence) ist engineering-seitig
+abgeschlossen: New/Open/Save/Save As gegen das bereits bestehende, unveränderte
+`.zerorod`-Projektformat, ein Projekt-Sitzungsmodell mit Dirty-Tracking (`accepted` vs. zuletzt
+gespeicherter Zustand) und ein Datenverlust-verhindernder Unsaved-Changes-Guard (Save/Discard/
+Cancel) für New, Open und Quit. Details: [`docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md`](docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md).
+Human Validation steht noch aus: [`docs/migration/BUILD-025-M1-HUMAN-VALIDATION.md`](docs/migration/BUILD-025-M1-HUMAN-VALIDATION.md).
+
+**Was noch fehlt** (bewusst, spätere Milestones/Builds): native macOS-Menüs, Shortcuts,
+Diagnostics-View, Preview-Sichtbarkeits-Toggles, Reset-View, Instrument-Report-Ansicht (Build 025
+M2-M4), sowie Signing/Notarization (Build 026). Details:
+[`docs/migration/BUILD-025-GAP-REPORT.md`](docs/migration/BUILD-025-GAP-REPORT.md).
 
 Die bisherige PySide6-Anwendung bleibt bis zu einer späteren, ausdrücklichen Retirement-Entscheidung
 (frühestens nach Build 026) unverändert als Referenz-, Feature-Parity- und Rollback-Implementierung

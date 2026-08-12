@@ -44,7 +44,7 @@ import {
   type ParametersRequest,
   type ZeroRodParametersValues,
 } from "./parameters";
-import type { FetchPreviewResult, ParsedPreviewData } from "./preview";
+import type { FetchPreviewResult, ParsedPreviewData, PreviewLoadResult } from "./preview";
 import {
   addGauge,
   cloneValues,
@@ -146,6 +146,21 @@ export interface ParameterPanelController {
   getAccepted: () => ZeroRodParametersValues | null;
   /** Current live-preview state-machine position — exposed for tests. */
   getLivePreviewStatus: () => LivePreviewStatus;
+  /** Build 025 M1 (§22 of the mandate): true when the current draft differs
+   * from `accepted` — including an invalid in-progress edit — i.e. there is
+   * user input not yet reflected anywhere that would be saved. Deliberately
+   * separate from project-dirty (project_state.ts's `isProjectDirty`), never
+   * merged into it. */
+  hasUncommittedDraft: () => boolean;
+  /** Build 025 M1: rebuilds the form and draft/accepted state from an
+   * explicit value set (New's canonical defaults, or an Open'd project's
+   * parameters) — unlike `load`, this never touches the Reset-to-Defaults
+   * target (still the canonical engine defaults, not `values`), and always
+   * performs one real preview fetch+commit for `values` so the visible
+   * model matches immediately (§10/§13 of the mandate). Requires `load` to
+   * have already completed at least once (canonical defaults must be known
+   * to serve as the Reset target). */
+  loadProjectValues: (values: ZeroRodParametersValues) => Promise<PreviewLoadResult>;
   /** Releases the live-preview scheduler's timers. Call once when the panel
    * is being torn down (e.g. page/app unload). */
   dispose: () => void;
@@ -397,9 +412,16 @@ export function createParameterPanelController(
     livePreview.scheduleImmediate(submittedValues);
   }
 
-  function buildForm(values: ZeroRodParametersValues): void {
+  /** `resetTarget` is what "Reset to Defaults" restores — always the
+   * canonical engine defaults. It equals `values` for the normal startup
+   * `load()` path (defaults ARE the initial content), but Build 025 M1's
+   * `loadProjectValues` passes the two separately: an opened project's
+   * values populate the form/accepted state, while Reset must still target
+   * the canonical defaults, never the just-opened project (§28 of the M1
+   * mandate: Open must not redefine what "defaults" means). */
+  function buildForm(values: ZeroRodParametersValues, resetTarget: ZeroRodParametersValues): void {
     draft = draftFromValues(values);
-    defaults = values;
+    defaults = resetTarget;
     accepted = cloneValues(values);
     scalarInputs.clear();
     scalarErrorEls.clear();
@@ -495,10 +517,41 @@ export function createParameterPanelController(
     renderLoading();
     try {
       const values = await fetchDefaultParameters();
-      buildForm(values);
+      buildForm(values, values);
     } catch (error) {
       renderLoadError(isEngineError(error) ? `${error.code}: ${error.message}` : String(error));
     }
+  }
+
+  function hasUncommittedDraft(): boolean {
+    if (!draft || !accepted) return false;
+    return isDraftDirty(draft, accepted);
+  }
+
+  async function loadProjectValues(values: ZeroRodParametersValues): Promise<PreviewLoadResult> {
+    // `defaults` should already be populated (main.ts's init() always calls
+    // `load()` before any project action can be reached), but this stays
+    // defensive rather than assuming a call-order invariant silently holds.
+    const resetTarget = defaults ?? (await fetchDefaultParameters());
+    buildForm(cloneValues(values), resetTarget);
+
+    // §10/§13 of the M1 mandate: New/Open must drive the real preview
+    // pipeline, not just populate form fields — the visible model must
+    // match. Uses the same fetch/commit split live-preview already uses so
+    // a slower-than-expected fetch here can't race a user edit that starts
+    // immediately after (buildForm has already re-armed the live-preview
+    // scheduler above, so any such edit schedules normally on top of this).
+    const result = await previewIO.fetchPreview(values);
+    if (result.ok) {
+      previewIO.commitPreview(result.data);
+      setLiveStatus("up-to-date");
+      updateStatusUI();
+      return { ok: true };
+    }
+    setLiveStatus("error", formatEngineError(result.error).formMessage);
+    applyFieldErrors(formatEngineError(result.error).fieldErrors);
+    updateStatusUI();
+    return { ok: false, error: result.error };
   }
 
   function dispose(): void {
@@ -514,6 +567,8 @@ export function createParameterPanelController(
     getAcceptedRequest: () => (accepted ? buildParametersRequest(accepted) : null),
     getAccepted: () => accepted,
     getLivePreviewStatus: () => livePreviewStatus,
+    hasUncommittedDraft,
+    loadProjectValues,
     dispose,
   };
 }
