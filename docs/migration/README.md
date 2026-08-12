@@ -2,11 +2,13 @@
 
 This document is the entry point for the migration from ZeroRodCAD's current PySide6/Qt desktop
 application to the accepted Tauri v2 based target architecture. It links the completed research to
-the build sequence that established the productive Desktop 2.0 foundation (Build 022) and its
-parameter-editing/live-preview capability (Build 023), and states the current status plainly.
-Build 022's own completion record is [`BUILD-022-COMPLETION.md`](BUILD-022-COMPLETION.md); Build
-023's is [`BUILD-023-COMPLETION.md`](BUILD-023-COMPLETION.md); the next build's handoff is
-[`BUILD-024-HANDOFF.md`](BUILD-024-HANDOFF.md).
+the build sequence that established the productive Desktop 2.0 foundation (Build 022), its
+parameter-editing/live-preview capability (Build 023), and its STL/STEP export workflow (Build 024),
+and states the current status plainly. Build 022's own completion record is
+[`BUILD-022-COMPLETION.md`](BUILD-022-COMPLETION.md); Build 023's is
+[`BUILD-023-COMPLETION.md`](BUILD-023-COMPLETION.md); Build 024's is
+[`BUILD-024-COMPLETION.md`](BUILD-024-COMPLETION.md); the next build's handoff is
+[`BUILD-025-HANDOFF.md`](BUILD-025-HANDOFF.md).
 
 ## Current status
 
@@ -27,33 +29,43 @@ BUILD 023 COMPLETE
   M4 — Live Preview Behavior & UX:                     COMPLETE — Gate BUILD-023-M4: PASS, Human PASS
   M5 — Integration & Build Completion:                 COMPLETE — Gate BUILD-023: PASS
 PARAMETERS & LIVE PREVIEW: ESTABLISHED
-BUILD 024 — STL / STEP EXPORT WORKFLOW: IN PROGRESS
+BUILD 024 — STL / STEP EXPORT WORKFLOW: COMPLETE
   M1 — Export Architecture & Contract Foundation: COMPLETE — Gate BUILD-024-M1: PASS
   M2 — Native Save Dialog & Export Controls:      COMPLETE — Gate BUILD-024-M2: PASS,
                                                    Round 1 Human Validation FAIL (fixed, see
                                                    BUILD-024-M2-EXPORT-BUGFIX.md),
                                                    Round 2 Human Validation PASS
-  M3 — Export Robustness & Edge Cases:            engineering COMPLETE — Gate BUILD-024-M3: PASS,
-                                                   Human Validation PENDING
-NEXT: BUILD 024 / M3 HUMAN VALIDATION, then BUILD 024 / M4 (requires Project Owner approval)
+  M3 — Export Robustness & Edge Cases:            COMPLETE — Gate BUILD-024-M3: PASS,
+                                                   Human Validation PASS
+  M4 — Integration & Build Completion:            COMPLETE — Gate BUILD-024: PASS
+STL / STEP EXPORT WORKFLOW: ESTABLISHED
+NEXT: BUILD 025 — DESKTOP FEATURE PARITY
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
 reproducibly packaged. **Parameters & Live Preview established** (Build 023) means parameter editing
-and real, engine-driven live regeneration are now real, tested, and productive too — not that the
-full migration from the existing PySide6 application is complete. Build 024 M1 (COMPLETE) exposed
-the existing `export_project` engine capability through a tested, dedicated sidecar/Rust command
-boundary and a narrow native-dialog security delta. Build 024 M2 (COMPLETE, Human Validation PASS)
-wired that boundary into a real "Export Model…" UI trigger, a backend-driven overwrite-conflict
+and real, engine-driven live regeneration are now real, tested, and productive too. **STL / STEP
+Export Workflow established** (Build 024) means the model the user is actually looking at can now be
+exported to real STL, STEP, and Markdown-report files through a native macOS directory dialog, with
+overwrite handling and robust, human-validated failure/recovery behavior — not that the full
+migration from the existing PySide6 application is complete. Build 024 M1 exposed the existing
+`export_project` engine capability through a tested, dedicated sidecar/Rust command boundary and a
+narrow native-dialog security delta. Build 024 M2 (Human Validation PASS, after a Round 1 fail and
+fix) wired that boundary into a real "Export Model…" UI trigger, a backend-driven overwrite-conflict
 preflight, and a small isolated export state machine — native directory selection, export, and
-opening the exported model are all confirmed working. Build 024 M3 (engineering COMPLETE) hardens
+opening the exported model are all confirmed working. Build 024 M3 (Human Validation PASS) hardened
 that workflow against realistic failure modes (malformed results, TOCTOU, retry safety, paths with
-spaces/Unicode, repeated export) without changing its UI or architecture — Human Validation of the
-fresh M3 release build is PENDING. Full feature parity remains explicitly Build 025–026 scope, not
+spaces/Unicode, repeated export) without changing its UI or architecture. Build 024 M4 (Integration
+& Build Completion) closed the build: a milestone-consistency and architecture-conformance audit, a
+full test-suite re-run (no drift from the M3 baseline), a clean reproducible release rebuild with
+independent artifact-identity proof, and the master validation gate
+(`scripts/validate-build024.sh`) ending in `BUILD-024 CONSISTENCY GATE: PASS` — no new feature, no
+UI change, no architecture change. Full feature parity remains explicitly Build 025–026 scope, not
 yet built. See
 [`BUILD-024-M1-EXPORT-FOUNDATION.md`](BUILD-024-M1-EXPORT-FOUNDATION.md),
-[`BUILD-024-M2-EXPORT-CONTROLS.md`](BUILD-024-M2-EXPORT-CONTROLS.md), and
-[`BUILD-024-M3-EXPORT-ROBUSTNESS.md`](BUILD-024-M3-EXPORT-ROBUSTNESS.md) for the full record.
+[`BUILD-024-M2-EXPORT-CONTROLS.md`](BUILD-024-M2-EXPORT-CONTROLS.md),
+[`BUILD-024-M3-EXPORT-ROBUSTNESS.md`](BUILD-024-M3-EXPORT-ROBUSTNESS.md), and
+[`BUILD-024-COMPLETION.md`](BUILD-024-COMPLETION.md) for the full record.
 
 ## Why migrate
 
@@ -227,7 +239,7 @@ and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
 **Build 023 Final Gate: PASS.** See `docs/migration/BUILD-023-COMPLETION.md` for the full record and
 `docs/migration/BUILD-024-HANDOFF.md` for the Build 024 handoff.
 
-- **Build 024 — STL / STEP Export Workflow: IN PROGRESS.**
+- **Build 024 — STL / STEP Export Workflow: COMPLETE.**
   - M1 — Export Architecture & Contract Foundation: COMPLETE / Gate PASS
     (`BUILD-024-M1-EXPORT-FOUNDATION.md`) — the existing, unmodified
     `zerorodcad.export.export_project` exposed through a dedicated sidecar `export` command and a
@@ -256,7 +268,7 @@ and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
     `BUILD-024-M2-EXPORT-BUGFIX.md`. **Round 2 Human Validation PASS**
     (`BUILD-024-M2-HUMAN-VALIDATION.md`) — native directory selection works, export succeeds,
     STL/STEP/report are generated, the exported model opens successfully.
-  - M3 — Export Robustness & Edge Cases: engineering COMPLETE / Gate BUILD-024-M3: PASS
+  - M3 — Export Robustness & Edge Cases: COMPLETE / Gate BUILD-024-M3: PASS
     (`BUILD-024-M3-EXPORT-ROBUSTNESS.md`) — a second, independent Rust-side structural-
     validation layer (`export_result.rs`) so a malformed sidecar result can never reach the
     WebView as a false success; the preflight/export TOCTOU race investigated and documented
@@ -270,7 +282,19 @@ and `docs/migration/BUILD-023-HANDOFF.md` for what comes next.
     reflects stale geometry); zero-byte-output and simulated-disk-full error-mapping tests;
     empty/Unicode `project_name` proven end to end; memory measured (+5.07% RSS over 20
     exports, tapering, no leak found); fresh release `.app` built (285.9 MiB, unchanged from
-    M2). Human Validation **PENDING** (`BUILD-024-M3-HUMAN-VALIDATION.md`).
+    M2). Human Validation **PASS** (`BUILD-024-M3-HUMAN-VALIDATION.md`) — validated against the
+    uniquely-named `ZeroRodCAD-Build024-M3.app`, artifact identity independently re-verified
+    (frontend asset hash and compiled `invalid_export_result` marker both confirmed matching).
+  - M4 — Integration & Build Completion: COMPLETE / Gate BUILD-024: PASS
+    (`BUILD-024-COMPLETION.md`) — a milestone-consistency audit across M1-M3 (no
+    contradictions), architecture/contract conformance re-verification against `ADR-022-001`
+    (0 deviations), a full test-suite re-run identical to the M3 baseline (347 Python + 42 Rust
+    + 207 frontend, no drift), a clean reproducible release rebuild with independent
+    artifact-identity proof, and the master validation gate (`scripts/validate-build024.sh`)
+    ending in `BUILD-024 CONSISTENCY GATE: PASS`. No new feature, no UI change, no architecture
+    change — integration and closure only.
 
-**Next: Build 024 / M3 Human Validation**, then **Build 024 / M4** (requires explicit Project
-Owner approval to start, per the mandate's stop condition after M3).
+**Build 024 Final Gate: PASS.** See `docs/migration/BUILD-024-COMPLETION.md` for the full record
+and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
+
+**Next: Build 025 — Desktop Feature Parity.**

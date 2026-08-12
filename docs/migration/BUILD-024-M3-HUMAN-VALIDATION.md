@@ -78,15 +78,31 @@ open "/Users/bernd/Projekte/ZeroRodCAD-App/desktop/src-tauri/target/release/bund
 
 | Field | Value |
 |---|---|
-| Tester | *(pending)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Hardware | *(pending)* |
-| Result | **PENDING** |
-| Notes | *(pending — awaiting Project Owner click-through of the fresh M3 release build above)* |
+| Tester | Project Owner |
+| Date | 2026-08-12 |
+| macOS | 26.5.2 (Build 25F84) |
+| Hardware | Apple M4 |
+| Result | **PASS** |
+| Notes | Reported directly by the Project Owner at the start of the Build 024 M4 mandate: "Project Owner hat das eindeutig identifizierte M3-Artefakt validiert" / "Project Owner result: PASS". The Project Owner's confirmation was communicated at the milestone/overall level in that mandate text, not as a re-transcribed per-line walkthrough of the checklist above — so the individual checkboxes above are intentionally left unticked rather than back-filled from an itemized record that was not separately provided, per this document's own "do not claim tests the Project Owner did not perform" discipline. |
+
+## Artifact identity (independently re-verified during M4)
+
+The mandate identified the validated artifact as `ZeroRodCAD-Build024-M3.app`, built from this
+milestone's exact HEAD (`72768bd`), with two independent identity proofs. Both were re-checked
+directly against the local `.app` bundle during M4 and confirmed to match exactly:
+
+| Proof | Claimed (mandate) | Re-verified |
+|---|---|---|
+| Frontend asset filename | `index-CV7-6lJU.js` | Present in `desktop/frontend/dist/assets/` and referenced in the bundled Rust binary's embedded-asset strings (`/assets/index-CV7-6lJU.js`) |
+| Frontend asset SHA-256 | `9fd28961e24823f08a728a9db529475f301d1f2d3938ae378d8ed1fbd6b11bde` | `shasum -a 256` on `desktop/frontend/dist/assets/index-CV7-6lJU.js` → **identical match** |
+| Compiled Build-024-specific marker | `invalid_export_result` | Present in `Contents/MacOS/zerorod-desktop`'s string table (`strings` search, 1 occurrence) |
+
+This confirms the artifact the Project Owner validated is genuinely the M3 build, not an older
+(e.g. M2) bundle — the specific ambiguity risk this milestone's own artifact-identity lesson
+(§7/§8 of the Build 024 M4 mandate) exists to guard against.
 
 ## Gate BUILD-024-M3 (human component)
 
-**PENDING.** The engineering gate (`scripts/validate-build024-m3.sh`) is expected to PASS
-independently of this checklist; overall Milestone 3 completion requires both. Per the
-mandate's stop condition, M4 does not start until this is complete.
+**PASS.** The engineering gate (`scripts/validate-build024-m3.sh`) passes independently of this
+checklist; both the engineering gate and this human-validation record are now complete. Milestone
+3 is fully complete — Gate BUILD-024-M3: PASS (engineering + human).
