@@ -89,7 +89,10 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         // §23 of the mandate: About and Diagnostics must never disagree —
         // both derive from this same app_info() call, not a second
         // hardcoded string. See also commands.rs's app_info() doc comment.
-        version: Some(format!("{} — Build {} {}", info.version, info.build, info.milestone)),
+        version: Some(format!(
+            "{} — Build {} {}",
+            info.version, info.build, info.milestone
+        )),
         ..Default::default()
     };
 
@@ -109,7 +112,13 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             // Deliberately NOT PredefinedMenuItem::quit — see module doc
             // comment. Plain custom item; handle_menu_event routes this id
             // to WebviewWindow::close(), never AppHandle::exit().
-            &MenuItem::with_id(app, MENU_ID_QUIT, "Quit ZeroRodCAD", true, Some("CmdOrCtrl+Q"))?,
+            &MenuItem::with_id(
+                app,
+                MENU_ID_QUIT,
+                "Quit ZeroRodCAD",
+                true,
+                Some("CmdOrCtrl+Q"),
+            )?,
         ],
     )?;
 
@@ -132,7 +141,13 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             )?,
             &PredefinedMenuItem::separator(app)?,
             // §14 of the mandate: no invented shortcut for Export.
-            &MenuItem::with_id(app, MENU_ID_FILE_EXPORT, "Export Model…", true, None::<&str>)?,
+            &MenuItem::with_id(
+                app,
+                MENU_ID_FILE_EXPORT,
+                "Export Model…",
+                true,
+                None::<&str>,
+            )?,
         ],
     )?;
 
@@ -146,7 +161,14 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &PredefinedMenuItem::separator(app)?,
             // §14 of the M3 mandate: default visible — mirrored here as
             // initially checked (§16 of the M4 mandate).
-            &CheckMenuItem::with_id(app, MENU_ID_VIEW_BODY, "Show Body", true, true, None::<&str>)?,
+            &CheckMenuItem::with_id(
+                app,
+                MENU_ID_VIEW_BODY,
+                "Show Body",
+                true,
+                true,
+                None::<&str>,
+            )?,
             &CheckMenuItem::with_id(app, MENU_ID_VIEW_ROD, "Show Rod", true, true, None::<&str>)?,
             &CheckMenuItem::with_id(
                 app,
@@ -157,8 +179,20 @@ pub fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 None::<&str>,
             )?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, MENU_ID_VIEW_REPORT, "Instrument Report", true, None::<&str>)?,
-            &MenuItem::with_id(app, MENU_ID_VIEW_DIAGNOSTICS, "Diagnostics", true, None::<&str>)?,
+            &MenuItem::with_id(
+                app,
+                MENU_ID_VIEW_REPORT,
+                "Instrument Report",
+                true,
+                None::<&str>,
+            )?,
+            &MenuItem::with_id(
+                app,
+                MENU_ID_VIEW_DIAGNOSTICS,
+                "Diagnostics",
+                true,
+                None::<&str>,
+            )?,
         ],
     )?;
 
@@ -238,7 +272,8 @@ pub fn set_view_menu_checked_impl<R: Runtime>(
         "strings" => MENU_ID_VIEW_STRINGS,
         other => return Err(format!("unknown view layer: {other}")),
     };
-    let item = find_view_check_item(app, id).ok_or_else(|| "view menu item not found".to_string())?;
+    let item =
+        find_view_check_item(app, id).ok_or_else(|| "view menu item not found".to_string())?;
     item.set_checked(checked).map_err(|e| e.to_string())
 }
 
@@ -254,7 +289,11 @@ pub fn set_view_menu_checked_impl<R: Runtime>(
 /// which names none of those commands either) — confirmed against
 /// `desktop-schema.json`, which only gates `plugin:*`-namespaced commands.
 #[tauri::command]
-pub fn set_view_menu_checked(app: AppHandle<tauri::Wry>, layer: String, checked: bool) -> Result<(), String> {
+pub fn set_view_menu_checked(
+    app: AppHandle<tauri::Wry>,
+    layer: String,
+    checked: bool,
+) -> Result<(), String> {
     set_view_menu_checked_impl(&app, &layer, checked)
 }
 

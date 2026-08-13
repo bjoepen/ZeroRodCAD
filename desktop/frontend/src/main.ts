@@ -1,9 +1,11 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./style.css";
 import { fetchAppInfo } from "./app_info";
+import { createCloseRequestHandler } from "./close_flow";
 import { createDiagnosticsPanelController } from "./diagnostics_panel";
 import { fetchEngineStatus, fetchSidecarStatus } from "./engine";
 import { createExportPanelController } from "./export_panel";
+import { createNativeMenuBridge } from "./native_menu";
 import { createParameterPanelController } from "./parameter_panel";
 import { createPreviewController, type PreviewState } from "./preview";
 import { createProjectPanelController } from "./project_panel";
@@ -138,9 +140,19 @@ const reportPanel = createReportPanelController(reportPanelEl, {
 });
 reportPanelRef = reportPanel;
 
+// Build 025 M4 (§15/§16/§29 of the mandate): the visible checkbox and the
+// native View menu's checked state must never drift apart. Both directions
+// funnel through `nativeMenu.setLayerVisible` (native_menu.ts) — the ONE
+// place that updates the scene, the visible checkbox, AND the native
+// menu's checked glyph together — so `view_controls.ts`'s own IO is wired
+// to that shared function via this forward reference, not directly to
+// `preview.setLayerVisible`, the same ordering-cycle pattern
+// `exportPanelRef`/`projectPanelRef`/`reportPanelRef` above already use.
+let nativeMenuRef: { setLayerVisible: (layer: import("./preview").ModelLayer, visible: boolean) => void } | null =
+  null;
 const viewControls = createViewControlsController(viewControlsEl, {
   resetView: () => preview.resetView(),
-  setLayerVisible: (layer, visible) => preview.setLayerVisible(layer, visible),
+  setLayerVisible: (layer, visible) => nativeMenuRef?.setLayerVisible(layer, visible),
   isLayerVisible: (layer) => preview.isLayerVisible(layer),
 });
 
@@ -149,6 +161,25 @@ const diagnosticsPanel = createDiagnosticsPanelController(diagnosticsPanelEl, {
   fetchEngineStatus,
   fetchSidecarStatus,
 });
+
+// Build 025 M4 (§9/§20/§21 of the mandate): the native menu bridge is the
+// one place a "menu-action" event from Rust turns into a call on the exact
+// same controller methods the visible UI already uses — see
+// native_menu.ts's own module doc comment. "quit" never reaches this
+// bridge at all (handled entirely natively — see main.ts's
+// `onCloseRequested` comment above and menu.rs's own doc comment).
+const nativeMenu = createNativeMenuBridge({
+  preview: {
+    resetView: () => preview.resetView(),
+    setLayerVisible: (layer, visible) => preview.setLayerVisible(layer, visible),
+  },
+  viewControls,
+  projectPanel,
+  exportPanel,
+  reportPanel,
+  diagnosticsPanel,
+});
+nativeMenuRef = nativeMenu;
 
 // Build 025 M2 (§54 of the mandate): the startup sequence's *presentation*
 // (delayed "Preparing…" text, friendly Retry/Show-Details failure surface)
@@ -169,6 +200,7 @@ window.addEventListener("beforeunload", () => {
   diagnosticsPanel.dispose();
   reportPanel.dispose();
   viewControls.dispose();
+  nativeMenu.dispose();
   startup.dispose();
 });
 
@@ -185,17 +217,39 @@ window.addEventListener("beforeunload", () => {
 // `engine::kill_if_running` path (lib.rs) — Build 022's shutdown logic is
 // neither duplicated nor bypassed. Build 025 M1 corrective fix: this relies
 // on `core:window:allow-destroy` (capabilities/main-capability.json) — see
-// docs/migration/BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md. Known limitation,
-// unchanged by M2 (§3/§32 of the M2 mandate, reserved for Build 025 M4):
-// the implicit default macOS Quit/⌘Q menu item bypasses this guard
-// entirely — see docs/migration/BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md and
-// docs/migration/BUILD-025-M2-HUMAN-VALIDATION.md.
-void getCurrentWindow().onCloseRequested(async (event) => {
-  const proceed = await projectPanel.confirmQuit();
-  if (!proceed) {
-    event.preventDefault();
-  }
-});
+// docs/migration/BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md.
+//
+// Build 025 M4 (§7/§8/§9 of the mandate — "ONE unsaved-changes decision
+// model"): the native "Quit ZeroRodCAD" menu item (and its Cmd+Q
+// accelerator) is now a plain custom Rust menu item — not
+// `PredefinedMenuItem::quit`, which is what used to bypass this guard by
+// routing straight to AppKit's `terminate:` (the M1 finding, see
+// BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md) — whose click handler
+// (`desktop/src-tauri/src/menu.rs`) calls `WebviewWindow::close()`. That
+// Rust method "emits WindowEvent::CloseRequested first like a
+// user-initiated close request" (its own doc comment) — i.e. it produces
+// the *exact same native event* the red close button does, confirmed by
+// reading tauri-runtime-wry's dispatcher directly: both the red button and
+// `window.close()` route through the identical `on_close_requested`
+// function. So this one handler below is *already* Quit's guard too — no
+// second implementation was added anywhere.
+//
+// Re-entrancy (§10 of the M4 mandate — repeated Cmd+Q, Cmd+Q while the red
+// close guard is active, red close while a Cmd+Q guard is active): each
+// native trigger calls `WebviewWindow::close()`/produces its own
+// WindowEvent::CloseRequested, so two overlapping attempts would otherwise
+// call `projectPanel.confirmQuit()` twice concurrently — a second
+// Save/Discard/Cancel dialog stacked on the first. `close_flow.ts`'s
+// `createCloseRequestHandler` makes every close attempt that arrives while
+// one is still being decided simply defer to that SAME in-flight decision
+// (the earlier attempt's eventual "proceed" is what actually closes the
+// window, via its own event's fallthrough) rather than starting a second
+// one — extracted into its own module (unlike everything else in this
+// file) specifically so this safety-critical property is directly unit
+// tested, not only exercised by the real app.
+void getCurrentWindow().onCloseRequested(
+  createCloseRequestHandler({ confirmQuit: () => projectPanel.confirmQuit() }),
+);
 
 // Build 025 M2 (§7/§10 of the mandate): normal startup performs exactly one
 // initialization sequence — no manual "Start Engine"/"Load Preview" step,
