@@ -224,9 +224,10 @@ PARAMETERS & LIVE PREVIEW ESTABLISHED
 BUILD 024 COMPLETE (M1 COMPLETE, M2 COMPLETE — Human PASS, M3 COMPLETE — Human PASS,
   M4 COMPLETE — Integration & Build Completion)
 STL / STEP EXPORT WORKFLOW ESTABLISHED
-BUILD 025 IN PROGRESS (Discovery COMPLETE — Gate PASS, M1 engineering COMPLETE — Gate
-  BUILD-025-M1: engineering PASS, Human Validation PENDING)
-NEXT: BUILD 025 / M1 HUMAN VALIDATION, THEN M2
+BUILD 025 IN PROGRESS (Discovery COMPLETE — Gate PASS, M1 COMPLETE — Gate BUILD-025-M1: PASS,
+  Human Validation PASS, M2 COMPLETE — Gate BUILD-025-M2: PASS, Human Validation PASS,
+  M3 engineering COMPLETE — Gate BUILD-025-M3: engineering PASS, Human Validation PENDING)
+NEXT: BUILD 025 / M3 HUMAN VALIDATION, THEN M4
 ```
 
 ### Current
@@ -322,14 +323,38 @@ and companion documents — Gate `BUILD-025 DISCOVERY GATE: PASS`.
   the existing `dialog:allow-open`); sidecar `project_open`/`project_save` commands and Rust
   `engine_project_open`/`engine_project_save`/`select_project_open_file`/
   `select_project_save_file` commands, each new snake_case-argument command backed by a real
-  `tauri::test::get_ipc_response` IPC-binding regression test from the start — Gate
-  BUILD-025-M1: engineering PASS; Human Validation PENDING
+  `tauri::test::get_ipc_response` IPC-binding regression test from the start. Human Validation
+  found the red macOS close button non-functional — a missing `core:window:allow-destroy`
+  WebView capability grant, not an application-logic defect — fixed and proven with a real
+  Tauri IPC-boundary regression test (`docs/migration/BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md`),
+  which also surfaced the (deliberately unfixed, Build 025 M4-tracked) macOS Quit/⌘Q
+  guard-bypass gap — Gate BUILD-025-M1: PASS; Human Validation **PASS**
   (`docs/migration/BUILD-025-M1-HUMAN-VALIDATION.md`)
-- [ ] M2 — Product UI Productization & Lifecycle Polish (relocate technical/dev-only controls to
-  a Diagnostics view, automatic initial preview load, friendly startup-failure surface)
-- [ ] M3 — Preview & Report Parity (manual reset/fit-view control, Body/Rod/Strings visibility
-  toggles, live Instrument Report view)
-- [ ] M4 — Desktop Shell (native macOS menus, shortcuts, About dialog)
+- [x] M2 — Product UI Productization & Lifecycle Polish —
+  `docs/migration/BUILD-025-M2-PRODUCT-LIFECYCLE.md` — an automatic initial preview
+  (`parameter_panel.ts`'s `load()`, one fetch+commit through the existing preview pipeline,
+  closing the "empty viewport at first launch" gap); a startup coordinator (`startup.ts`) with an
+  anti-flicker-delayed "Preparing…" indicator and a Retry/Show-Details failure surface; a new
+  Diagnostics view (`diagnostics_panel.ts`) relocating the old technical Engine/Ping/raw-JSON
+  controls out of the main product UI without losing them; the old 5-row status panel and four
+  technical buttons removed from `main.ts`. No engine/protocol/Rust source change — Gate
+  BUILD-025-M2: PASS; Human Validation **PASS** (`docs/migration/BUILD-025-M2-HUMAN-VALIDATION.md`)
+- [x] M3 — Preview & Report Parity — `docs/migration/BUILD-025-M3-PREVIEW-REPORT-PARITY.md` — a
+  build-identity process correction (`app_info()` now reports `"M3"`, with a general regression
+  test guarding against any earlier Build 025 milestone being reported again); Reset View —
+  exactly one control, per reading legacy's `preview_widget.py` directly (no separate Fit/Reset
+  pair in legacy) — via a new `boundsFromVisibleObjects` (`scene.ts`) feeding the existing,
+  unchanged `fitCameraToBounds`; presentation-only Body/Rod/Strings visibility
+  (`preview.ts`'s `ModelLayer`/`applyModelLayerVisibility`, the mesh contract's existing
+  `"body"`/`"rod"`/`"strings"` names — no protocol change) surviving a live-preview geometry
+  refresh; an in-app Instrument Report (`report.ts`/`report_panel.ts`) sourced from `accepted`
+  state only, via a new additive sidecar `report` command and Rust `engine_report` command, both
+  reusing `zerorodcad.report.build_report` unmodified — proven byte-for-byte identical to
+  export's `report.md` for the same accepted state across three scenarios. No engine, protocol,
+  or domain (`zerorodcad/`) source change — Gate BUILD-025-M3: engineering PASS; Human Validation
+  PENDING (`docs/migration/BUILD-025-M3-HUMAN-VALIDATION.md`)
+- [ ] M4 — Desktop Shell (native macOS menus, shortcuts, About dialog, the Cmd+Q unsaved-changes
+  guard fix)
 - [ ] Final — Integration & Build Completion
 - [ ] settings
 - [ ] shortcuts

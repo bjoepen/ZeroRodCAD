@@ -7,7 +7,9 @@ import { createExportPanelController } from "./export_panel";
 import { createParameterPanelController } from "./parameter_panel";
 import { createPreviewController, type PreviewState } from "./preview";
 import { createProjectPanelController } from "./project_panel";
+import { createReportPanelController } from "./report_panel";
 import { createStartupController } from "./startup";
+import { createViewControlsController } from "./view_controls";
 
 const appEl = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -27,10 +29,16 @@ const appEl = document.querySelector<HTMLDivElement>("#app")!;
 // build identity) is not deleted — it now lives in the Diagnostics panel
 // (diagnostics_panel.ts), reachable but outside the normal product flow.
 // "Load/Refresh ZeroRod"'s actual capability (fetch + render the current
-// model) is superseded by the automatic initial preview this build adds
-// (parameter_panel.ts's `load()`, coordinated by startup.ts) — per the
-// mandate's own scope freeze (§2), a manual Reset/Fit View replacement is
-// explicitly Build 025 M3's job, not built here.
+// model) is superseded by the automatic initial preview added in M2
+// (parameter_panel.ts's `load()`, coordinated by startup.ts).
+//
+// Build 025 M3 (§25 of the mandate) adds one compact model-view tool area
+// — Reset View plus Body/Rod/Strings visibility (view_controls.ts) and the
+// Instrument Report (report_panel.ts) — subordinate to the viewport, not a
+// redesign: both sit in a new `.viewport-column` above the (unmoved)
+// viewport, the sidebar/parameters-column are untouched, and neither lives
+// in Diagnostics (§26 — this is normal product functionality, not
+// technical information).
 appEl.innerHTML = `
   <main class="foundation">
     <h1>ZeroRodCAD Desktop 2.0</h1>
@@ -44,7 +52,11 @@ appEl.innerHTML = `
       <div class="parameters-column">
         <section class="parameters" id="parameter-panel"></section>
       </div>
-      <section class="viewport" id="viewport"></section>
+      <div class="viewport-column">
+        <section class="view-controls-container" id="view-controls"></section>
+        <section class="report-panel-container" id="report-panel"></section>
+        <section class="viewport" id="viewport"></section>
+      </div>
     </div>
   </main>
 `;
@@ -55,6 +67,8 @@ const parameterPanelEl = document.querySelector<HTMLDivElement>("#parameter-pane
 const exportPanelEl = document.querySelector<HTMLDivElement>("#export-panel")!;
 const projectPanelEl = document.querySelector<HTMLDivElement>("#project-panel")!;
 const diagnosticsPanelEl = document.querySelector<HTMLDivElement>("#diagnostics-panel")!;
+const viewControlsEl = document.querySelector<HTMLDivElement>("#view-controls")!;
+const reportPanelEl = document.querySelector<HTMLDivElement>("#report-panel")!;
 
 function handlePreviewStateChange(_state: PreviewState, _detail: string): void {
   // Build 025 M2: the old status panel's "3D preview" row (and the
@@ -87,6 +101,7 @@ const preview = createPreviewController(viewportEl, handlePreviewStateChange);
 // status changes).
 let exportPanelRef: { refreshEnablement: () => void } | null = null;
 let projectPanelRef: { refreshEnablement: () => void } | null = null;
+let reportPanelRef: { refreshIfVisible: () => void } | null = null;
 const parameterPanel = createParameterPanelController(
   parameterPanelEl,
   {
@@ -96,6 +111,13 @@ const parameterPanel = createParameterPanelController(
   () => {
     exportPanelRef?.refreshEnablement();
     projectPanelRef?.refreshEnablement();
+    // Build 025 M3 (§21 of the mandate): the report follows accepted-state
+    // transitions, not raw draft typing — refreshIfVisible() itself is a
+    // no-op unless the panel is open AND accepted actually changed, so
+    // this frequent callback (fired on every live-preview status
+    // transition, not just successful ones) never causes duplicate
+    // requests on every keystroke.
+    reportPanelRef?.refreshIfVisible();
   },
 );
 const exportPanel = createExportPanelController(exportPanelEl, {
@@ -110,6 +132,17 @@ const projectPanel = createProjectPanelController(projectPanelEl, {
   loadProjectValues: (values) => parameterPanel.loadProjectValues(values),
 });
 projectPanelRef = projectPanel;
+
+const reportPanel = createReportPanelController(reportPanelEl, {
+  getAccepted: () => parameterPanel.getAccepted(),
+});
+reportPanelRef = reportPanel;
+
+const viewControls = createViewControlsController(viewControlsEl, {
+  resetView: () => preview.resetView(),
+  setLayerVisible: (layer, visible) => preview.setLayerVisible(layer, visible),
+  isLayerVisible: (layer) => preview.isLayerVisible(layer),
+});
 
 const diagnosticsPanel = createDiagnosticsPanelController(diagnosticsPanelEl, {
   fetchAppInfo,
@@ -134,6 +167,8 @@ window.addEventListener("beforeunload", () => {
   exportPanel.dispose();
   projectPanel.dispose();
   diagnosticsPanel.dispose();
+  reportPanel.dispose();
+  viewControls.dispose();
   startup.dispose();
 });
 

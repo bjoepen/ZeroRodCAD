@@ -223,6 +223,100 @@ def test_parameters_error_response_never_contains_traceback_text():
     assert 'File "' not in serialized
 
 
+# --- Build 025 M3: report -------------------------------------------------
+
+
+def test_report_with_canonical_defaults_returns_markdown():
+    response = handle_request(_request(command="report"))
+    assert response["ok"] is True
+    markdown = response["result"]["markdown"]
+    assert isinstance(markdown, str)
+    assert markdown.startswith("# Instrument Report")
+    assert "CBG Open G" in markdown  # canonical default project_name
+
+
+def test_report_matches_build_report_byte_for_byte():
+    # The command must not reformat/reimplement build_report() — it is the
+    # exact same function zerorodcad.export.save_report() already calls.
+    from zerorodcad.parameters import default_parameters
+    from zerorodcad.report import build_report
+
+    response = handle_request(_request(command="report"))
+    assert response["result"]["markdown"] == build_report(default_parameters())
+
+
+def test_report_reflects_alternate_geometry():
+    response = handle_request(_request(command="report", parameters=_params({"body_width": 60.0})))
+    assert response["ok"] is True
+    assert "60.00 mm" in response["result"]["markdown"]
+
+
+def test_report_reflects_a_changed_string_gauge_configuration():
+    response = handle_request(
+        _request(
+            command="report",
+            parameters=_params({"string_gauges_inch": [0.010, 0.013, 0.017, 0.026]}),
+        )
+    )
+    assert response["ok"] is True
+    markdown = response["result"]["markdown"]
+    assert "0.010 in" in markdown
+    assert "| 4 | 0.026 in" in markdown  # 4 strings now, not the default 3
+
+
+def test_report_rejects_domain_invalid_parameters_same_as_preview():
+    response = handle_request(_request(command="report", parameters=_params({"body_width": -1.0})))
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameters_domain"
+
+
+def test_report_rejects_wrong_parameters_schema():
+    response = handle_request(
+        _request(command="report", parameters={"schema": "not-a-real-schema", "values": {}})
+    )
+    assert response["ok"] is False
+    assert response["error"]["code"] == "invalid_parameters_schema"
+
+
+def test_report_error_response_never_contains_traceback_text():
+    response = handle_request(
+        _request(command="report", parameters=_params({"body_width": "wide"}))
+    )
+    serialized = json.dumps(response)
+    assert response["ok"] is False
+    assert "Traceback" not in serialized
+    assert 'File "' not in serialized
+
+
+def test_report_does_not_construct_cadquery_geometry():
+    # A report round trip must be cheap: no build_body/build_rod call, only
+    # ZeroRodParameters properties. Patch build_preview_scene to explode if
+    # ever called from the report path — it must not be.
+    import zerorodcad.preview as preview_module
+
+    original = preview_module.build_preview_scene
+
+    def _explode(*args, **kwargs):  # pragma: no cover - must never run
+        raise AssertionError("report command must not build CadQuery geometry")
+
+    preview_module.build_preview_scene = _explode
+    try:
+        response = handle_request(_request(command="report"))
+    finally:
+        preview_module.build_preview_scene = original
+    assert response["ok"] is True
+
+
+def test_valid_then_invalid_then_valid_report_sequence_all_succeed_independently():
+    good_1 = handle_request(_request(command="report"))
+    bad = handle_request(_request(command="report", parameters=_params({"body_width": -1.0})))
+    good_2 = handle_request(_request(command="report"))
+
+    assert good_1["ok"] is True
+    assert bad["ok"] is False
+    assert good_2["ok"] is True
+
+
 # --- Build 024 M1: export -----------------------------------------------
 
 
@@ -273,6 +367,39 @@ def test_export_alternate_parameters_produce_different_geometry(tmp_path: Path) 
     alt_report = (alt_dir / "cbg-open-g-report.md").read_text()
     assert "38.00 mm" in default_report
     assert "60.00 mm" in alt_report
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {},
+        {"body_width": 60.0},
+        {"string_gauges_inch": [0.010, 0.013, 0.017, 0.026]},
+    ],
+    ids=["default", "alternate_body_width", "changed_string_gauges"],
+)
+def test_report_command_and_exported_report_md_agree_for_the_same_accepted_state(
+    tmp_path: Path, values: dict
+) -> None:
+    """Build 025 M3 §23 of the mandate: the in-app Instrument Report
+    (`report` command) and export's `report.md` file must semantically
+    agree for the same accepted parameter state — not byte-identical
+    formatting necessarily, but here they're actually the exact same
+    function (`build_report`), so byte-identical is the correct, strict
+    assertion."""
+    report_response = handle_request(
+        _request(command="report", parameters=_params(values) if values else {})
+    )
+    assert report_response["ok"] is True
+
+    export_response = handle_request(_export_request(str(tmp_path), values or None))
+    assert export_response["ok"] is True
+    report_file = next(
+        f for f in export_response["result"]["files"] if f["role"] == "report_markdown"
+    )
+    exported_markdown = Path(report_file["path"]).read_text()
+
+    assert report_response["result"]["markdown"] == exported_markdown
 
 
 def test_export_project_name_shapes_generated_filenames(tmp_path: Path) -> None:

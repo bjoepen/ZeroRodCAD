@@ -403,6 +403,40 @@ def _run_project_save_command(parameters: dict) -> dict:
     return {"path": str(written_path), "parameters": parameters_to_contract(params)}
 
 
+def _run_report_command(parameters: dict) -> dict:
+    """Build 025 M3 — the Instrument Report (§16-23 of the mandate): exposes
+    the existing, unmodified `zerorodcad.report.build_report` (already the
+    sole source `zerorodcad.export.save_report`/the legacy PySide6 app's
+    "Instrument Report" tab both use — this command does not create a
+    second report implementation, it is the third caller of the same one)
+    through the sidecar boundary. Request shape mirrors `preview`'s: the
+    outer `parameters` object IS directly a zerorod-parameters/v1 request
+    (no nested `output_directory`-style wrapper — a report has nowhere to
+    write). Same Level 1-3 validation as `preview` (structural/type parsing
+    via `parse_parameters_request`, then the one existing domain validator)
+    — a report is never built for a domain-invalid parameter set, mirroring
+    `preview`'s own behavior; no CadQuery geometry construction happens
+    here at all (`build_report` only reads `ZeroRodParameters` fields/
+    properties), so this is cheaper than `preview`, not a second version of
+    it.
+    """
+    from zerorod_sidecar.parameters_contract import parse_parameters_request
+    from zerorodcad.report import build_report
+    from zerorodcad.validation import validate_parameters
+
+    params = parse_parameters_request(parameters)
+
+    validation = validate_parameters(params)
+    if not validation.is_valid:
+        raise SidecarError(
+            "invalid_parameters_domain",
+            "; ".join(validation.errors),
+            details={"errors": list(validation.errors)},
+        )
+
+    return {"markdown": build_report(params)}
+
+
 def _run_parameters_defaults_command(parameters: dict) -> dict:  # noqa: ARG001
     """Returns the canonical default ZeroRodParameters wrapped in the
     zerorod-parameters/v1 envelope — the single authoritative default set a
@@ -421,6 +455,7 @@ COMMANDS = {
     "ping": _run_ping_command,
     "status": _run_status_command,
     "preview": _run_preview_command,
+    "report": _run_report_command,
     "export": _run_export_command,
     "export_preflight": _run_export_preflight_command,
     "parameters_defaults": _run_parameters_defaults_command,

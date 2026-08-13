@@ -34,10 +34,45 @@ import * as THREE from "three";
 import { isEngineError, requestPreviewMesh } from "./engine";
 import { meshContractToGeometries, type Bounds, type RenderableMesh } from "./mesh";
 import { requestPreviewMeshWithParameters, type ZeroRodParametersValues } from "./parameters";
-import { clearGroup, createScene, fitCameraToBounds, isExtremeBoundsChange, type SceneHandle } from "./scene";
+import {
+  boundsFromVisibleObjects,
+  clearGroup,
+  createScene,
+  fitCameraToBounds,
+  isExtremeBoundsChange,
+  type SceneHandle,
+} from "./scene";
 import type { StatusValue } from "./status";
 
 export type PreviewState = "idle" | "loading" | "ready" | "error";
+
+/** Build 025 M3 — the three layers the legacy PySide6 app lets a user
+ * hide/show independently (`preview_widget.py`'s `show_body`/`show_rod`/
+ * `show_strings`), matching the mesh/line `name` fields
+ * `zerorod_sidecar.mesh_contract`/`zerorodcad.preview` already emit
+ * unchanged (`"body"`, `"rod"`, `"strings"`) — not a new contract, just the
+ * three names that already exist in every `zerorod-mesh/v1` payload. */
+export type ModelLayer = "body" | "rod" | "strings";
+export const MODEL_LAYERS: readonly ModelLayer[] = ["body", "rod", "strings"];
+
+/** Pure — sets `.visible` on `group`'s direct children whose `.name`
+ * matches a known layer, from `visibility`. Separated from
+ * `createPreviewController` (which needs a real WebGLRenderer, untestable
+ * under jsdom — see this module's existing doc comment on that) so the
+ * actual mechanism behind §13 of the M3 mandate's named regression case
+ * ("visibility survives geometry replacement") is unit-testable without a
+ * GPU context: build a `THREE.Group` with named children exactly like
+ * `commitPreview` does, call this, assert `.visible`. */
+export function applyModelLayerVisibility(
+  group: THREE.Object3D,
+  visibility: Record<ModelLayer, boolean>,
+): void {
+  for (const child of group.children) {
+    if (child.name === "body" || child.name === "rod" || child.name === "strings") {
+      child.visible = visibility[child.name as ModelLayer];
+    }
+  }
+}
 
 export type PreviewStateListener = (state: PreviewState, detail: string) => void;
 
@@ -144,6 +179,27 @@ export interface PreviewController {
    * this module's doc comment and `scene.ts`'s `isExtremeBoundsChange`).
    * Also updates the status callback exactly like `load` does. */
   commitPreview: (data: ParsedPreviewData) => void;
+  /** Build 025 M3 — presentation-only layer visibility (§10/§11 of the
+   * mandate): shows/hides the named layer's already-rendered Object3D(s)
+   * directly. Never regenerates geometry, never calls the backend, never
+   * touches `accepted`/draft/dirty state. Survives the next `commitPreview`
+   * (§13) — the new objects a later commit creates are given the
+   * last-set visibility for their layer immediately, not the default. */
+  setLayerVisible: (layer: ModelLayer, visible: boolean) => void;
+  /** Current visibility for `layer` — defaults to `true` (§14) until
+   * changed. */
+  isLayerVisible: (layer: ModelLayer) => boolean;
+  /** Build 025 M3 — "Reset View" (§7/§8 of the mandate: legacy has exactly
+   * one such control, not a separate Fit/Reset pair — see
+   * docs/migration/BUILD-025-M3-PREVIEW-REPORT-PARITY.md for the discovery
+   * this decision is based on). Reframes the camera on the *currently
+   * visible* model bounds (`scene.ts`'s `boundsFromVisibleObjects` —
+   * hidden layers do not reserve frame space, §12), using the same
+   * fixed-relative-angle algorithm every other refit in this app already
+   * uses (`fitCameraToBounds`). Purely a camera operation: no backend call,
+   * no geometry change, no project-dirty effect (§9). A safe no-op if
+   * every layer is currently hidden. */
+  resetView: () => void;
   /** Releases the renderer, controls, geometry, and materials. Call once,
    * when the preview is being torn down (e.g. page/app unload). */
   dispose: () => void;
@@ -173,6 +229,18 @@ export function createPreviewController(
   let hasCommittedOnce = false;
   let lastBounds: Bounds | null = null;
 
+  // Build 025 M3 — visibility lives here, outside any single commit's
+  // Object3D instances, precisely because `commitPreview` disposes and
+  // recreates those instances on every geometry refresh (`clearGroup`);
+  // without a durable record, a hidden layer would silently reappear on
+  // the next live-preview update (§13 of the mandate — the actual
+  // regression case its own test list calls out by name).
+  const layerVisibility: Record<ModelLayer, boolean> = {
+    body: true,
+    rod: true,
+    strings: true,
+  };
+
   async function fetchPreview(values?: Partial<ZeroRodParametersValues>): Promise<FetchPreviewResult> {
     try {
       const started = performance.now();
@@ -194,12 +262,20 @@ export function createPreviewController(
   function commitPreview(data: ParsedPreviewData): void {
     // Refresh must not accumulate stale geometry from a prior commit.
     clearGroup(modelGroup);
-    for (const { geometry } of data.meshes) {
-      modelGroup.add(new THREE.Mesh(geometry, meshMaterial));
+    for (const { name, geometry } of data.meshes) {
+      const mesh = new THREE.Mesh(geometry, meshMaterial);
+      mesh.name = name;
+      modelGroup.add(mesh);
     }
-    for (const { geometry } of data.lines) {
-      modelGroup.add(new THREE.LineSegments(geometry, lineMaterial));
+    for (const { name, geometry } of data.lines) {
+      const line = new THREE.LineSegments(geometry, lineMaterial);
+      line.name = name;
+      modelGroup.add(line);
     }
+    // §13 of the M3 mandate: a geometry refresh must not silently reset
+    // visibility to defaults — the freshly-created objects above get
+    // whatever was last set for their layer, immediately.
+    applyModelLayerVisibility(modelGroup, layerVisibility);
 
     const shouldRefit =
       !hasCommittedOnce || (lastBounds !== null && isExtremeBoundsChange(lastBounds, data.bounds));
@@ -224,6 +300,22 @@ export function createPreviewController(
     return { ok: true };
   }
 
+  function setLayerVisible(layer: ModelLayer, visible: boolean): void {
+    layerVisibility[layer] = visible;
+    applyModelLayerVisibility(modelGroup, layerVisibility);
+  }
+
+  function isLayerVisible(layer: ModelLayer): boolean {
+    return layerVisibility[layer];
+  }
+
+  function resetView(): void {
+    const bounds = boundsFromVisibleObjects(modelGroup);
+    if (bounds) {
+      fitCameraToBounds(camera, controls, bounds);
+    }
+  }
+
   function dispose(): void {
     clearGroup(modelGroup);
     meshMaterial.dispose();
@@ -231,5 +323,13 @@ export function createPreviewController(
     disposeScene();
   }
 
-  return { load, fetchPreview, commitPreview, dispose };
+  return {
+    load,
+    fetchPreview,
+    commitPreview,
+    setLayerVisible,
+    isLayerVisible,
+    resetView,
+    dispose,
+  };
 }

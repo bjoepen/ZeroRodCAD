@@ -9,7 +9,12 @@ document is the interactive click-through a human tester still needs to do — f
 timing/flicker judgment, and general "does this feel like a normal desktop app now" assessment are
 not something a unit test (running under jsdom, no real WebView, no real GPU) can substitute for.
 
-**Status: PENDING.** No human validation has been performed yet. Nothing below is marked `[x]`.
+**Status: PASS.** The Project Owner reported Build 025 / M2 Human Validation as PASS (result
+communicated directly, not itemized against this checklist point by point). Individual checklist
+items below are left unchecked rather than retroactively marked `[x]`, since this document records
+only what was explicitly, individually reported as tested — see
+`docs/migration/BUILD-025-M3-PREVIEW-REPORT-PARITY.md`'s baseline section for how this result
+authorizes Build 025 M3.
 
 ## Build under test
 
@@ -118,16 +123,15 @@ resource before first launch, then restoring it and using Retry):
 
 | Field | Value |
 |---|---|
-| Tester | *(Project Owner — not yet performed)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Hardware | *(pending)* |
-| Result | **PENDING** |
-| Notes | — |
+| Tester | Project Owner |
+| Date | 2026-08-13 |
+| macOS | *(not individually reported)* |
+| Hardware | *(not individually reported)* |
+| Result | **PASS** |
+| Notes | Result communicated directly as an overall PASS, not itemized against each checklist line above — those are left unchecked rather than retroactively marked, per this project's own record-only-what-was-explicitly-reported convention. |
 
 ## Gate BUILD-025-M2 (human component)
 
-**PENDING.** Engineering gate (`scripts/validate-build025-m2.sh`) result is recorded separately in
-the milestone's final Abschlussbericht. Engineering PASS does not by itself constitute
-`BUILD-025-M2 CONSISTENCY GATE: PASS` for product purposes until this human validation is also
-complete — Build 025 M3 is not authorized to start before then.
+**PASS.** Combined with the engineering gate (`scripts/validate-build025-m2.sh`,
+`BUILD-025-M2 CONSISTENCY GATE: PASS`), Build 025 M2 is **COMPLETE**. Build 025 M3 is authorized on
+this basis.

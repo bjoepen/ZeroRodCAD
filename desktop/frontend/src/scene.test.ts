@@ -1,6 +1,64 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { fitCameraToBounds, clearGroup, isExtremeBoundsChange } from "./scene";
+import { boundsFromVisibleObjects, fitCameraToBounds, clearGroup, isExtremeBoundsChange } from "./scene";
+
+function boxMesh(name: string, position: [number, number, number]): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+  mesh.name = name;
+  mesh.position.set(...position);
+  return mesh;
+}
+
+describe("boundsFromVisibleObjects", () => {
+  it("computes bounds from all children when everything is visible", () => {
+    const group = new THREE.Group();
+    group.add(boxMesh("body", [0, 0, 0]));
+    group.add(boxMesh("rod", [10, 0, 0]));
+
+    const bounds = boundsFromVisibleObjects(group)!;
+    expect(bounds).not.toBeNull();
+    expect(bounds.min[0]).toBeCloseTo(-0.5);
+    expect(bounds.max[0]).toBeCloseTo(10.5);
+  });
+
+  it("excludes a hidden layer's geometry entirely (§12 of the M3 mandate)", () => {
+    const group = new THREE.Group();
+    const body = boxMesh("body", [0, 0, 0]);
+    const rod = boxMesh("rod", [100, 0, 0]);
+    rod.visible = false;
+    group.add(body);
+    group.add(rod);
+
+    const bounds = boundsFromVisibleObjects(group)!;
+    // If the hidden rod's geometry leaked in, max.x would be ~100.5.
+    expect(bounds.max[0]).toBeCloseTo(0.5);
+  });
+
+  it("returns null when every layer is hidden (safe no-op, not a crash)", () => {
+    const group = new THREE.Group();
+    const body = boxMesh("body", [0, 0, 0]);
+    body.visible = false;
+    group.add(body);
+
+    expect(boundsFromVisibleObjects(group)).toBeNull();
+  });
+
+  it("returns null for an empty group", () => {
+    expect(boundsFromVisibleObjects(new THREE.Group())).toBeNull();
+  });
+
+  it("skips a hidden parent group's children even if the children are individually visible", () => {
+    const group = new THREE.Group();
+    const hiddenSubgroup = new THREE.Group();
+    hiddenSubgroup.visible = false;
+    hiddenSubgroup.add(boxMesh("strings", [50, 0, 0]));
+    group.add(boxMesh("body", [0, 0, 0]));
+    group.add(hiddenSubgroup);
+
+    const bounds = boundsFromVisibleObjects(group)!;
+    expect(bounds.max[0]).toBeCloseTo(0.5);
+  });
+});
 
 describe("fitCameraToBounds", () => {
   it("points the camera at the bounds center and updates controls target", () => {

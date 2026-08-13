@@ -43,9 +43,11 @@ BUILD 025 — DESKTOP FEATURE PARITY: IN PROGRESS
   Discovery: COMPLETE — Gate BUILD-025 DISCOVERY GATE: PASS
   M1 — Project Persistence: COMPLETE — Gate BUILD-025-M1: PASS, Human Validation PASS
                              (incl. the native-close corrective fix, BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md)
-  M2 — Product UI Productization & Lifecycle Polish: engineering COMPLETE —
-                             Gate BUILD-025-M2: engineering PASS, Human Validation PENDING
-NEXT: BUILD 025 / M2 HUMAN VALIDATION, THEN M3
+  M2 — Product UI Productization & Lifecycle Polish: COMPLETE — Gate BUILD-025-M2: PASS,
+                             Human Validation PASS
+  M3 — Preview & Report Parity: engineering COMPLETE —
+                             Gate BUILD-025-M3: engineering PASS, Human Validation PENDING
+NEXT: BUILD 025 / M3 HUMAN VALIDATION, THEN M4
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
@@ -90,15 +92,30 @@ surfaced a separate, pre-existing gap — the default macOS Quit/⌘Q menu item 
 unsaved-changes guard entirely — deliberately left unfixed and tracked for **Build 025 M4**, per an
 explicit Project Owner scope decision. M1 Human Validation **PASSED**.
 
-Milestone 2 (Product UI Productization & Lifecycle Polish) is **engineering-complete**: an
-automatic initial preview (closing the "empty viewport at first launch" gap Discovery identified —
-the sidecar already auto-started; the preview simply was never automatically requested), a new
-Diagnostics view relocating the old technical Engine/Ping/raw-JSON controls out of the main product
-UI without losing their information, and a friendly startup-failure surface with Retry/Show
-Details — all frontend-only, no engine/protocol/Rust source change — see
-[`BUILD-025-M2-PRODUCT-LIFECYCLE.md`](BUILD-025-M2-PRODUCT-LIFECYCLE.md). Human Validation is
-**PENDING** ([`BUILD-025-M2-HUMAN-VALIDATION.md`](BUILD-025-M2-HUMAN-VALIDATION.md)) — per the
-mandate's own stop condition, M3 does not start until it passes.
+Milestone 2 (Product UI Productization & Lifecycle Polish) is **complete**: an automatic initial
+preview (closing the "empty viewport at first launch" gap Discovery identified — the sidecar
+already auto-started; the preview simply was never automatically requested), a new Diagnostics view
+relocating the old technical Engine/Ping/raw-JSON controls out of the main product UI without
+losing their information, and a friendly startup-failure surface with Retry/Show Details — all
+frontend-only, no engine/protocol/Rust source change — see
+[`BUILD-025-M2-PRODUCT-LIFECYCLE.md`](BUILD-025-M2-PRODUCT-LIFECYCLE.md). M2 Human Validation
+**PASSED**, authorizing M3 (`BUILD-025-M2-HUMAN-VALIDATION.md`).
+
+Milestone 3 (Preview & Report Parity) is **engineering-complete**: a build-identity process
+correction (M2 had shipped still reporting milestone "M1" — `app_info()` now reports "M3", with a
+general regression test guarding against any earlier Build 025 milestone being reported again, not
+just that one pair); a single "Reset View" control (legacy has exactly one such behavior, not a
+separate Fit/Reset pair — confirmed by reading `preview_widget.py` directly), reusing the existing
+`fitCameraToBounds` and a new `boundsFromVisibleObjects` so a hidden layer never reserves frame
+space; presentation-only Body/Rod/Strings visibility toggles that survive a live-preview geometry
+refresh; and an in-app Instrument Report sourced from `accepted` state through a new, additive
+sidecar `report` command and Rust `engine_report` command, both reusing
+`zerorodcad.report.build_report` unmodified (the same function `export`'s `report.md` already
+uses — proven byte-for-byte identical for the same accepted state) — see
+[`BUILD-025-M3-PREVIEW-REPORT-PARITY.md`](BUILD-025-M3-PREVIEW-REPORT-PARITY.md). No engine,
+protocol, or domain (`zerorodcad/`) source change. Human Validation is **PENDING**
+([`BUILD-025-M3-HUMAN-VALIDATION.md`](BUILD-025-M3-HUMAN-VALIDATION.md)) — per the mandate's own
+stop condition, M4 does not start until it passes.
 
 ## Why migrate
 
@@ -359,8 +376,8 @@ and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
     Quit/⌘Q menu item bypasses the guard entirely, a separate pre-existing gap deliberately left
     unfixed and tracked for Build 025 M4. M1 Human Validation **PASSED**
     (`BUILD-025-M1-HUMAN-VALIDATION.md`).
-  - M2 — Product UI Productization & Lifecycle Polish: engineering COMPLETE / Gate
-    BUILD-025-M2: engineering PASS (`BUILD-025-M2-PRODUCT-LIFECYCLE.md`) — an automatic initial
+  - M2 — Product UI Productization & Lifecycle Polish: COMPLETE / Gate
+    BUILD-025-M2: PASS (`BUILD-025-M2-PRODUCT-LIFECYCLE.md`) — an automatic initial
     preview (`parameter_panel.ts`'s `load()` now performs one fetch+commit through the same
     pipeline `loadProjectValues`/live-preview already use, closing the "empty viewport at first
     launch" gap Discovery identified — the sidecar already auto-started, the preview simply was
@@ -371,8 +388,23 @@ and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
     controls (build/engine/Python/CadQuery/OCP/protocol info) out of the main product UI without
     losing them, read-only except one "Refresh Status" action, with no preview/project/export
     side effects on open/close; the old 5-row status panel and four technical buttons removed
-    from `main.ts` entirely. No engine, protocol, sidecar, or Rust source change. Human
-    Validation is **PENDING** (`BUILD-025-M2-HUMAN-VALIDATION.md`) — M3 does not start until it
-    passes, per the mandate's own stop condition.
+    from `main.ts` entirely. No engine, protocol, sidecar, or Rust source change. M2 Human
+    Validation **PASSED** (`BUILD-025-M2-HUMAN-VALIDATION.md`), authorizing M3.
+  - M3 — Preview & Report Parity: engineering COMPLETE / Gate BUILD-025-M3: engineering PASS
+    (`BUILD-025-M3-PREVIEW-REPORT-PARITY.md`) — a build-identity process correction (`app_info()`
+    now reports `"M3"`, not the "M1" M2 shipped with; a general regression test now guards against
+    any earlier Build 025 milestone being reported again); Reset View — exactly one control, per
+    reading `preview_widget.py` directly (legacy has no separate Fit/Reset pair) — implemented as
+    a new `boundsFromVisibleObjects` (`scene.ts`, excludes hidden layers from the frame) feeding
+    the existing, unchanged `fitCameraToBounds`; presentation-only Body/Rod/Strings visibility
+    (`preview.ts`'s `ModelLayer`/`applyModelLayerVisibility`, matching the mesh contract's
+    existing `"body"`/`"rod"`/`"strings"` names — no protocol change) that survives a live-preview
+    geometry refresh; and an in-app Instrument Report (`report.ts`/`report_panel.ts`) sourced from
+    `accepted` state only, through a new additive sidecar `report` command and Rust
+    `engine_report` command, both reusing `zerorodcad.report.build_report` unmodified — proven
+    byte-for-byte identical to export's `report.md` for the same accepted state across three
+    scenarios. No engine, protocol, or domain (`zerorodcad/`) source change. Human Validation is
+    **PENDING** (`BUILD-025-M3-HUMAN-VALIDATION.md`) — M4 does not start until it passes, per the
+    mandate's own stop condition.
 
-**Next: Build 025 / Milestone 2 Human Validation, then Build 025 / Milestone 3.**
+**Next: Build 025 / Milestone 3 Human Validation, then Build 025 / Milestone 4.**
