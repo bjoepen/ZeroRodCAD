@@ -25,6 +25,12 @@ export interface ReportPanelController {
    * accepted-state transitions, not raw draft typing," and avoid firing a
    * request on every one of those transitions that isn't a real change). */
   refreshIfVisible: () => void;
+  /** Build 025 M4 — the native View → Instrument Report menu entry point.
+   * Opens the panel and fetches for the current accepted state, exactly
+   * like clicking the visible toggle when closed — no second report
+   * implementation/window (§18 of the mandate). Safe to call while already
+   * open (just re-fetches, same as the visible toggle offers via Retry). */
+  open: () => void;
   dispose: () => void;
 }
 
@@ -110,13 +116,18 @@ export function createReportPanelController(
     });
   }
 
+  function openPanel(): void {
+    open = true;
+    void fetchReport();
+  }
+
   function wireToggle(): void {
     container.querySelector('[data-action="report-toggle"]')?.addEventListener("click", () => {
-      open = !open;
       if (open) {
-        void fetchReport();
-      } else {
+        open = false;
         render();
+      } else {
+        openPanel();
       }
     });
   }
@@ -136,5 +147,5 @@ export function createReportPanelController(
 
   render();
 
-  return { refreshIfVisible, dispose };
+  return { refreshIfVisible, open: openPanel, dispose };
 }

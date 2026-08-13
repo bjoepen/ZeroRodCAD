@@ -23,6 +23,13 @@ export interface ViewControlsIO {
 }
 
 export interface ViewControlsController {
+  /** Build 025 M4 — reflects a visibility change that originated elsewhere
+   * (the native View menu's checkbox) into this visible checkbox, without
+   * re-invoking `io.setLayerVisible` (§15/§29 of the mandate: menu and
+   * visible control operate on the same state, but this must not become a
+   * feedback loop — setting `.checked` programmatically does not fire a
+   * `change` event, so this is a one-way reflection, not a second write). */
+  setCheckboxState: (layer: ModelLayer, visible: boolean) => void;
   dispose: () => void;
 }
 
@@ -77,10 +84,15 @@ export function createViewControlsController(
     io.resetView();
   });
 
+  function setCheckboxState(layer: ModelLayer, visible: boolean): void {
+    const input = container.querySelector<HTMLInputElement>(`#view-layer-${layer}`);
+    if (input) input.checked = visible;
+  }
+
   function dispose(): void {
     // No timers/subscriptions to release — kept for interface symmetry
     // with the other panel controllers.
   }
 
-  return { dispose };
+  return { setCheckboxState, dispose };
 }

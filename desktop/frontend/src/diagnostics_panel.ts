@@ -30,6 +30,12 @@ export interface DiagnosticsIO {
 }
 
 export interface DiagnosticsPanelController {
+  /** Build 025 M4 — the native View → Diagnostics menu entry point (§19 of
+   * the mandate: reachable from the native menu, still optional technical
+   * information — no new privileges, no promotion into a primary
+   * workflow). Opens the panel, matching the visible toggle's own
+   * open-and-refresh-if-idle behavior. */
+  open: () => void;
   dispose: () => void;
 }
 
@@ -162,14 +168,23 @@ export function createDiagnosticsPanelController(
     });
   }
 
+  function openPanel(): void {
+    open = true;
+    if (status === "idle") {
+      void refresh();
+      return;
+    }
+    render();
+  }
+
   function wireToggle(): void {
     container.querySelector('[data-action="diagnostics-toggle"]')?.addEventListener("click", () => {
-      open = !open;
-      if (open && status === "idle") {
-        void refresh();
-        return;
+      if (open) {
+        open = false;
+        render();
+      } else {
+        openPanel();
       }
-      render();
     });
   }
 
@@ -180,5 +195,5 @@ export function createDiagnosticsPanelController(
 
   render();
 
-  return { dispose };
+  return { open: openPanel, dispose };
 }

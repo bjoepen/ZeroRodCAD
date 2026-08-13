@@ -148,4 +148,27 @@ describe("createDiagnosticsPanelController", () => {
     const controller = createDiagnosticsPanelController(container, io);
     expect(() => controller.dispose()).not.toThrow();
   });
+
+  it("open() (Build 025 M4 — native View -> Diagnostics menu entry point, §19) opens and fetches, same as the visible toggle", async () => {
+    const controller = createDiagnosticsPanelController(container, io);
+
+    controller.open();
+    await flush();
+
+    expect(fetchAppInfo).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".diagnostics-panel")).toBeTruthy();
+  });
+
+  it("open() while already open does not re-fetch or duplicate panels", async () => {
+    const controller = createDiagnosticsPanelController(container, io);
+    toggleButton().click();
+    await flush();
+    fetchAppInfo.mockClear();
+
+    controller.open();
+    await flush();
+
+    expect(fetchAppInfo).not.toHaveBeenCalled();
+    expect(container.querySelectorAll(".diagnostics-panel").length).toBe(1);
+  });
 });

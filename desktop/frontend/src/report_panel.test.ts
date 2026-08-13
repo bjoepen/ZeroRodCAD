@@ -171,4 +171,31 @@ describe("createReportPanelController", () => {
     const controller = createReportPanelController(container, io);
     expect(() => controller.dispose()).not.toThrow();
   });
+
+  it("open() (Build 025 M4 — native View -> Instrument Report menu entry point, §18) opens and fetches, same as the visible toggle", async () => {
+    invokeMock.mockResolvedValueOnce({ markdown: "# Instrument Report – CBG Open G" });
+    const controller = createReportPanelController(container, io);
+
+    controller.open();
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".report-content")?.innerHTML).toContain(
+      "Instrument Report – CBG Open G",
+    );
+  });
+
+  it("open() while already open re-fetches rather than throwing or duplicating panels", async () => {
+    invokeMock.mockResolvedValueOnce({ markdown: "# Instrument Report" });
+    const controller = createReportPanelController(container, io);
+    toggleButton().click();
+    await flush();
+
+    invokeMock.mockResolvedValueOnce({ markdown: "# Instrument Report v2" });
+    controller.open();
+    await flush();
+
+    expect(invokeMock).toHaveBeenCalledTimes(2);
+    expect(container.querySelectorAll(".report-panel").length).toBe(1);
+  });
 });

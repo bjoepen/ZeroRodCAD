@@ -63,6 +63,19 @@ export interface ProjectPanelController {
    * window — the caller (main.ts's `onCloseRequested` handler) decides what
    * to do with the result (§19/§20 of the mandate). */
   confirmQuit: () => Promise<boolean>;
+  /** Build 025 M4 — the native File menu's entry points (§20/§21 of the
+   * mandate: "native File actions must call the SAME productive
+   * project/export workflows already used by the UI... do not duplicate
+   * project logic inside Rust menu handlers"). Each is the exact same
+   * function the corresponding visible button's click handler already
+   * calls — `guardThenRun`/`performSave`/`performSaveAs` are already safe
+   * to call when the action is currently disabled (they check
+   * `isNewOpenEnabled()`/`isSaveEnabled()` internally and no-op), so no
+   * separate enabled-state plumbing is needed for the native menu. */
+  triggerNew: () => void;
+  triggerOpen: () => void;
+  triggerSave: () => void;
+  triggerSaveAs: () => void;
   dispose: () => void;
 }
 
@@ -431,5 +444,13 @@ export function createProjectPanelController(
 
   render();
 
-  return { refreshEnablement, confirmQuit, dispose };
+  return {
+    refreshEnablement,
+    confirmQuit,
+    triggerNew: () => guardThenRun("new"),
+    triggerOpen: () => guardThenRun("open"),
+    triggerSave: () => void performSave(),
+    triggerSaveAs: () => void performSaveAs(),
+    dispose,
+  };
 }

@@ -51,7 +51,7 @@ pub fn app_info() -> AppInfo {
         name: "ZeroRodCAD Desktop".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build: "025".to_string(),
-        milestone: "M3".to_string(),
+        milestone: "M4".to_string(),
     }
 }
 
@@ -418,7 +418,7 @@ mod tests {
     fn app_info_reports_current_milestone() {
         let info = app_info();
         assert_eq!(info.build, "025");
-        assert_eq!(info.milestone, "M3");
+        assert_eq!(info.milestone, "M4");
         assert!(!info.version.is_empty());
     }
 
@@ -447,7 +447,7 @@ mod tests {
         let info = app_info();
         assert_eq!(info.build, "025");
         assert!(
-            !["M1", "M2"].contains(&info.milestone.as_str()),
+            !["M1", "M2", "M3"].contains(&info.milestone.as_str()),
             "app_info() must not report an earlier Build 025 milestone ({}); \
              this is the exact class of defect that shipped M2 still \
              reporting M1",

@@ -51,6 +51,13 @@ export interface ExportPanelController {
    * changed — call whenever `io`'s underlying state might have changed
    * (parameter_panel.ts's `onChange` hook wires this). */
   refreshEnablement: () => void;
+  /** Build 025 M4 — the native File → Export Model… menu entry point
+   * (§20/§33 of the mandate: same workflow as the visible trigger, no
+   * duplicated logic in Rust). Identical to the visible button's click
+   * handler, including its own enabled-state check
+   * (`isTriggerEnabled()`), so it safely no-ops if export isn't currently
+   * available. */
+  triggerExport: () => void;
   /** Releases any pending "Exporting…" display timer. Call once when the
    * panel is being torn down (e.g. page/app unload). */
   dispose: () => void;
@@ -280,5 +287,9 @@ export function createExportPanelController(
 
   render();
 
-  return { refreshEnablement, dispose };
+  return {
+    refreshEnablement,
+    triggerExport: () => void handleExportClick(),
+    dispose,
+  };
 }
