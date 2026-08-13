@@ -22,20 +22,36 @@ pub struct AppInfo {
 
 // Build 025 M1 identity fix: this pair (`build`/`milestone`) is the single
 // source of truth for the app's visible build/milestone identity — nowhere
-// else hardcodes it (main.ts's status panel is the only renderer, reading
-// these two fields; it used to also carry a second, independently-drifting
-// copy in a static subtitle string, which was the actual cause of the
-// Project Owner seeing a stale "Build 024 — Milestone 2" label while
-// validating this M1 build — see docs/migration/
-// BUILD-025-M1-ARTIFACT-IDENTITY-FIX.md). Update both fields together, here
-// only, at the start of each new milestone.
+// else hardcodes it (diagnostics_panel.ts, Build 025 M2's relocation of the
+// old status panel, is the only renderer, reading these two fields; before
+// that, main.ts's status panel used to also carry a second,
+// independently-drifting copy in a static subtitle string, which was the
+// actual cause of the Project Owner seeing a stale "Build 024 — Milestone
+// 2" label while validating the M1 build — see docs/migration/
+// BUILD-025-M1-ARTIFACT-IDENTITY-FIX.md).
+//
+// Build 025 M3 process correction: despite the instruction above, this
+// value was NOT bumped for M2 — it kept reading "M1" through the entire M2
+// milestone, including its shipped Human Validation artifact. M2's own
+// validate-build025-m2.sh gate made this worse, not better: it asserted
+// milestone == "M1" (i.e. "unchanged since M1") as a deliberate,
+// rationalized "STALE_GATE_ASSUMPTION", rather than asserting what should
+// actually have been true for an M2 gate (milestone == "M2"). Lesson: a
+// milestone's own validation gate must assert ITS OWN milestone value, not
+// "whatever the field already said" — the latter can never catch a missed
+// bump, by construction, since it always trivially agrees with the status
+// quo. See the `app_info_reports_current_milestone`/
+// `app_info_never_reports_a_stale_milestone` tests below and
+// `scripts/validate-build025-m3.sh`, which both now hardcode "M3"
+// specifically for this reason. Update both fields together, here only, at
+// the start of each new milestone.
 #[tauri::command]
 pub fn app_info() -> AppInfo {
     AppInfo {
         name: "ZeroRodCAD Desktop".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build: "025".to_string(),
-        milestone: "M1".to_string(),
+        milestone: "M3".to_string(),
     }
 }
 
@@ -122,6 +138,41 @@ pub async fn engine_preview_mesh_with_parameters(
     let payload = engine::request(&app, &state, "preview", parameters).await?;
     mesh::validate_and_summarize(&payload)
         .map_err(|problems| EngineError::new("invalid_mesh", problems.join("; ")))?;
+    Ok(payload)
+}
+
+/// Build 025 M3 — structural validation for the `report` command's result,
+/// mirroring `mesh::validate_and_summarize`'s "never trust a raw sidecar
+/// payload" discipline (a much smaller check than `mesh.rs`/
+/// `export_result.rs` need, since the report result has exactly one field
+/// to verify): a malformed/missing `markdown` string must never reach the
+/// WebView as a false success.
+fn validate_report_result(payload: &Value) -> Result<(), String> {
+    match payload.get("markdown") {
+        Some(Value::String(markdown)) if !markdown.is_empty() => Ok(()),
+        Some(Value::String(_)) => Err("report result 'markdown' must not be empty".to_string()),
+        Some(_) => Err("report result 'markdown' must be a string".to_string()),
+        None => Err("report result missing 'markdown'".to_string()),
+    }
+}
+
+/// Build 025 M3 — requests the Instrument Report (§16-23 of the mandate)
+/// for an explicit zerorod-parameters/v1 `parameters` object, exactly the
+/// same shape `engine_preview_mesh_with_parameters` already forwards
+/// verbatim (see docs/contracts/ZEROROD-PARAMETERS-V1.md's `report`
+/// command section). The frontend's intended source is `accepted`, the
+/// same "what you see is what the report describes" rule §18 restates from
+/// export's own precedent — this command does not itself decide which
+/// parameter state to use, same division of responsibility as export.
+#[tauri::command]
+pub async fn engine_report(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+    parameters: Value,
+) -> Result<Value, EngineError> {
+    let payload = engine::request(&app, &state, "report", parameters).await?;
+    validate_report_result(&payload)
+        .map_err(|problem| EngineError::new("invalid_report_result", problem))?;
     Ok(payload)
 }
 
@@ -364,10 +415,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn app_info_reports_build_025_m1() {
+    fn app_info_reports_current_milestone() {
         let info = app_info();
         assert_eq!(info.build, "025");
-        assert_eq!(info.milestone, "M1");
+        assert_eq!(info.milestone, "M3");
         assert!(!info.version.is_empty());
     }
 
@@ -382,6 +433,53 @@ mod tests {
             !(info.build == "024" && info.milestone == "M2"),
             "app_info() must not report the stale Build 024 / M2 identity"
         );
+    }
+
+    // Build 025 M3 process correction: M2 shipped its entire Human
+    // Validation artifact still silently reporting milestone "M1" — a
+    // forgotten-bump defect a value-pinning test alone cannot prevent
+    // (updating the pinned value and forgetting the real bump are the same
+    // mistake). This is the general form of that check: an M3 (or later)
+    // artifact must never report an EARLIER Build 025 milestone, not just
+    // the one specific pair already caught above.
+    #[test]
+    fn app_info_never_reports_a_stale_earlier_build_025_milestone() {
+        let info = app_info();
+        assert_eq!(info.build, "025");
+        assert!(
+            !["M1", "M2"].contains(&info.milestone.as_str()),
+            "app_info() must not report an earlier Build 025 milestone ({}); \
+             this is the exact class of defect that shipped M2 still \
+             reporting M1",
+            info.milestone
+        );
+    }
+
+    // Build 025 M3 — `validate_report_result` (the `engine_report` command's
+    // "never trust a raw sidecar payload" structural check, mirroring
+    // `mesh::validate_and_summarize`/`export_result.rs`).
+    #[test]
+    fn validate_report_result_accepts_a_well_formed_payload() {
+        let payload = serde_json::json!({"markdown": "# Instrument Report – CBG Open G"});
+        assert!(validate_report_result(&payload).is_ok());
+    }
+
+    #[test]
+    fn validate_report_result_rejects_a_missing_markdown_field() {
+        let payload = serde_json::json!({});
+        assert!(validate_report_result(&payload).is_err());
+    }
+
+    #[test]
+    fn validate_report_result_rejects_a_non_string_markdown_field() {
+        let payload = serde_json::json!({"markdown": 42});
+        assert!(validate_report_result(&payload).is_err());
+    }
+
+    #[test]
+    fn validate_report_result_rejects_an_empty_markdown_string() {
+        let payload = serde_json::json!({"markdown": ""});
+        assert!(validate_report_result(&payload).is_err());
     }
 
     // Build 024 M2 bugfix regression tests — real IPC dispatch through
@@ -461,6 +559,17 @@ mod tests {
             serde_json::json!({"parameters": parameters, "path": path})
         }
 
+        /// Byte-for-byte the same attribute and argument list as
+        /// `engine_report` in this file (Build 025 M3) — a single-word
+        /// argument name has no camelCase/snake_case ambiguity, so this is
+        /// mainly a contract-shape regression (report.ts's real `invoke()`
+        /// payload is accepted end to end), not a casing-bug guard like the
+        /// twins above.
+        #[tauri::command(rename_all = "snake_case")]
+        fn report_args_binding_twin(parameters: serde_json::Value) -> serde_json::Value {
+            serde_json::json!({"parameters": parameters})
+        }
+
         fn dispatch(
             cmd: &str,
             body: serde_json::Value,
@@ -471,6 +580,7 @@ mod tests {
                     project_save_file_args_binding_twin,
                     project_open_args_binding_twin,
                     project_save_args_binding_twin,
+                    report_args_binding_twin,
                 ])
                 .build(mock_context(noop_assets()))
                 .unwrap();
@@ -611,6 +721,18 @@ mod tests {
             let error = dispatch("project_save_args_binding_twin", body)
                 .expect_err("a missing path key must be rejected");
             assert!(error.as_str().unwrap_or_default().contains("path"));
+        }
+
+        // --- Build 025 M3: Instrument Report argument binding -----------
+
+        #[test]
+        fn accepts_the_exact_payload_report_ts_sends() {
+            let body = serde_json::json!({
+                "parameters": {"schema": "zerorod-parameters/v1", "values": {}},
+            });
+            let result = dispatch("report_args_binding_twin", body.clone())
+                .expect("report.ts's real payload shape must be accepted");
+            assert_eq!(result["parameters"], body["parameters"]);
         }
     }
 }

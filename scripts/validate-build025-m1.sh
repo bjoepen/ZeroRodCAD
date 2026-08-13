@@ -174,9 +174,20 @@ check "requestProjectOpen failure is caught before loadProjectValues is ever cal
 check "sidecar project_open re-validates domain rules before returning (Level 3, defense in depth)" \
   'grep -A2 "def _run_project_open_command" src/zerorod_sidecar/main.py > /dev/null && grep -q "validate_parameters(params)" src/zerorod_sidecar/main.py'
 
-section "Security invariants — WebView capability delta is exactly dialog:allow-open (reused) + a new dialog:allow-save"
-check "capability grants core:default + dialog:allow-open + dialog:allow-save only" \
-  'grep -q "\"permissions\": \[\"core:default\", \"dialog:allow-open\", \"dialog:allow-save\"\]" desktop/src-tauri/capabilities/main-capability.json'
+section "Security invariants — WebView capability delta is dialog:allow-open (reused) + dialog:allow-save, plus the native-close corrective fix's core:window:allow-destroy"
+# Build 025 M1 native-close corrective fix (see
+# docs/migration/BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md): core:default alone
+# (-> core:window:default) does not include allow-close/allow-destroy, so
+# the frontend's already-correct onCloseRequested guard could never actually
+# resume a deferred native close — the real red-macOS-close-button defect a
+# Project Owner hit in Human Validation. core:window:allow-destroy is the
+# minimal grant that fixes it (not the broader allow-close, which is unused
+# here and would also re-emit CloseRequested, unlike destroy()). This check
+# was updated, with explicit Project Owner sign-off per the mandate's own
+# §29 ("If new permissions appear necessary: STOP and reassess"), to accept
+# exactly this one additional grant — not to loosen the invariant generally.
+check "capability grants core:default + dialog:allow-open + dialog:allow-save + core:window:allow-destroy only" \
+  'grep -q "\"permissions\": \[\"core:default\", \"dialog:allow-open\", \"dialog:allow-save\", \"core:window:allow-destroy\"\]" desktop/src-tauri/capabilities/main-capability.json'
 check "no fs:* permission granted to the WebView" \
   '! grep -q "\"fs:" desktop/src-tauri/capabilities/main-capability.json'
 check "no shell/process capability exposed to the WebView beyond core:default" \

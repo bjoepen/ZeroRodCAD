@@ -103,16 +103,47 @@ open "<absolute path to ZeroRodCAD-Build025-M1.app>"
 - [ ] **Discard**: the native open dialog then appears, and opening proceeds normally
 - [ ] **Save then Open**: saves first, then the native open dialog appears and opening proceeds
 
-### Quit
+### Quit — red macOS close button (native window close)
 
-- [ ] Modify a parameter (create unsaved changes)
-- [ ] Attempt to quit the app (⌘Q or the window's close button)
+This is the specific control the Project Owner found broken in the prior round (clicking the red
+traffic-light button did nothing — the window never closed). Root cause and fix are recorded in
+`docs/migration/BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md`.
+
+- [ ] Clean/untouched project — clicking the red close button closes the window immediately, no
+      prompt
+- [ ] Modify a parameter (create unsaved changes), then click the red close button
 - [ ] A Save / Discard / Cancel prompt appears — the app does not quit immediately
-- [ ] **Cancel**: the app remains open, fully unchanged
-- [ ] **Discard**: the app quits
+- [ ] **Cancel**: the app remains open, fully unchanged, and is still usable afterward (try
+      changing a parameter again)
+- [ ] **Discard**: the window closes and the app quits
 - [ ] **Save**: the app only quits after the save has actually completed successfully — not
-      before
-- [ ] Quitting with NO unsaved changes closes the app immediately, with no prompt
+      before. If Save is choosing a destination for the first time (Save As), cancelling that
+      destination dialog cancels the whole close — the app stays open
+- [ ] Simulate a save failure (e.g. point at a location that can't be written) — the window stays
+      open and the unsaved changes remain
+- [ ] Type an invalid, never-applied value into a parameter field, then click the red close
+      button — the same unsaved-changes prompt appears (the uncommitted draft is protected too,
+      not just an already-accepted-and-dirty project)
+- [ ] After a successful close, no orphaned `zerorod-engine` process is left running (check with
+      `pgrep -fl zerorod-engine`)
+
+### Quit — App menu / ⌘Q
+
+**Known, pre-existing gap — not fixed by this corrective task; do not expect a prompt here.**
+Tracing the red-button defect found that macOS's default "Quit ZeroRodCAD" menu item (there is no
+custom menu yet — Build 025 M4's job) is wired directly to the native AppKit `terminate:` action,
+which currently bypasses the app's unsaved-changes guard entirely and quits immediately regardless
+of dirty state. This was true before this fix too; it is called out explicitly here so a human
+tester doesn't mistake it for a regression, and so it isn't silently forgotten before M4.
+
+- [ ] Quitting via ⌘Q or the App menu's Quit item with NO unsaved changes closes the app
+      immediately, with no prompt (expected)
+- [ ] Quitting via ⌘Q or the App menu's Quit item WITH unsaved changes currently also closes the
+      app immediately, with no prompt and no data-loss warning (expected today — this is the known
+      gap above, tracked for Build 025 M4's native-menu work, not a new defect)
+- [ ] No orphaned `zerorod-engine` process is left running after ⌘Q either way (the sidecar has its
+      own independent stdin-EOF shutdown fallback, so this holds even though the guard is
+      bypassed — confirmed directly against a real built `.app` during this fix)
 
 ### Invalid draft (§22)
 

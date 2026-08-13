@@ -92,6 +92,14 @@ let previewIO: PreviewIO;
 beforeEach(() => {
   invokeMock.mockReset();
   fetchPreview = vi.fn();
+  // Build 025 M2: `load()` now performs an automatic initial-preview fetch
+  // right after defaults load (see the "automatic initial preview" describe
+  // block below) — every other describe block in this file is testing
+  // something downstream of a successful `load()`, so a successful default
+  // here keeps them exercising what they actually intend to, without each
+  // needing to know about the M2 behavior change. Tests that care about the
+  // initial-preview fetch itself override this explicitly.
+  fetchPreview.mockResolvedValue({ ok: true, data: FAKE_DATA });
   commitPreview = vi.fn();
   previewIO = { fetchPreview, commitPreview };
   container = document.createElement("div");
@@ -102,6 +110,17 @@ async function loadPanel() {
   preloadDefaults();
   const panel = createParameterPanelController(container, previewIO);
   await panel.load();
+  // Build 025 M2: `load()` itself now makes one real `fetchPreview`/
+  // `commitPreview` call (the automatic initial preview) — clearing call
+  // history (not the mocked resolved value) here means every test's own
+  // `toHaveBeenCalledTimes`/`not.toHaveBeenCalled()` assertions keep
+  // measuring what they actually intend to: calls made by the test's own
+  // subsequent actions, not this shared setup helper's. Tests that
+  // specifically exercise the initial-load preview fetch (see "automatic
+  // initial preview" below) call `panel.load()` directly instead of this
+  // helper, so they still observe it.
+  fetchPreview.mockClear();
+  commitPreview.mockClear();
   return panel;
 }
 
@@ -154,6 +173,87 @@ describe("initial state", () => {
   });
 });
 
+describe("automatic initial preview (Build 025 M2, §10-13/§41 of the mandate)", () => {
+  it("requests and commits a preview for the canonical defaults exactly once, with no manual action", async () => {
+    preloadDefaults();
+    const panel = createParameterPanelController(container, previewIO);
+
+    const result = await panel.load();
+
+    expect(result).toEqual({ ok: true });
+    expect(fetchPreview).toHaveBeenCalledTimes(1);
+    expect(fetchPreview).toHaveBeenCalledWith(DEFAULT_VALUES);
+    expect(commitPreview).toHaveBeenCalledTimes(1);
+    expect(commitPreview).toHaveBeenCalledWith(FAKE_DATA);
+  });
+
+  it("keeps accepted/draft consistent with the committed preview after the automatic load", async () => {
+    preloadDefaults();
+    const panel = createParameterPanelController(container, previewIO);
+    await panel.load();
+
+    expect(panel.getAccepted()).toEqual(DEFAULT_VALUES);
+    expect(panel.hasUncommittedDraft()).toBe(false);
+    expect(panel.getLivePreviewStatus()).toBe("up-to-date");
+  });
+
+  it("reports a defaults-load failure distinctly, without ever calling fetchPreview", async () => {
+    invokeMock.mockRejectedValueOnce({ code: "internal_error", message: "sidecar unavailable" });
+    const panel = createParameterPanelController(container, previewIO);
+
+    const result = await panel.load();
+
+    expect(result).toEqual({
+      ok: false,
+      stage: "defaults",
+      error: { code: "internal_error", message: "sidecar unavailable" },
+    });
+    expect(fetchPreview).not.toHaveBeenCalled();
+    expect(commitPreview).not.toHaveBeenCalled();
+  });
+
+  it("reports an initial-preview failure distinctly from a defaults failure, without calling commitPreview", async () => {
+    preloadDefaults();
+    fetchPreview.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "sidecar_crashed", message: "sidecar terminated unexpectedly" },
+    } satisfies FetchPreviewResult);
+    const panel = createParameterPanelController(container, previewIO);
+
+    const result = await panel.load();
+
+    expect(result).toEqual({
+      ok: false,
+      stage: "preview",
+      error: { code: "sidecar_crashed", message: "sidecar terminated unexpectedly" },
+    });
+    expect(commitPreview).not.toHaveBeenCalled();
+    // The canonical defaults were already domain-valid and already accepted
+    // by buildForm before the preview fetch ran — a startup-level (engine)
+    // failure here must not leave the panel in a half-initialized state.
+    expect(panel.getAccepted()).toEqual(DEFAULT_VALUES);
+  });
+
+  it("Retry (calling load() again) re-runs the whole sequence and can succeed the second time", async () => {
+    preloadDefaults();
+    fetchPreview.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "timeout", message: "sidecar did not respond" },
+    } satisfies FetchPreviewResult);
+    const panel = createParameterPanelController(container, previewIO);
+
+    const first = await panel.load();
+    expect(first.ok).toBe(false);
+
+    preloadDefaults();
+    fetchPreview.mockResolvedValueOnce({ ok: true, data: FAKE_DATA } satisfies FetchPreviewResult);
+    const second = await panel.load();
+
+    expect(second).toEqual({ ok: true });
+    expect(panel.getAccepted()).toEqual(DEFAULT_VALUES);
+  });
+});
+
 describe("onChange notification (Build 024 M2 — export panel enablement hook)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -172,17 +272,18 @@ describe("onChange notification (Build 024 M2 — export panel enablement hook)"
   });
 
   it("calls onChange synchronously when a live-preview request starts (before it settles)", async () => {
+    const onChange = vi.fn();
+    preloadDefaults();
+    const panel = createParameterPanelController(container, previewIO, onChange);
+    await panel.load();
+    onChange.mockClear();
+
     let resolveFetch!: (value: FetchPreviewResult) => void;
     fetchPreview.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveFetch = resolve;
       }),
     );
-    const onChange = vi.fn();
-    preloadDefaults();
-    const panel = createParameterPanelController(container, previewIO, onChange);
-    await panel.load();
-    onChange.mockClear();
 
     setValue(scalarInput(container, "body_width"), "60");
     await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS);
@@ -348,11 +449,11 @@ describe("error handling and recovery", () => {
   });
 
   it("a domain error preserves the old preview (commitPreview never called) and shows the error", async () => {
+    const panel = await loadPanel();
     fetchPreview.mockResolvedValueOnce({
       ok: false,
       error: { code: "invalid_parameters_domain", message: "bad", details: { errors: ["Groove too big."] } },
     } satisfies FetchPreviewResult);
-    const panel = await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "60");
     await flushDebounceAndSettle();
@@ -364,10 +465,10 @@ describe("error handling and recovery", () => {
   });
 
   it("recovers automatically once the value is corrected after an error", async () => {
+    const panel = await loadPanel();
     fetchPreview
       .mockResolvedValueOnce({ ok: false, error: { code: "geometry_error", message: "boom" } })
       .mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
-    const panel = await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "999");
     await flushDebounceAndSettle();
@@ -381,11 +482,11 @@ describe("error handling and recovery", () => {
   });
 
   it("associates a field-level error message when the engine error carries details.field", async () => {
+    await loadPanel();
     fetchPreview.mockResolvedValueOnce({
       ok: false,
       error: { code: "invalid_parameter_type", message: "must be a number", details: { field: "body_width" } },
     } satisfies FetchPreviewResult);
-    await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "60");
     await flushDebounceAndSettle();
@@ -394,10 +495,10 @@ describe("error handling and recovery", () => {
   });
 
   it("error sequence: valid 38 -> invalid domain request -> valid 60 (§39)", async () => {
+    const panel = await loadPanel();
     fetchPreview
       .mockResolvedValueOnce({ ok: false, error: { code: "invalid_parameters_domain", message: "bad" } })
       .mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
-    const panel = await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "999");
     await flushDebounceAndSettle();
@@ -499,11 +600,11 @@ describe("Apply — shares the live-preview pipeline (§16/§22)", () => {
   });
 
   it("Apply while a live-preview request is already in flight coalesces deterministically (no parallel requests)", async () => {
+    const panel = await loadPanel();
     let resolveFirst!: (r: FetchPreviewResult) => void;
     fetchPreview
       .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
       .mockResolvedValue({ ok: true, data: FAKE_DATA });
-    const panel = await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "45");
     await flushDebounceAndSettle(); // now in flight (unresolved)
@@ -536,8 +637,8 @@ describe("Apply — shares the live-preview pipeline (§16/§22)", () => {
   });
 
   it("stays enabled after a live-preview error, allowing an explicit retry", async () => {
-    fetchPreview.mockResolvedValueOnce({ ok: false, error: { code: "geometry_error", message: "boom" } });
     await loadPanel();
+    fetchPreview.mockResolvedValueOnce({ ok: false, error: { code: "geometry_error", message: "boom" } });
 
     setValue(scalarInput(container, "body_width"), "999");
     await flushDebounceAndSettle();
@@ -564,9 +665,9 @@ describe("status transitions and the delayed 'Updating…' indicator (§27/§28)
   });
 
   it("moves through pending -> updating -> up-to-date for a successful edit", async () => {
+    const panel = await loadPanel();
     let resolveFetch!: (r: FetchPreviewResult) => void;
     fetchPreview.mockImplementationOnce(() => new Promise((resolve) => (resolveFetch = resolve)));
-    const panel = await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "60");
     expect(panel.getLivePreviewStatus()).toBe("pending");
@@ -581,8 +682,8 @@ describe("status transitions and the delayed 'Updating…' indicator (§27/§28)
   });
 
   it("does not show 'Updating preview…' text for a fast-resolving request (avoids flicker)", async () => {
-    fetchPreview.mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
     await loadPanel();
+    fetchPreview.mockResolvedValueOnce({ ok: true, data: FAKE_DATA });
 
     setValue(scalarInput(container, "body_width"), "60");
     await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS);
@@ -593,9 +694,9 @@ describe("status transitions and the delayed 'Updating…' indicator (§27/§28)
   });
 
   it("shows 'Updating preview…' text once a request runs past the display delay", async () => {
+    await loadPanel();
     let resolveFetch!: (r: FetchPreviewResult) => void;
     fetchPreview.mockImplementationOnce(() => new Promise((resolve) => (resolveFetch = resolve)));
-    await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "60");
     await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS); // request starts
@@ -609,9 +710,9 @@ describe("status transitions and the delayed 'Updating…' indicator (§27/§28)
   });
 
   it("data-status is always instantly correct even while the display text is delayed", async () => {
+    await loadPanel();
     let resolveFetch!: (r: FetchPreviewResult) => void;
     fetchPreview.mockImplementationOnce(() => new Promise((resolve) => (resolveFetch = resolve)));
-    await loadPanel();
 
     setValue(scalarInput(container, "body_width"), "60");
     await vi.advanceTimersByTimeAsync(LIVE_PREVIEW_DEBOUNCE_MS);

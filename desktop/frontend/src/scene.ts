@@ -130,6 +130,31 @@ export function isExtremeBoundsChange(
   return nextMax / previousMax > ratio || previousMax / nextMax > ratio;
 }
 
+/** Build 025 M3 — computes bounds from only the currently *visible* part of
+ * an object graph (`Object3D.traverseVisible` skips invisible subtrees
+ * entirely, unlike `Box3.expandByObject`, which ignores `.visible`). Used
+ * by Reset View (§12 of the mandate: a hidden layer must not reserve frame
+ * space just because it still exists in the mesh payload). Returns `null`
+ * when nothing visible has any geometry (e.g. every layer hidden) — callers
+ * treat that as a safe no-op rather than fitting to an empty/degenerate
+ * box. */
+export function boundsFromVisibleObjects(root: THREE.Object3D): Bounds | null {
+  const box = new THREE.Box3();
+  let any = false;
+  root.traverseVisible((object) => {
+    const candidate = object as THREE.Mesh | THREE.LineSegments;
+    if (candidate.geometry) {
+      box.expandByObject(candidate);
+      any = true;
+    }
+  });
+  if (!any || box.isEmpty()) return null;
+  return {
+    min: [box.min.x, box.min.y, box.min.z],
+    max: [box.max.x, box.max.y, box.max.z],
+  };
+}
+
 /** Removes and disposes every child of `group` — used before adding a fresh
  * preview's geometry, so refresh never accumulates stale scene objects. */
 export function clearGroup(group: THREE.Group): void {

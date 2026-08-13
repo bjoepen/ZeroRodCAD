@@ -143,6 +143,40 @@ This exists so a future frontend (Build 023 M2+) can populate parameter controls
 authoritative default set instead of a hardcoded TypeScript copy (mandate §14). No UI consumes it
 in Milestone 1.
 
+## `report` command (Build 025 M3)
+
+```json
+{
+  "schema": "zerorod-sidecar/v1",
+  "request_id": "...",
+  "command": "report",
+  "parameters": {"schema": "zerorod-parameters/v1", "values": { "...": "..." }}
+}
+```
+
+`parameters` is the request's `parameters` object directly (same shape as `preview`, unlike
+`export`'s nested `{"parameters": {...}, "output_directory": ...}` wrapper — a report has nowhere
+to write). Omitted/`{}` resolves to canonical defaults, same as `preview`.
+
+Returns:
+
+```json
+{
+  "schema": "zerorod-sidecar/v1",
+  "request_id": "...",
+  "ok": true,
+  "result": {"markdown": "# Instrument Report – CBG Open G\n\n## Parameters\n\n..."}
+}
+```
+
+`result.markdown` is `zerorodcad.report.build_report()`'s output, byte-for-byte — the exact same
+function `zerorodcad.export.save_report()` (and, historically, the legacy PySide6 app's own
+"Instrument Report" tab) already calls; this command is a third caller, not a second
+implementation. Same Level 1-3 validation as `preview` (structural/type parsing via
+`parse_parameters_request`, then `validate_parameters`) — a domain-invalid parameter set is
+rejected with `invalid_parameters_domain`, identical to `preview`'s own behavior, before
+`build_report` is ever called. No CadQuery geometry construction happens for this command at all.
+
 ## Examples
 
 Explicit canonical defaults (semantically equivalent to omitting `parameters` entirely):

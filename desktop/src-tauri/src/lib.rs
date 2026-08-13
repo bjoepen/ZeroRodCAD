@@ -19,7 +19,10 @@
 // Build 024 M1's `dialog:allow-open`) and `engine_project_open`/
 // `engine_project_save` (the sidecar command boundary, reusing
 // `zerorodcad.project` unmodified) — see
-// docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md.
+// docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md. Build 025 M3 adds
+// `engine_report` (the Instrument Report command boundary, reusing
+// `zerorodcad.report.build_report` unmodified — no new WebView capability)
+// — see docs/migration/BUILD-025-M3-PREVIEW-REPORT-PARITY.md.
 
 mod commands;
 mod engine;
@@ -41,6 +44,7 @@ pub fn run() {
             commands::engine_preview,
             commands::engine_preview_mesh,
             commands::engine_preview_mesh_with_parameters,
+            commands::engine_report,
             commands::engine_parameters_defaults,
             commands::engine_export,
             commands::engine_export_preflight,
