@@ -41,9 +41,11 @@ BUILD 024 — STL / STEP EXPORT WORKFLOW: COMPLETE
 STL / STEP EXPORT WORKFLOW: ESTABLISHED
 BUILD 025 — DESKTOP FEATURE PARITY: IN PROGRESS
   Discovery: COMPLETE — Gate BUILD-025 DISCOVERY GATE: PASS
-  M1 — Project Persistence: engineering COMPLETE — Gate BUILD-025-M1: engineering PASS,
-                             Human Validation PENDING
-NEXT: BUILD 025 / M1 HUMAN VALIDATION, THEN M2
+  M1 — Project Persistence: COMPLETE — Gate BUILD-025-M1: PASS, Human Validation PASS
+                             (incl. the native-close corrective fix, BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md)
+  M2 — Product UI Productization & Lifecycle Polish: engineering COMPLETE —
+                             Gate BUILD-025-M2: engineering PASS, Human Validation PENDING
+NEXT: BUILD 025 / M2 HUMAN VALIDATION, THEN M3
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
@@ -75,13 +77,28 @@ yet built. See
 feature parity matrix, lifecycle/project-persistence/desktop-integration analyses, and a gap
 report (`BUILD-025-FEATURE-PARITY-MATRIX.md` and companions) — ending in
 `BUILD-025 DISCOVERY GATE: PASS`, and a Project-Owner-approved milestone plan (M1–M4 + Final).
-Milestone 1 (Project Persistence) is engineering-complete: New/Open/Save/Save As against the
-existing, unmodified `.zerorod` project format, a new project-session model with `project_dirty`
-derived from `accepted` vs. the last-saved baseline (deliberately never the draft), and a
-Save/Discard/Cancel unsaved-changes guard covering New, Open, and Quit/window-close alike — see
-[`BUILD-025-M1-PROJECT-PERSISTENCE.md`](BUILD-025-M1-PROJECT-PERSISTENCE.md). Human Validation is
-**PENDING** ([`BUILD-025-M1-HUMAN-VALIDATION.md`](BUILD-025-M1-HUMAN-VALIDATION.md)) — per the
-mandate's own stop condition, M2 does not start until it passes.
+Milestone 1 (Project Persistence) is **complete**: New/Open/Save/Save As against the existing,
+unmodified `.zerorod` project format, a new project-session model with `project_dirty` derived from
+`accepted` vs. the last-saved baseline (deliberately never the draft), and a Save/Discard/Cancel
+unsaved-changes guard covering New, Open, and Quit/window-close alike — see
+[`BUILD-025-M1-PROJECT-PERSISTENCE.md`](BUILD-025-M1-PROJECT-PERSISTENCE.md). Human Validation
+initially found the red macOS close button non-functional (an ACL/capability gap — `core:default`
+did not include `core:window:allow-destroy` — not an application-logic defect); fixed and
+re-verified with a real Tauri IPC-boundary regression test, see
+[`BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md`](BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md). That fix also
+surfaced a separate, pre-existing gap — the default macOS Quit/⌘Q menu item bypasses the
+unsaved-changes guard entirely — deliberately left unfixed and tracked for **Build 025 M4**, per an
+explicit Project Owner scope decision. M1 Human Validation **PASSED**.
+
+Milestone 2 (Product UI Productization & Lifecycle Polish) is **engineering-complete**: an
+automatic initial preview (closing the "empty viewport at first launch" gap Discovery identified —
+the sidecar already auto-started; the preview simply was never automatically requested), a new
+Diagnostics view relocating the old technical Engine/Ping/raw-JSON controls out of the main product
+UI without losing their information, and a friendly startup-failure surface with Retry/Show
+Details — all frontend-only, no engine/protocol/Rust source change — see
+[`BUILD-025-M2-PRODUCT-LIFECYCLE.md`](BUILD-025-M2-PRODUCT-LIFECYCLE.md). Human Validation is
+**PENDING** ([`BUILD-025-M2-HUMAN-VALIDATION.md`](BUILD-025-M2-HUMAN-VALIDATION.md)) — per the
+mandate's own stop condition, M3 does not start until it passes.
 
 ## Why migrate
 
@@ -321,7 +338,7 @@ and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
     lifecycle/project-persistence/desktop-integration/accessibility/security analyses the mandate
     required, and a Project-Owner-approved milestone plan (M1 Project Persistence, M2 Product-UI/
     Diagnostics, M3 Preview/Report Parity, M4 Desktop Shell, Final Integration).
-  - M1 — Project Persistence: engineering COMPLETE / Gate BUILD-025-M1: engineering PASS
+  - M1 — Project Persistence: COMPLETE / Gate BUILD-025-M1: PASS
     (`BUILD-025-M1-PROJECT-PERSISTENCE.md`) — New/Open/Save/Save As against the existing,
     unmodified `.zerorod` format (`src/zerorodcad/project.py`); Save always sources `accepted`,
     never the draft (the same rule Build 024 M1 established for export); a new project-session
@@ -335,8 +352,27 @@ and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
     `engine_project_open`/`engine_project_save`/`select_project_open_file`/
     `select_project_save_file` commands, each backed by a real `tauri::test::get_ipc_response`
     IPC-argument-binding regression test from the start (the Build 024 M2 lesson applied
-    proactively). Human Validation is **PENDING**
-    (`BUILD-025-M1-HUMAN-VALIDATION.md`) — M2 does not start until it passes, per the mandate's
-    own stop condition.
+    proactively). Human Validation found the red macOS close button non-functional — root cause
+    was a missing `core:window:allow-destroy` WebView capability grant (not application logic,
+    which was already correct), fixed and proven with a real Tauri IPC-boundary regression test
+    (`BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md`); that investigation also found the default macOS
+    Quit/⌘Q menu item bypasses the guard entirely, a separate pre-existing gap deliberately left
+    unfixed and tracked for Build 025 M4. M1 Human Validation **PASSED**
+    (`BUILD-025-M1-HUMAN-VALIDATION.md`).
+  - M2 — Product UI Productization & Lifecycle Polish: engineering COMPLETE / Gate
+    BUILD-025-M2: engineering PASS (`BUILD-025-M2-PRODUCT-LIFECYCLE.md`) — an automatic initial
+    preview (`parameter_panel.ts`'s `load()` now performs one fetch+commit through the same
+    pipeline `loadProjectValues`/live-preview already use, closing the "empty viewport at first
+    launch" gap Discovery identified — the sidecar already auto-started, the preview simply was
+    never automatically requested); a new startup coordinator (`startup.ts`) with an
+    anti-flicker-delayed "Preparing…" indicator, no persistent "ready" banner, and a
+    Retry/Show-Details failure surface reusing the identical `EngineManager` lifecycle; a new
+    Diagnostics view (`diagnostics_panel.ts`) relocating the old technical Engine/Ping/raw-JSON
+    controls (build/engine/Python/CadQuery/OCP/protocol info) out of the main product UI without
+    losing them, read-only except one "Refresh Status" action, with no preview/project/export
+    side effects on open/close; the old 5-row status panel and four technical buttons removed
+    from `main.ts` entirely. No engine, protocol, sidecar, or Rust source change. Human
+    Validation is **PENDING** (`BUILD-025-M2-HUMAN-VALIDATION.md`) — M3 does not start until it
+    passes, per the mandate's own stop condition.
 
-**Next: Build 025 / Milestone 1 Human Validation, then Build 025 / Milestone 2.**
+**Next: Build 025 / Milestone 2 Human Validation, then Build 025 / Milestone 3.**

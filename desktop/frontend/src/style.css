@@ -206,6 +206,123 @@ h1 {
   color: var(--neutral);
 }
 
+/* Startup coordinator (Build 025 M2) */
+
+#startup-panel:empty {
+  display: none;
+}
+
+.startup-status {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: var(--neutral);
+}
+
+.startup-error {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--error);
+  border-radius: 8px;
+  background: var(--error-bg);
+}
+
+.startup-error p {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.startup-error-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.startup-error-actions button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.startup-error-actions button:hover {
+  background: var(--neutral-bg);
+}
+
+.startup-error-detail {
+  margin: 0.5rem 0 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* Diagnostics panel (Build 025 M2) */
+
+.diagnostics-container {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.diagnostics-toggle {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--neutral);
+  cursor: pointer;
+}
+
+.diagnostics-toggle:hover {
+  background: var(--neutral-bg);
+}
+
+.diagnostics-panel {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.diagnostics-status {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--neutral);
+}
+
+.diagnostics-error-detail {
+  margin: 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--error);
+  word-break: break-word;
+}
+
+.diagnostics-refresh {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.diagnostics-refresh:hover {
+  background: var(--neutral-bg);
+}
+
 /* Parameter panel (Build 023 M2, live-preview status line added in M4) */
 
 .parameter-panel-status {

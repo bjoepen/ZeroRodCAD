@@ -133,11 +133,31 @@ export interface PreviewIO {
 
 export type LivePreviewStatus = "up-to-date" | "pending" | "updating" | "error";
 
+/** Build 025 M2 — distinguishes which startup step failed, without this
+ * module needing to know anything about how a caller presents that (the
+ * startup coordinator's job — see startup.ts). `defaults` means the
+ * `parameters_defaults` round trip itself failed (before any form existed);
+ * `preview` means defaults loaded fine but the automatic initial-preview
+ * fetch for those same (always domain-valid) canonical values failed —
+ * structurally an engine/sidecar-level failure (crash/timeout between the
+ * two round trips), not a domain-validation error, so it is reported
+ * distinctly from an ordinary live-preview failure even though it reuses
+ * the exact same fetch/commit pipeline. */
+export type ParameterPanelLoadResult =
+  | { ok: true }
+  | { ok: false; stage: "defaults" | "preview"; error: unknown };
+
 export interface ParameterPanelController {
   /** Fetches canonical defaults through the real engine path
-   * (parameters_defaults → engine_parameters_defaults) and renders the
-   * form. Call once at startup. */
-  load: () => Promise<void>;
+   * (parameters_defaults → engine_parameters_defaults), renders the form,
+   * and then — Build 025 M2 — performs one automatic initial preview
+   * fetch+commit for those same defaults, through the identical
+   * fetch/commit pipeline `loadProjectValues` and the live-preview
+   * scheduler already use (§12 of the M2 mandate: no second preview
+   * pipeline). Call once at startup; safe to call again as a Retry (it
+   * re-attempts the whole sequence, including the sidecar lazy-spawn, from
+   * scratch — §25 of the mandate). */
+  load: () => Promise<ParameterPanelLoadResult>;
   /** The last successfully accepted (previewed or metadata-only-accepted)
    * parameter state, wrapped as a zerorod-parameters/v1 request — null
    * until defaults have loaded. */
@@ -513,14 +533,33 @@ export function createParameterPanelController(
     updateStatusUI();
   }
 
-  async function load(): Promise<void> {
+  async function load(): Promise<ParameterPanelLoadResult> {
     renderLoading();
+    let values: ZeroRodParametersValues;
     try {
-      const values = await fetchDefaultParameters();
-      buildForm(values, values);
+      values = await fetchDefaultParameters();
     } catch (error) {
       renderLoadError(isEngineError(error) ? `${error.code}: ${error.message}` : String(error));
+      return { ok: false, stage: "defaults", error };
     }
+    buildForm(values, values);
+
+    // Build 025 M2 (§10/§12 of the mandate): the automatic initial preview —
+    // same fetch/commit pipeline as every other preview update, sourced from
+    // the canonical defaults `buildForm` just accepted, so `accepted`/
+    // `draft`/the rendered scene stay consistent with no new semantics.
+    setLiveStatus("updating");
+    const result = await previewIO.fetchPreview(values);
+    if (result.ok) {
+      previewIO.commitPreview(result.data);
+      setLiveStatus("up-to-date");
+      updateStatusUI();
+      return { ok: true };
+    }
+    setLiveStatus("error", formatEngineError(result.error).formMessage);
+    applyFieldErrors(formatEngineError(result.error).fieldErrors);
+    updateStatusUI();
+    return { ok: false, stage: "preview", error: result.error };
   }
 
   function hasUncommittedDraft(): boolean {
