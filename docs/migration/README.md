@@ -7,8 +7,10 @@ parameter-editing/live-preview capability (Build 023), and its STL/STEP export w
 and states the current status plainly. Build 022's own completion record is
 [`BUILD-022-COMPLETION.md`](BUILD-022-COMPLETION.md); Build 023's is
 [`BUILD-023-COMPLETION.md`](BUILD-023-COMPLETION.md); Build 024's is
-[`BUILD-024-COMPLETION.md`](BUILD-024-COMPLETION.md); the next build's handoff is
-[`BUILD-025-HANDOFF.md`](BUILD-025-HANDOFF.md).
+[`BUILD-024-COMPLETION.md`](BUILD-024-COMPLETION.md); Build 025's (Desktop Feature Parity) is
+[`BUILD-025-COMPLETION.md`](BUILD-025-COMPLETION.md); Build 026's (Production Packaging & macOS
+Integration) is [`BUILD-026-COMPLETION.md`](BUILD-026-COMPLETION.md), with the concrete release
+sequence in [`BUILD-026-RELEASE-WORKFLOW.md`](BUILD-026-RELEASE-WORKFLOW.md).
 
 ## Current status
 
@@ -49,7 +51,15 @@ BUILD 025 — DESKTOP FEATURE PARITY: COMPLETE
   M4 — Desktop Shell & Native Integration: COMPLETE — Gate BUILD-025-M4: PASS, Human Validation PASS
   M5 — Integration, Completion & Repository Cleanup: COMPLETE — Gate BUILD-025: PASS
 DESKTOP FEATURE PARITY: ESTABLISHED
-NEXT: BUILD 026 — PRODUCTION PACKAGING & MACOS INTEGRATION
+BUILD 026 — PRODUCTION PACKAGING & MACOS INTEGRATION: FINALIZATION ENGINEERING COMPLETE
+  Discovery: COMPLETE — Gate BUILD-026 DISCOVERY GATE: PASS
+  M1 — Production Bundle Hardening & Reproducibility: COMPLETE — Gate BUILD-026-M1: PASS,
+                             Human Validation PASS
+  M1.1 — Portable Python & Deployment Target research: COMPLETE — Gate BUILD-026-M1.1 RESEARCH: PASS
+  Finalization — portable-Python integration, DMG, release manifest, signing/notarization
+    infrastructure (no real credentials), final gate: COMPLETE — Gate BUILD-026: PASS
+NEXT: HUMAN VALIDATION of the Build 026 Release Candidate; real signing/notarization remain an
+  explicit, separate, credential-gated step
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and

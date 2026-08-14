@@ -51,7 +51,7 @@ pub fn app_info() -> AppInfo {
         name: "ZeroRodCAD Desktop".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         build: "026".to_string(),
-        milestone: "M1".to_string(),
+        milestone: "Final".to_string(),
     }
 }
 
@@ -418,7 +418,7 @@ mod tests {
     fn app_info_reports_current_milestone() {
         let info = app_info();
         assert_eq!(info.build, "026");
-        assert_eq!(info.milestone, "M1");
+        assert_eq!(info.milestone, "Final");
         assert!(!info.version.is_empty());
     }
 
@@ -448,6 +448,17 @@ mod tests {
         assert!(
             !(info.build == "025" && info.milestone == "M5"),
             "app_info() must not report the stale Build 025 / M5 identity"
+        );
+    }
+
+    // Build 026 Finalization: the immediate predecessor (Build 026 / M1) is
+    // the new specific stale pair to guard against, same discipline as above.
+    #[test]
+    fn app_info_never_reports_a_stale_026_m1_pair() {
+        let info = app_info();
+        assert!(
+            !(info.build == "026" && info.milestone == "M1"),
+            "app_info() must not report the stale Build 026 / M1 identity"
         );
     }
 

@@ -73,9 +73,10 @@ boundary".
 
 Die wichtigsten technischen Eckdaten:
 
-- Python-Standard: **Python >= 3.13,<3.14**
+- Python-Standard: **Python >= 3.13,<3.14** — produktives Packaging nutzt gepinntes, portables
+  CPython 3.13.15 (`astral-sh/python-build-standalone`, checksum-verifiziert), kein Homebrew
 - CadQuery: **2.8.0** mit **cadquery-ocp-novtk 7.9.3.1.1** (kein VTK erforderlich)
-- Release-Bundle (Build 024): **~285.9 MiB**, 0 VTK/PySide6/Qt/numba/llvmlite/scipy im produktiven Bundle
+- Release-Bundle (Build 026): **~310 MiB** (arm64, macOS 11.1+), 0 VTK/PySide6/Qt/numba/llvmlite/scipy im produktiven Bundle
 - Sidecar-Strategie: persistent + onedir, Cold Start ~0.6 s, Warm Roundtrip ~0.12 s
 
 ## Status
@@ -87,7 +88,9 @@ Build 022 — Desktop 2.0 Foundation:         COMPLETE (M1-M5, Gate PASS)
 Build 023 — Parameters & Live Preview:      COMPLETE (M1-M5, Gate PASS, Human PASS)
 Build 024 — STL/STEP Export Workflow:       COMPLETE (M1-M4, Gate PASS, Human PASS)
 Build 025 — Desktop Feature Parity:         COMPLETE (M1-M5, Gate PASS, Human PASS)
-Next:                                       Build 026 — Production Packaging & macOS Integration
+Build 026 — Production Packaging:           FINALIZATION ENGINEERING COMPLETE, Human Validation PENDING
+Next:                                       Human Validation of the Release Candidate; real signing/
+                                             notarization remain credential-gated, not yet authorized
 ```
 
 Build 022 etablierte die produktive Desktop-2.0-Foundation (Tauri-v2-Shell, WebView↔Rust-IPC,
@@ -125,8 +128,21 @@ PASS`). Details je Milestone in [`docs/migration/README.md`](docs/migration/READ
 [`docs/migration/BUILD-025-COMPLETION.md`](docs/migration/BUILD-025-COMPLETION.md).
 
 **Was noch fehlt** (bewusst, spätere Builds): Settings, Recent Files, Drag & Drop,
-Datei-Assoziationen/Finder-Integration sowie Signing/Notarization (Build 026), und die
-PySide6-Retirement-Entscheidung (frühestens nach Build 026).
+Datei-Assoziationen/Finder-Integration, und die PySide6-Retirement-Entscheidung (frühestens nach
+Build 026).
+
+**Build 026 (Production Packaging & macOS Integration)** ist als eine kontrollierte
+Finalisierungs-Sequenz abgeschlossen (Discovery → M1 Production-Bundle-Hardening → M1.1
+Portable-Python-Research → Finalisierung), auf ausdrücklichen Wunsch des Project Owners ohne weitere
+Meilenstein-Zersplitterung. Portables, gepinntes CPython 3.13
+(`astral-sh/python-build-standalone`, checksum-verifiziert, kein Homebrew) ersetzt die
+Build-Umgebung; ein voller Bundle-Scan bestätigt macOS **11.1** als ehrliche, gemessene
+Mindestversion (OpenCASCADE ist die bindende Komponente — nicht die zunächst angenommene macOS 11,
+aber weit unter dem zuvor gemessenen, Homebrew-bedingten 26.0). Primäres Distributionsartefakt ist
+eine DMG (`ZeroRodCAD-0.1.0-macOS-arm64.dmg`); Signing-/Notarization-Infrastruktur ist vorbereitet
+(Skripte, korrekte Signierreihenfolge, keine Echt-Credentials) und bleibt explizit
+credential-gated. Master-Gate: `scripts/validate-build026.sh` (`BUILD-026 CONSISTENCY GATE: PASS`).
+Details: [`docs/migration/BUILD-026-COMPLETION.md`](docs/migration/BUILD-026-COMPLETION.md).
 
 Die bisherige PySide6-Anwendung bleibt bis zu einer späteren, ausdrücklichen Retirement-Entscheidung
 (frühestens nach Build 026) unverändert als Referenz-, Feature-Parity- und Rollback-Implementierung
