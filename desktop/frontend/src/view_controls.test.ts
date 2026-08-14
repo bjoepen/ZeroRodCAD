@@ -97,4 +97,21 @@ describe("createViewControlsController", () => {
     const controller = createViewControlsController(container, io);
     expect(() => controller.dispose()).not.toThrow();
   });
+
+  it("setCheckboxState() (Build 025 M4 — reflects a native-menu-driven change, §15/§29) updates the visible checkbox without calling setLayerVisible again", () => {
+    const controller = createViewControlsController(container, io);
+
+    controller.setCheckboxState("body", false);
+
+    expect(checkbox("body").checked).toBe(false);
+    expect(setLayerVisible).not.toHaveBeenCalled();
+  });
+
+  it("setCheckboxState() does not fire the checkbox's own change handler (no feedback loop)", () => {
+    const controller = createViewControlsController(container, io);
+    controller.setCheckboxState("rod", false);
+    controller.setCheckboxState("rod", true);
+
+    expect(setLayerVisible).not.toHaveBeenCalled();
+  });
 });

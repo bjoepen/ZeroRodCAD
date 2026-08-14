@@ -10,7 +10,14 @@ the actual native macOS Open/Save dialogs, the visual unsaved-changes-guard UX, 
 this feel right" judgment are not something a unit test (running under jsdom, no real WebView, no
 real OS dialog) can substitute for.
 
-**Status: PENDING.** No human validation has been performed yet. Nothing below is marked `[x]`.
+**Status: PASS.** The Project Owner's initial round (against the freshly built
+`ZeroRodCAD-Build025-M1.app`) found the red-close-button defect recorded in
+`docs/migration/BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md`; Human Validation was correctly withheld
+pending a fix. After that fix (commit `d3c93b9`) landed on 2026-08-13, a re-validation round
+reported an overall PASS before M2 began the same day. This document's PASS was not synchronized
+into this file at the time — recorded here retroactively from that reported result. Nothing below
+is marked `[x]`, per this project's record-only-what-was-explicitly-reported convention (see the
+Result table below).
 
 ## Build under test
 
@@ -167,15 +174,13 @@ tester doesn't mistake it for a regression, and so it isn't silently forgotten b
 
 | Field | Value |
 |---|---|
-| Tester | *(Project Owner — not yet performed)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Result | **PENDING** |
-| Notes | — |
+| Tester | Project Owner |
+| Date | 2026-08-13 |
+| macOS | *(not individually reported)* |
+| Result | **PASS** |
+| Notes | Initial round found the close-button defect (see `BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md`); re-validation after the fix reported an overall PASS, not itemized against each checklist line above — those are left unchecked rather than retroactively marked. This table was synchronized to that result during Build 025 M5 documentation cleanup. |
 
 ## Gate BUILD-025-M1 (human component)
 
-**PENDING.** Engineering gate (`scripts/validate-build025-m1.sh`) result is recorded separately in
-the milestone's final Abschlussbericht. Per the mandate's own Gate rule (§48), engineering PASS
-does not by itself constitute `BUILD-025-M1 CONSISTENCY GATE: PASS` for product purposes until this
-human validation is also complete.
+**PASS.** Combined with the engineering gate (`scripts/validate-build025-m1.sh`), Build 025 M1 is
+COMPLETE.

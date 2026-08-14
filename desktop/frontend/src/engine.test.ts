@@ -82,7 +82,6 @@ describe("fetchSidecarStatus", () => {
       cadquery_version: "2.8.0",
       ocp_variant: "cadquery-ocp-novtk",
       vtk_installed: false,
-      milestone: "build022-m2",
     });
     const status = await fetchSidecarStatus();
     expect(status.vtk_installed).toBe(false);

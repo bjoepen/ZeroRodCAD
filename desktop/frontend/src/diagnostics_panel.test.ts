@@ -3,7 +3,7 @@ import { createDiagnosticsPanelController, type DiagnosticsIO } from "./diagnost
 import type { AppInfo } from "./app_info";
 import type { EngineStatusInfo, SidecarStatus } from "./engine";
 
-const APP_INFO: AppInfo = { name: "ZeroRodCAD Desktop", version: "0.1.0", build: "025", milestone: "M3" };
+const APP_INFO: AppInfo = { name: "ZeroRodCAD Desktop", version: "0.1.0", build: "025", milestone: "M4" };
 const ENGINE_STATUS: EngineStatusInfo = { state: "RUNNING", pid: 4242, last_error: null };
 const SIDECAR_STATUS: SidecarStatus = {
   status: "ok",
@@ -12,7 +12,6 @@ const SIDECAR_STATUS: SidecarStatus = {
   cadquery_version: "2.6.0",
   ocp_variant: "cadquery-ocp-novtk",
   vtk_installed: false,
-  milestone: "M2",
 };
 
 let container: HTMLDivElement;
@@ -64,7 +63,7 @@ describe("createDiagnosticsPanelController", () => {
 
     const panel = container.querySelector(".diagnostics-panel");
     expect(panel).toBeTruthy();
-    expect(panel?.textContent).toContain("ZeroRodCAD Desktop 0.1.0 — Build 025 M3");
+    expect(panel?.textContent).toContain("ZeroRodCAD Desktop 0.1.0 — Build 025 M4");
     expect(panel?.textContent).toContain("pid 4242");
     expect(panel?.textContent).toContain("3.13.14");
     expect(panel?.textContent).toContain("2.6.0");
@@ -147,5 +146,28 @@ describe("createDiagnosticsPanelController", () => {
   it("dispose() does not throw", () => {
     const controller = createDiagnosticsPanelController(container, io);
     expect(() => controller.dispose()).not.toThrow();
+  });
+
+  it("open() (Build 025 M4 — native View -> Diagnostics menu entry point, §19) opens and fetches, same as the visible toggle", async () => {
+    const controller = createDiagnosticsPanelController(container, io);
+
+    controller.open();
+    await flush();
+
+    expect(fetchAppInfo).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".diagnostics-panel")).toBeTruthy();
+  });
+
+  it("open() while already open does not re-fetch or duplicate panels", async () => {
+    const controller = createDiagnosticsPanelController(container, io);
+    toggleButton().click();
+    await flush();
+    fetchAppInfo.mockClear();
+
+    controller.open();
+    await flush();
+
+    expect(fetchAppInfo).not.toHaveBeenCalled();
+    expect(container.querySelectorAll(".diagnostics-panel").length).toBe(1);
   });
 });

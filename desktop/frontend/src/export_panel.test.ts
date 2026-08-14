@@ -160,6 +160,28 @@ describe("dialog invocation and cancellation", () => {
   });
 });
 
+describe("triggerExport (Build 025 M4, native File -> Export Model… menu entry point, §20/§33)", () => {
+  it("does exactly what clicking the export button does", async () => {
+    selectExportDirectoryMock.mockResolvedValueOnce(null);
+    const panel = createExportPanelController(container, io);
+
+    panel.triggerExport();
+    await flush();
+
+    expect(selectExportDirectoryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("safely no-ops when export isn't currently enabled (mirrors the disabled button)", async () => {
+    accepted = null;
+    const panel = createExportPanelController(container, io);
+
+    panel.triggerExport();
+    await flush();
+
+    expect(selectExportDirectoryMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("preflight and export request", () => {
   it("a valid destination triggers preflight, then export when there is no conflict", async () => {
     selectExportDirectoryMock.mockResolvedValueOnce("/Users/example/exports");

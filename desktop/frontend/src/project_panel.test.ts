@@ -267,6 +267,70 @@ describe("Save", () => {
   });
 });
 
+describe("native menu trigger methods (Build 025 M4, §20/§21 of the mandate)", () => {
+  it("triggerNew() does exactly what clicking New does — same guarded action, no duplicated logic", async () => {
+    const panel = createProjectPanelController(container, io);
+    panel.triggerNew();
+    await flush();
+
+    expect(fetchDefaultParametersMock).toHaveBeenCalled();
+    expect(loadProjectValuesMock).toHaveBeenCalledWith(DEFAULTS);
+    expect(projectName()).toBe("Untitled project");
+  });
+
+  it("triggerOpen() does exactly what clicking Open… does", async () => {
+    selectProjectOpenFileMock.mockResolvedValueOnce("/tmp/projects/alt.zerorod");
+    requestProjectOpenMock.mockResolvedValueOnce({ values: EDITED });
+
+    const panel = createProjectPanelController(container, io);
+    panel.triggerOpen();
+    await flush();
+
+    expect(requestProjectOpenMock).toHaveBeenCalledWith("/tmp/projects/alt.zerorod");
+    expect(projectName()).toBe("alt.zerorod");
+  });
+
+  it("triggerSave() does exactly what clicking Save does", async () => {
+    accepted = EDITED;
+    const panel = createProjectPanelController(container, io);
+    panel.triggerSave();
+    await flush();
+
+    expect(selectProjectSaveFileMock).toHaveBeenCalled(); // no current path -> Save As, same as the button
+  });
+
+  it("triggerSaveAs() does exactly what clicking Save As… does", async () => {
+    accepted = EDITED;
+    const panel = createProjectPanelController(container, io);
+    panel.triggerSaveAs();
+    await flush();
+
+    expect(selectProjectSaveFileMock).toHaveBeenCalled();
+  });
+
+  it("triggerSave()/triggerSaveAs() safely no-op when nothing is accepted yet (mirrors the disabled button)", async () => {
+    accepted = null;
+    const panel = createProjectPanelController(container, io);
+    panel.triggerSave();
+    panel.triggerSaveAs();
+    await flush();
+
+    expect(selectProjectSaveFileMock).not.toHaveBeenCalled();
+    expect(requestProjectSaveMock).not.toHaveBeenCalled();
+  });
+
+  it("triggerNew()/triggerOpen() safely no-op while a guard dialog is already open (mirrors the disabled buttons)", async () => {
+    uncommittedDraft = true;
+    const panel = createProjectPanelController(container, io);
+    panel.triggerNew(); // opens the guard dialog
+    panel.triggerOpen(); // must not open a second one / reset pendingAction
+    await flush();
+
+    expect(panelState()).toBe("confirm_unsaved");
+    expect(container.querySelectorAll(".project-confirm").length).toBe(1);
+  });
+});
+
 describe("Unsaved-changes guard — New/Open (§17/§21 of the M1 mandate)", () => {
   beforeEach(() => {
     uncommittedDraft = true; // simplest way to force `shouldGuardAgainstDataLoss` true

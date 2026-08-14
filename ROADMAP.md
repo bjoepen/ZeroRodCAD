@@ -226,8 +226,10 @@ BUILD 024 COMPLETE (M1 COMPLETE, M2 COMPLETE — Human PASS, M3 COMPLETE — Hum
 STL / STEP EXPORT WORKFLOW ESTABLISHED
 BUILD 025 IN PROGRESS (Discovery COMPLETE — Gate PASS, M1 COMPLETE — Gate BUILD-025-M1: PASS,
   Human Validation PASS, M2 COMPLETE — Gate BUILD-025-M2: PASS, Human Validation PASS,
-  M3 engineering COMPLETE — Gate BUILD-025-M3: engineering PASS, Human Validation PENDING)
-NEXT: BUILD 025 / M3 HUMAN VALIDATION, THEN M4
+  M3 COMPLETE — Gate BUILD-025-M3: PASS, Human Validation PASS,
+  M4 COMPLETE — Gate BUILD-025-M4: PASS, Human Validation PASS,
+  M5 IN PROGRESS — Integration, Completion & Repository Cleanup)
+NEXT: BUILD 025 / M5 INTEGRATION & COMPLETION
 ```
 
 ### Current
@@ -351,16 +353,38 @@ and companion documents — Gate `BUILD-025 DISCOVERY GATE: PASS`.
   state only, via a new additive sidecar `report` command and Rust `engine_report` command, both
   reusing `zerorodcad.report.build_report` unmodified — proven byte-for-byte identical to
   export's `report.md` for the same accepted state across three scenarios. No engine, protocol,
-  or domain (`zerorodcad/`) source change — Gate BUILD-025-M3: engineering PASS; Human Validation
-  PENDING (`docs/migration/BUILD-025-M3-HUMAN-VALIDATION.md`)
-- [ ] M4 — Desktop Shell (native macOS menus, shortcuts, About dialog, the Cmd+Q unsaved-changes
-  guard fix)
-- [ ] Final — Integration & Build Completion
-- [ ] settings
-- [ ] shortcuts
-- [ ] desktop integration
-- [ ] accessibility
-- [ ] parity validation
+  or domain (`zerorodcad/`) source change — Gate BUILD-025-M3: PASS; Human Validation **PASS**
+  (`docs/migration/BUILD-025-M3-HUMAN-VALIDATION.md`)
+- [x] M4 — Desktop Shell & Native Integration —
+  `docs/migration/BUILD-025-M4-DESKTOP-SHELL.md` — an explicit native macOS Application/File/View
+  menu (`menu.rs`) replacing Tauri's implicit default, with native ⌘N/⌘O/⌘S/⇧⌘S/⌘Q accelerators;
+  File/View items route to the existing `project_panel.ts`/`export_panel.ts`/`preview.ts`/
+  `report_panel.ts`/`diagnostics_panel.ts` controller methods the visible UI already calls, with no
+  duplicated command/decision logic in Rust. The M1-tracked Quit/⌘Q guard-bypass gap is
+  **FIXED IN M4**: native Quit is a plain custom `MenuItem` (never `PredefinedMenuItem::quit`)
+  whose handler calls `WebviewWindow::close()` — the identical native event pipeline the
+  already-validated red close button uses (confirmed by reading `tauri-runtime-wry`'s dispatcher
+  directly) — so ⌘Q now resumes through the single existing `confirmQuit()` guard, not a second
+  implementation. A new `close_flow.ts` module makes overlapping close attempts (repeated ⌘Q, ⌘Q
+  racing red close) resolve to exactly one guard decision, directly unit-tested. Show
+  Body/Rod/Strings gained bidirectional native-menu-checkmark ↔ visible-checkbox sync via one
+  shared funnel function and a narrow new `set_view_menu_checked` command (no new WebView
+  capability — an app-owned, non-plugin command). `app_info()` now reports `"M4"`. No engine,
+  protocol, or domain (`zerorodcad/`) source change; no new dependency — Gate BUILD-025-M4:
+  PASS; Human Validation **PASS** (`docs/migration/BUILD-025-M4-HUMAN-VALIDATION.md`)
+- [x] M5 — Integration, Completion & Repository Cleanup —
+  `docs/migration/BUILD-025-M5-REPOSITORY-CLEANUP.md`, `docs/migration/BUILD-025-COMPLETION.md` —
+  milestone consistency audit across M1-M4, a repository-wide cleanup discovery pass (0
+  SAFE_TO_REMOVE code/script candidates found — the codebase stayed clean incrementally, so this
+  milestone's cleanup work was documentation synchronization, not deletion), architecture
+  conformance re-verification against `ADR-022-001` (0 deviations), a full test-suite re-run, a
+  clean reproducible release rebuild with artifact-identity proof, and the master validation gate
+  (`scripts/validate-build025.sh`) ending in `BUILD-025 CONSISTENCY GATE: PASS`
+
+**Build 025: COMPLETE. Desktop Feature Parity: ESTABLISHED.**
+
+Not yet in Build 025 (by design — later builds' scope): settings, Recent Files, drag & drop, file
+associations/Finder integration, signing/notarization, PySide6 removal.
 
 ### Build 026 – Production Packaging & macOS Integration
 

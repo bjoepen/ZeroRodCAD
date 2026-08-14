@@ -31,7 +31,7 @@ def test_ping_returns_ok_and_pid():
     assert isinstance(response["result"]["pid"], int)
 
 
-def test_status_returns_engine_and_build_milestone_info():
+def test_status_returns_engine_info():
     # Reports the *actual* interpreter's state, not a fixed expectation —
     # this repo's default .venv legitimately has VTK/cadquery-ocp installed
     # for the legacy PySide6 app (README "Aktueller Stand"); the No-VTK
@@ -41,7 +41,6 @@ def test_status_returns_engine_and_build_milestone_info():
     assert response["ok"] is True
     result = response["result"]
     assert result["status"] == "ready"
-    assert result["milestone"] == "build023-m1"
     assert isinstance(result["vtk_installed"], bool)
     assert result["python_version"].startswith("3.13")
 

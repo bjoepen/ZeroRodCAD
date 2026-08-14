@@ -39,15 +39,17 @@ BUILD 024 — STL / STEP EXPORT WORKFLOW: COMPLETE
                                                    Human Validation PASS
   M4 — Integration & Build Completion:            COMPLETE — Gate BUILD-024: PASS
 STL / STEP EXPORT WORKFLOW: ESTABLISHED
-BUILD 025 — DESKTOP FEATURE PARITY: IN PROGRESS
+BUILD 025 — DESKTOP FEATURE PARITY: COMPLETE
   Discovery: COMPLETE — Gate BUILD-025 DISCOVERY GATE: PASS
   M1 — Project Persistence: COMPLETE — Gate BUILD-025-M1: PASS, Human Validation PASS
                              (incl. the native-close corrective fix, BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md)
   M2 — Product UI Productization & Lifecycle Polish: COMPLETE — Gate BUILD-025-M2: PASS,
                              Human Validation PASS
-  M3 — Preview & Report Parity: engineering COMPLETE —
-                             Gate BUILD-025-M3: engineering PASS, Human Validation PENDING
-NEXT: BUILD 025 / M3 HUMAN VALIDATION, THEN M4
+  M3 — Preview & Report Parity: COMPLETE — Gate BUILD-025-M3: PASS, Human Validation PASS
+  M4 — Desktop Shell & Native Integration: COMPLETE — Gate BUILD-025-M4: PASS, Human Validation PASS
+  M5 — Integration, Completion & Repository Cleanup: COMPLETE — Gate BUILD-025: PASS
+DESKTOP FEATURE PARITY: ESTABLISHED
+NEXT: BUILD 026 — PRODUCTION PACKAGING & MACOS INTEGRATION
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
@@ -113,9 +115,46 @@ sidecar `report` command and Rust `engine_report` command, both reusing
 `zerorodcad.report.build_report` unmodified (the same function `export`'s `report.md` already
 uses — proven byte-for-byte identical for the same accepted state) — see
 [`BUILD-025-M3-PREVIEW-REPORT-PARITY.md`](BUILD-025-M3-PREVIEW-REPORT-PARITY.md). No engine,
-protocol, or domain (`zerorodcad/`) source change. Human Validation is **PENDING**
-([`BUILD-025-M3-HUMAN-VALIDATION.md`](BUILD-025-M3-HUMAN-VALIDATION.md)) — per the mandate's own
-stop condition, M4 does not start until it passes.
+protocol, or domain (`zerorodcad/`) source change. Human Validation **PASSED**
+([`BUILD-025-M3-HUMAN-VALIDATION.md`](BUILD-025-M3-HUMAN-VALIDATION.md)), authorizing M4.
+
+Milestone 4 (Desktop Shell & Native Integration) is **engineering-complete**: an explicit native
+macOS application menu (Application/File/View, no decorative Help submenu) replacing Tauri's
+implicit default menu bar, with native ⌘N/⌘O/⌘S/⇧⌘S/⌘Q accelerators and File/View items routed to
+the exact same controller methods (`project_panel.ts`, `export_panel.ts`, `preview.ts`,
+`report_panel.ts`, `diagnostics_panel.ts`) the visible product UI already calls — no duplicated
+command or decision logic in Rust. Most importantly, this milestone closes the Quit-bypass gap
+tracked since M1: native "Quit ZeroRodCAD" is now a plain custom menu item (not
+`PredefinedMenuItem::quit`) whose handler calls `WebviewWindow::close()` — proven by reading
+`tauri-runtime-wry`'s dispatcher to be the literal same native event pipeline the red close button
+already uses — so native ⌘Q now resumes through the one, and only, unsaved-changes guard
+(`project_panel.ts`'s `confirmQuit()`) that M1 already validated, with no second implementation to
+keep in sync. A new `close_flow.ts` module makes overlapping close attempts (repeated ⌘Q, ⌘Q racing
+red close) resolve to exactly one guard decision, directly unit-tested. Show Body/Rod/Strings gained
+bidirectional native-menu-checkmark ↔ visible-checkbox sync through one shared funnel function, and
+`app_info()` now reports `"M4"`. See
+[`BUILD-025-M4-DESKTOP-SHELL.md`](BUILD-025-M4-DESKTOP-SHELL.md) for the full record, including why
+real menu-tree construction cannot be exercised under `cargo test` (a genuine `muda`/Cocoa
+main-thread platform limitation) and what compensates for it. Human Validation **PASSED**
+([`BUILD-025-M4-HUMAN-VALIDATION.md`](BUILD-025-M4-HUMAN-VALIDATION.md)), authorizing M5.
+
+Milestone 5 (Integration, Completion & Repository Cleanup) closes Build 025: a milestone
+consistency audit across M1-M4 (including retroactively synchronizing M1's own Human Validation
+record, which had reported PASS but was never updated to reflect it), a repository-wide cleanup
+discovery pass covering stale markers, dead frontend/Rust/Python code, validation and packaging
+scripts, and duplicate/generated artifacts — finding 0 SAFE_TO_REMOVE code or script candidates
+(the codebase stayed clean incrementally through M1-M4, so this milestone's real cleanup need was
+documentation synchronization, not deletion), architecture conformance re-verification against
+`ADR-022-001` (0 deviations), a full test-suite re-run, a clean reproducible release rebuild with
+independent artifact-identity proof, and the master validation gate
+(`scripts/validate-build025.sh`) ending in `BUILD-025 CONSISTENCY GATE: PASS`. See
+[`BUILD-025-M5-REPOSITORY-CLEANUP.md`](BUILD-025-M5-REPOSITORY-CLEANUP.md) and
+[`BUILD-025-COMPLETION.md`](BUILD-025-COMPLETION.md) for the full record.
+
+**Build 025: COMPLETE. Desktop Feature Parity: ESTABLISHED**, within the milestone plan's approved
+scope (project persistence, product lifecycle polish, preview/report parity, native desktop shell).
+Settings, Recent Files, drag & drop, file associations, and signing/notarization remain explicitly
+out of scope — Build 026 and the post-026 PySide6 retirement decision, per `ROADMAP.md`.
 
 ## Why migrate
 
@@ -390,7 +429,7 @@ and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
     side effects on open/close; the old 5-row status panel and four technical buttons removed
     from `main.ts` entirely. No engine, protocol, sidecar, or Rust source change. M2 Human
     Validation **PASSED** (`BUILD-025-M2-HUMAN-VALIDATION.md`), authorizing M3.
-  - M3 — Preview & Report Parity: engineering COMPLETE / Gate BUILD-025-M3: engineering PASS
+  - M3 — Preview & Report Parity: COMPLETE / Gate BUILD-025-M3: PASS
     (`BUILD-025-M3-PREVIEW-REPORT-PARITY.md`) — a build-identity process correction (`app_info()`
     now reports `"M3"`, not the "M1" M2 shipped with; a general regression test now guards against
     any earlier Build 025 milestone being reported again); Reset View — exactly one control, per
@@ -403,8 +442,29 @@ and `docs/migration/BUILD-025-HANDOFF.md` for the Build 025 handoff.
     `accepted` state only, through a new additive sidecar `report` command and Rust
     `engine_report` command, both reusing `zerorodcad.report.build_report` unmodified — proven
     byte-for-byte identical to export's `report.md` for the same accepted state across three
-    scenarios. No engine, protocol, or domain (`zerorodcad/`) source change. Human Validation is
-    **PENDING** (`BUILD-025-M3-HUMAN-VALIDATION.md`) — M4 does not start until it passes, per the
-    mandate's own stop condition.
+    scenarios. No engine, protocol, or domain (`zerorodcad/`) source change. Human Validation
+    **PASSED** (`BUILD-025-M3-HUMAN-VALIDATION.md`), authorizing M4.
+  - M4 — Desktop Shell & Native Integration: engineering COMPLETE / Gate BUILD-025-M4: engineering
+    PASS (`BUILD-025-M4-DESKTOP-SHELL.md`) — an explicit native macOS Application/File/View menu
+    (`menu.rs`) replacing Tauri's implicit default, with native ⌘N/⌘O/⌘S/⇧⌘S/⌘Q accelerators;
+    File/View items route to the same existing controller methods
+    (`project_panel.ts`/`export_panel.ts`/`preview.ts`/`report_panel.ts`/`diagnostics_panel.ts`)
+    the visible UI already calls, with no duplicated command or decision logic added in Rust. The
+    M1-tracked Quit-bypass gap is **FIXED IN M4**: native Quit is a plain custom `MenuItem` (never
+    `PredefinedMenuItem::quit`) whose handler calls `WebviewWindow::close()` — proven, by reading
+    `tauri-runtime-wry`'s dispatcher directly, to be the identical native event pipeline the
+    already-validated red close button uses — so ⌘Q now resumes through the single existing
+    `confirmQuit()` guard, not a second implementation. A new `close_flow.ts` module makes
+    overlapping close attempts (repeated ⌘Q, ⌘Q racing red close) resolve to exactly one guard
+    decision, directly unit-tested (`close_flow.test.ts`). Show Body/Rod/Strings gained
+    bidirectional native-menu-checkmark ↔ visible-checkbox sync through one shared funnel function
+    (`native_menu.ts`'s `setLayerVisible`) and a narrow new `set_view_menu_checked` command (no new
+    WebView capability required — an app-owned, non-plugin command). `app_info()` now reports
+    `"M4"`. Real menu-tree construction cannot be exercised under `cargo test` (a genuine
+    `muda`/Cocoa main-thread platform limitation, confirmed directly) — compensated with structural
+    source checks, a real dev-mode launch, and artifact-level `strings` evidence against the
+    compiled release binary. No engine, protocol, or domain (`zerorodcad/`) source change; no new
+    dependency. Human Validation is **PENDING** (`BUILD-025-M4-HUMAN-VALIDATION.md`) — per the
+    mandate's own stop condition, no further Build 025 work starts until it passes.
 
-**Next: Build 025 / Milestone 3 Human Validation, then Build 025 / Milestone 4.**
+**Next: Build 025 / Milestone 4 Human Validation.**
