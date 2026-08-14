@@ -12,7 +12,6 @@ const SIDECAR_STATUS: SidecarStatus = {
   cadquery_version: "2.6.0",
   ocp_variant: "cadquery-ocp-novtk",
   vtk_installed: false,
-  milestone: "M2",
 };
 
 let container: HTMLDivElement;

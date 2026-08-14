@@ -13,8 +13,10 @@ whether the menu looks and behaves right for a human clicking it, and in particu
 ⌘Q genuinely now goes through the same Save/Discard/Cancel prompt the red close button already
 does, across every combination of dirty state. That is what this checklist is for.
 
-**Status: PENDING.** Awaiting a Project Owner interactive pass against a freshly built
-`ZeroRodCAD-Build025-M4.app`.
+**Status: PASS.** Project Owner completed an interactive pass against a freshly built
+`ZeroRodCAD-Build025-M4.app` on 2026-08-13 and reported an overall PASS. Per-item checklist
+evidence below was not itemized back to this document by the tester; the recorded result is the
+reported overall PASS, not a reconstruction of individual checklist ticks.
 
 ## Build under test
 
@@ -154,16 +156,17 @@ open "<absolute path to ZeroRodCAD-Build025-M4.app>"
 
 | Field | Value |
 |---|---|
-| Tester | *(pending)* |
-| Date | *(pending)* |
-| macOS | *(pending)* |
-| Hardware | *(pending)* |
-| Result | **PENDING** |
-| Notes | |
+| Tester | Project Owner |
+| Date | 2026-08-13 |
+| macOS | *(not itemized by tester)* |
+| Hardware | *(not itemized by tester)* |
+| Result | **PASS** |
+| Notes | Overall PASS reported by the Project Owner; individual checklist items above were not returned itemized and are not reconstructed here. |
 
 ## Gate BUILD-025-M4 (human component)
 
-**PENDING.** The engineering gate (`scripts/validate-build025-m4.sh`,
+**PASS.** The engineering gate (`scripts/validate-build025-m4.sh`,
 `BUILD-025-M4 CONSISTENCY GATE: PASS`) covers everything an automated test can reach; this
-checklist covers what only a human, on a real launched app, can confirm — in particular the full
-⌘Q dirty-state matrix above. Build 025 M4 is not COMPLETE until this document records a PASS.
+checklist covered what only a human, on a real launched app, can confirm — in particular the full
+⌘Q dirty-state matrix above. Build 025 M4 is COMPLETE: both the engineering gate and this human
+validation record a PASS.

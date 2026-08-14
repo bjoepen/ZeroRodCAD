@@ -38,8 +38,6 @@ from zerorod_sidecar.protocol import (  # noqa: E402
     ok_response,
 )
 
-MILESTONE = "build023-m1"
-
 
 def _package_version(name: str) -> str | None:
     try:
@@ -66,7 +64,6 @@ def _run_status_command(parameters: dict) -> dict:  # noqa: ARG001
         "cadquery_version": cadquery_version,
         "ocp_variant": ocp_variant,
         "vtk_installed": _package_version("vtk") is not None,
-        "milestone": MILESTONE,
     }
 
 

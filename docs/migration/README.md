@@ -39,16 +39,17 @@ BUILD 024 — STL / STEP EXPORT WORKFLOW: COMPLETE
                                                    Human Validation PASS
   M4 — Integration & Build Completion:            COMPLETE — Gate BUILD-024: PASS
 STL / STEP EXPORT WORKFLOW: ESTABLISHED
-BUILD 025 — DESKTOP FEATURE PARITY: IN PROGRESS
+BUILD 025 — DESKTOP FEATURE PARITY: COMPLETE
   Discovery: COMPLETE — Gate BUILD-025 DISCOVERY GATE: PASS
   M1 — Project Persistence: COMPLETE — Gate BUILD-025-M1: PASS, Human Validation PASS
                              (incl. the native-close corrective fix, BUILD-025-M1-NATIVE-CLOSE-BUGFIX.md)
   M2 — Product UI Productization & Lifecycle Polish: COMPLETE — Gate BUILD-025-M2: PASS,
                              Human Validation PASS
   M3 — Preview & Report Parity: COMPLETE — Gate BUILD-025-M3: PASS, Human Validation PASS
-  M4 — Desktop Shell & Native Integration: engineering COMPLETE —
-                             Gate BUILD-025-M4: engineering PASS, Human Validation PENDING
-NEXT: BUILD 025 / M4 HUMAN VALIDATION
+  M4 — Desktop Shell & Native Integration: COMPLETE — Gate BUILD-025-M4: PASS, Human Validation PASS
+  M5 — Integration, Completion & Repository Cleanup: COMPLETE — Gate BUILD-025: PASS
+DESKTOP FEATURE PARITY: ESTABLISHED
+NEXT: BUILD 026 — PRODUCTION PACKAGING & MACOS INTEGRATION
 ```
 
 **Desktop 2.0 Foundation established** (Build 022) means the new architecture is real, tested, and
@@ -134,9 +135,26 @@ bidirectional native-menu-checkmark ↔ visible-checkbox sync through one shared
 `app_info()` now reports `"M4"`. See
 [`BUILD-025-M4-DESKTOP-SHELL.md`](BUILD-025-M4-DESKTOP-SHELL.md) for the full record, including why
 real menu-tree construction cannot be exercised under `cargo test` (a genuine `muda`/Cocoa
-main-thread platform limitation) and what compensates for it. Human Validation is **PENDING**
-([`BUILD-025-M4-HUMAN-VALIDATION.md`](BUILD-025-M4-HUMAN-VALIDATION.md)) — per the mandate's own
-stop condition, no further Build 025 work starts until it passes.
+main-thread platform limitation) and what compensates for it. Human Validation **PASSED**
+([`BUILD-025-M4-HUMAN-VALIDATION.md`](BUILD-025-M4-HUMAN-VALIDATION.md)), authorizing M5.
+
+Milestone 5 (Integration, Completion & Repository Cleanup) closes Build 025: a milestone
+consistency audit across M1-M4 (including retroactively synchronizing M1's own Human Validation
+record, which had reported PASS but was never updated to reflect it), a repository-wide cleanup
+discovery pass covering stale markers, dead frontend/Rust/Python code, validation and packaging
+scripts, and duplicate/generated artifacts — finding 0 SAFE_TO_REMOVE code or script candidates
+(the codebase stayed clean incrementally through M1-M4, so this milestone's real cleanup need was
+documentation synchronization, not deletion), architecture conformance re-verification against
+`ADR-022-001` (0 deviations), a full test-suite re-run, a clean reproducible release rebuild with
+independent artifact-identity proof, and the master validation gate
+(`scripts/validate-build025.sh`) ending in `BUILD-025 CONSISTENCY GATE: PASS`. See
+[`BUILD-025-M5-REPOSITORY-CLEANUP.md`](BUILD-025-M5-REPOSITORY-CLEANUP.md) and
+[`BUILD-025-COMPLETION.md`](BUILD-025-COMPLETION.md) for the full record.
+
+**Build 025: COMPLETE. Desktop Feature Parity: ESTABLISHED**, within the milestone plan's approved
+scope (project persistence, product lifecycle polish, preview/report parity, native desktop shell).
+Settings, Recent Files, drag & drop, file associations, and signing/notarization remain explicitly
+out of scope — Build 026 and the post-026 PySide6 retirement decision, per `ROADMAP.md`.
 
 ## Why migrate
 

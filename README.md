@@ -9,16 +9,24 @@ persistenter Python-3.13-Sidecar, CadQuery/cadquery-ocp-novtk) — evidenzbasier
 ([ADR-022-001](docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md), Status: Accepted).
 
 **Build 022** etablierte die produktive Desktop-2.0-Foundation, **Build 023** ergänzte eine
-produktive, parametergetriebene Live-Vorschau, und **Build 024** ergänzte einen produktiven,
-menschlich validierten Export-Workflow: "Export Model…" öffnet einen nativen macOS-Verzeichnisdialog,
-prüft per Preflight auf bestehende Dateien, holt bei Bedarf eine Overwrite-Bestätigung ein und
-schreibt STL, STEP und einen Markdown-Report des **aktuell sichtbaren** Modells (nie eines veralteten
-Drafts). Alle drei Builds sind vollständig abgeschlossen, jeweils mit Gate PASS und — wo vorgesehen —
-menschlicher Validierung durch den Project Owner.
+produktive, parametergetriebene Live-Vorschau, **Build 024** ergänzte einen produktiven,
+menschlich validierten Export-Workflow, und **Build 025** ergänzte Projekt-Persistenz
+(New/Open/Save/Save As gegen das bestehende `.zerorod`-Format), ein produktiviertes Lifecycle-UI
+(automatische Initial-Preview, Diagnostics-View), Preview-/Report-Parität (Reset View,
+Body/Rod/Strings-Sichtbarkeit, In-App Instrument Report) und eine native macOS-Desktop-Shell
+(Application/File/View-Menü, ⌘N/⌘O/⌘S/⇧⌘S/⌘Q, natives About) — inklusive der Behebung der
+Quit/⌘Q-Guard-Bypass-Lücke, sodass natives Beenden jetzt denselben Save/Discard/Cancel-Schutz
+durchläuft wie der rote Schließen-Knopf. "Export Model…" öffnet einen nativen
+macOS-Verzeichnisdialog, prüft per Preflight auf bestehende Dateien, holt bei Bedarf eine
+Overwrite-Bestätigung ein und schreibt STL, STEP und einen Markdown-Report des **aktuell
+sichtbaren** Modells (nie eines veralteten Drafts). Alle vier Builds sind vollständig
+abgeschlossen, jeweils mit Gate PASS und — wo vorgesehen — menschlicher Validierung durch den
+Project Owner.
 
-**Wichtig:** Volle Feature-Parität mit der bestehenden PySide6-Anwendung (Projekt-Persistenz,
-Settings, Shortcuts, Desktop-Integration) ist noch nicht erreicht — das ist Build 025.
-Signing/Notarization folgt in Build 026.
+**Wichtig:** Desktop-Feature-Parität mit der bestehenden PySide6-Anwendung ist im mit Build 025
+freigegebenen Umfang erreicht (Projekt-Persistenz, Lifecycle, Preview/Report, native Menüs/
+Shortcuts). Settings, Recent Files, Drag & Drop, Datei-Assoziationen sowie Signing/Notarization
+folgen erst in Build 026 bzw. einer späteren, ausdrücklichen Freigabe.
 
 ## Was ZeroRodCAD heute kann
 
@@ -32,7 +40,18 @@ Signing/Notarization folgt in Build 026.
   zweischichtiger Ergebnisverifikation (Sidecar- und Rust-seitig), damit ein unvollständiges oder
   fehlerhaftes Ergebnis niemals als Erfolg erscheint.
 - **Persistenter Engine-Prozess**: ein einziger, Rust-verwalteter Python-Sidecar-Prozess bedient
-  Vorschau und Export über dieselbe private stdin/stdout-Pipeline — kein Neustart pro Anfrage.
+  Vorschau, Export, Report und Projekt-I/O über dieselbe private stdin/stdout-Pipeline — kein
+  Neustart pro Anfrage. Der Benutzer startet oder verwaltet die Engine nie manuell.
+- **Projekt-Persistenz**: New/Open/Save/Save As gegen das bestehende, unveränderte
+  `.zerorod`-Format, mit Dirty-Tracking und einem Datenverlust-verhindernden
+  Save/Discard/Cancel-Guard für New, Open und Quit/Fenster schließen.
+- **View-Controls & Report**: Reset View, Body/Rod/Strings-Sichtbarkeit (überlebt einen
+  Live-Vorschau-Refresh) und ein In-App Instrument Report, byte-identisch zum Export-Report für
+  denselben akzeptierten Zustand.
+- **Native macOS-Desktop-Shell**: ein natives Application/File/View-Menü (kein Tauri-Standardmenü),
+  native Tastenkürzel (⌘N/⌘O/⌘S/⇧⌘S/⌘Q), natives About, und ein Diagnostics-View für
+  Engine-/Sidecar-Status. Natives ⌘Q und der rote Schließen-Knopf laufen durch denselben
+  Save/Discard/Cancel-Guard.
 
 ## Architektur
 
@@ -46,9 +65,11 @@ ZeroRodCAD Desktop 2.0
 ```
 
 Sicherheitsgrenze: Die WebView erhält keine Shell-, Prozess- oder breite Filesystem-Berechtigung —
-nur `core:default` plus die eine, eng begrenzte `dialog:allow-open`-Berechtigung für den nativen
-Verzeichnisdialog. Details: [ADR-022-001](docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md),
-Abschnitt "Security boundary".
+nur `core:default` plus drei eng begrenzte Zusatzrechte: `dialog:allow-open`/`dialog:allow-save`
+für die nativen Datei-/Verzeichnisdialoge (Export-Ziel, Projekt-Open/Save) und
+`core:window:allow-destroy` für den geführten Fenster-Schließen-Ablauf. Details:
+[ADR-022-001](docs/adr/ADR-022-001-DESKTOP-2-0-TAURI-ARCHITECTURE.md), Abschnitt "Security
+boundary".
 
 Die wichtigsten technischen Eckdaten:
 
@@ -65,10 +86,8 @@ Architecture:                               ACCEPTED
 Build 022 — Desktop 2.0 Foundation:         COMPLETE (M1-M5, Gate PASS)
 Build 023 — Parameters & Live Preview:      COMPLETE (M1-M5, Gate PASS, Human PASS)
 Build 024 — STL/STEP Export Workflow:       COMPLETE (M1-M4, Gate PASS, Human PASS)
-Build 025 — Desktop Feature Parity:         IN PROGRESS (Discovery PASS, M1 engineering COMPLETE
-                                             — Gate BUILD-025-M1: engineering PASS, Human
-                                             Validation PENDING)
-Next:                                       Build 025 / M1 Human Validation, then M2
+Build 025 — Desktop Feature Parity:         COMPLETE (M1-M5, Gate PASS, Human PASS)
+Next:                                       Build 026 — Production Packaging & macOS Integration
 ```
 
 Build 022 etablierte die produktive Desktop-2.0-Foundation (Tauri-v2-Shell, WebView↔Rust-IPC,
@@ -77,25 +96,37 @@ Packaging). Build 023 ergänzte die vollständige Parameter-UI und automatische 
 024 ergänzte den produktiven Export-Workflow (native Dialoge, Preflight, Overwrite, robuste
 Fehlerbehandlung, zweischichtige Ergebnisverifikation) — inklusive eines in M2 real durch
 menschliche Validierung gefundenen und behobenen Tauri-IPC-Bugs
-(`docs/migration/BUILD-024-M2-EXPORT-BUGFIX.md`). Alle drei Builds sind mit Gate PASS und, wo
-produktseitig relevant, mit PASS durch den Project Owner abgeschlossen. Details je Build:
+(`docs/migration/BUILD-024-M2-EXPORT-BUGFIX.md`). Build 025 ergänzte Projekt-Persistenz, ein
+produktiviertes Lifecycle-UI, Preview-/Report-Parität und eine native macOS-Desktop-Shell — siehe
+unten. Alle vier Builds sind mit Gate PASS und, wo produktseitig relevant, mit PASS durch den
+Project Owner abgeschlossen. Details je Build:
 [`docs/migration/BUILD-022-COMPLETION.md`](docs/migration/BUILD-022-COMPLETION.md),
 [`docs/migration/BUILD-023-COMPLETION.md`](docs/migration/BUILD-023-COMPLETION.md),
-[`docs/migration/BUILD-024-COMPLETION.md`](docs/migration/BUILD-024-COMPLETION.md).
+[`docs/migration/BUILD-024-COMPLETION.md`](docs/migration/BUILD-024-COMPLETION.md),
+[`docs/migration/BUILD-025-COMPLETION.md`](docs/migration/BUILD-025-COMPLETION.md).
 
 Build 025 (Desktop Feature Parity) begann mit einer vollständigen Discovery-Phase
-(`docs/migration/BUILD-025-FEATURE-PARITY-MATRIX.md` und Begleitdokumente, Gate PASS) und geht nun
-Milestone für Milestone vor. Milestone 1 (Project Persistence) ist engineering-seitig
-abgeschlossen: New/Open/Save/Save As gegen das bereits bestehende, unveränderte
-`.zerorod`-Projektformat, ein Projekt-Sitzungsmodell mit Dirty-Tracking (`accepted` vs. zuletzt
-gespeicherter Zustand) und ein Datenverlust-verhindernder Unsaved-Changes-Guard (Save/Discard/
-Cancel) für New, Open und Quit. Details: [`docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md`](docs/migration/BUILD-025-M1-PROJECT-PERSISTENCE.md).
-Human Validation steht noch aus: [`docs/migration/BUILD-025-M1-HUMAN-VALIDATION.md`](docs/migration/BUILD-025-M1-HUMAN-VALIDATION.md).
+(`docs/migration/BUILD-025-FEATURE-PARITY-MATRIX.md` und Begleitdokumente, Gate PASS) und ist jetzt
+**vollständig abgeschlossen**. Milestone 1 (Project Persistence): New/Open/Save/Save As gegen das
+bereits bestehende, unveränderte `.zerorod`-Projektformat, ein Projekt-Sitzungsmodell mit
+Dirty-Tracking (`accepted` vs. zuletzt gespeicherter Zustand) und ein
+Datenverlust-verhindernder Unsaved-Changes-Guard (Save/Discard/Cancel) für New, Open und Quit —
+Human Validation PASS. Milestone 2 (Product UI Productization & Lifecycle Polish): automatische
+Initial-Preview, ein Diagnostics-View für die alten technischen Engine/Ping-Controls — Human
+Validation PASS. Milestone 3 (Preview & Report Parity): Reset View, Body/Rod/Strings-Sichtbarkeit,
+In-App Instrument Report — Human Validation PASS. Milestone 4 (Desktop Shell & Native Integration):
+natives Application/File/View-Menü, native Shortcuts, natives About, und die Behebung der
+Quit/⌘Q-Guard-Bypass-Lücke (natives ⌘Q läuft jetzt durch denselben Guard wie der rote
+Schließen-Knopf) — Human Validation PASS. Milestone 5 (Integration, Completion & Repository
+Cleanup): Konsistenzaudit, Repository-Cleanup-Discovery (0 sicher entfernbare Code-/Skript-Kandidaten
+gefunden), Architektur-Konformitätsprüfung, vollständiger Test-Re-Run, sauberer reproduzierbarer
+Release-Rebuild und das Master-Gate `scripts/validate-build025.sh` (`BUILD-025 CONSISTENCY GATE:
+PASS`). Details je Milestone in [`docs/migration/README.md`](docs/migration/README.md) und
+[`docs/migration/BUILD-025-COMPLETION.md`](docs/migration/BUILD-025-COMPLETION.md).
 
-**Was noch fehlt** (bewusst, spätere Milestones/Builds): native macOS-Menüs, Shortcuts,
-Diagnostics-View, Preview-Sichtbarkeits-Toggles, Reset-View, Instrument-Report-Ansicht (Build 025
-M2-M4), sowie Signing/Notarization (Build 026). Details:
-[`docs/migration/BUILD-025-GAP-REPORT.md`](docs/migration/BUILD-025-GAP-REPORT.md).
+**Was noch fehlt** (bewusst, spätere Builds): Settings, Recent Files, Drag & Drop,
+Datei-Assoziationen/Finder-Integration sowie Signing/Notarization (Build 026), und die
+PySide6-Retirement-Entscheidung (frühestens nach Build 026).
 
 Die bisherige PySide6-Anwendung bleibt bis zu einer späteren, ausdrücklichen Retirement-Entscheidung
 (frühestens nach Build 026) unverändert als Referenz-, Feature-Parity- und Rollback-Implementierung

@@ -227,8 +227,9 @@ STL / STEP EXPORT WORKFLOW ESTABLISHED
 BUILD 025 IN PROGRESS (Discovery COMPLETE — Gate PASS, M1 COMPLETE — Gate BUILD-025-M1: PASS,
   Human Validation PASS, M2 COMPLETE — Gate BUILD-025-M2: PASS, Human Validation PASS,
   M3 COMPLETE — Gate BUILD-025-M3: PASS, Human Validation PASS,
-  M4 engineering COMPLETE — Gate BUILD-025-M4: engineering PASS, Human Validation PENDING)
-NEXT: BUILD 025 / M4 HUMAN VALIDATION
+  M4 COMPLETE — Gate BUILD-025-M4: PASS, Human Validation PASS,
+  M5 IN PROGRESS — Integration, Completion & Repository Cleanup)
+NEXT: BUILD 025 / M5 INTEGRATION & COMPLETION
 ```
 
 ### Current
@@ -370,13 +371,20 @@ and companion documents — Gate `BUILD-025 DISCOVERY GATE: PASS`.
   shared funnel function and a narrow new `set_view_menu_checked` command (no new WebView
   capability — an app-owned, non-plugin command). `app_info()` now reports `"M4"`. No engine,
   protocol, or domain (`zerorodcad/`) source change; no new dependency — Gate BUILD-025-M4:
-  engineering PASS; Human Validation PENDING (`docs/migration/BUILD-025-M4-HUMAN-VALIDATION.md`)
-- [ ] Final — Integration & Build Completion
-- [ ] settings
-- [ ] shortcuts
-- [ ] desktop integration
-- [ ] accessibility
-- [ ] parity validation
+  PASS; Human Validation **PASS** (`docs/migration/BUILD-025-M4-HUMAN-VALIDATION.md`)
+- [x] M5 — Integration, Completion & Repository Cleanup —
+  `docs/migration/BUILD-025-M5-REPOSITORY-CLEANUP.md`, `docs/migration/BUILD-025-COMPLETION.md` —
+  milestone consistency audit across M1-M4, a repository-wide cleanup discovery pass (0
+  SAFE_TO_REMOVE code/script candidates found — the codebase stayed clean incrementally, so this
+  milestone's cleanup work was documentation synchronization, not deletion), architecture
+  conformance re-verification against `ADR-022-001` (0 deviations), a full test-suite re-run, a
+  clean reproducible release rebuild with artifact-identity proof, and the master validation gate
+  (`scripts/validate-build025.sh`) ending in `BUILD-025 CONSISTENCY GATE: PASS`
+
+**Build 025: COMPLETE. Desktop Feature Parity: ESTABLISHED.**
+
+Not yet in Build 025 (by design — later builds' scope): settings, Recent Files, drag & drop, file
+associations/Finder integration, signing/notarization, PySide6 removal.
 
 ### Build 026 – Production Packaging & macOS Integration
 

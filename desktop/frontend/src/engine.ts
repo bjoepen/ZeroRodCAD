@@ -34,7 +34,6 @@ export interface SidecarStatus {
   cadquery_version: string | null;
   ocp_variant: string | null;
   vtk_installed: boolean;
-  milestone: string;
 }
 
 // Mirrors desktop/src-tauri/src/mesh.rs's MeshSummary — a summary, not the
