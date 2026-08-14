@@ -50,8 +50,8 @@ pub fn app_info() -> AppInfo {
     AppInfo {
         name: "ZeroRodCAD Desktop".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        build: "025".to_string(),
-        milestone: "M5".to_string(),
+        build: "026".to_string(),
+        milestone: "M1".to_string(),
     }
 }
 
@@ -417,8 +417,8 @@ mod tests {
     #[test]
     fn app_info_reports_current_milestone() {
         let info = app_info();
-        assert_eq!(info.build, "025");
-        assert_eq!(info.milestone, "M5");
+        assert_eq!(info.build, "026");
+        assert_eq!(info.milestone, "M1");
         assert!(!info.version.is_empty());
     }
 
@@ -435,23 +435,19 @@ mod tests {
         );
     }
 
-    // Build 025 M3 process correction: M2 shipped its entire Human
-    // Validation artifact still silently reporting milestone "M1" — a
-    // forgotten-bump defect a value-pinning test alone cannot prevent
-    // (updating the pinned value and forgetting the real bump are the same
-    // mistake). This is the general form of that check: an M3 (or later)
-    // artifact must never report an EARLIER Build 025 milestone, not just
-    // the one specific pair already caught above.
+    // Build 026 M1: Build 025 is closed; its own internal-milestone-ordering
+    // guard (which asserted `build == "025"`) is retired rather than kept as
+    // a permanently-vacuous filter — asserting a fact that can never be true
+    // again is not a regression guard, it's dead weight. In its place, the
+    // immediate predecessor's own final identity (Build 025 / M5) becomes
+    // the new specific stale pair to guard against, per the same discipline
+    // that added the 024/M2 guard above.
     #[test]
-    fn app_info_never_reports_a_stale_earlier_build_025_milestone() {
+    fn app_info_never_reports_a_stale_025_m5_pair() {
         let info = app_info();
-        assert_eq!(info.build, "025");
         assert!(
-            !["M1", "M2", "M3", "M4"].contains(&info.milestone.as_str()),
-            "app_info() must not report an earlier Build 025 milestone ({}); \
-             this is the exact class of defect that shipped M2 still \
-             reporting M1",
-            info.milestone
+            !(info.build == "025" && info.milestone == "M5"),
+            "app_info() must not report the stale Build 025 / M5 identity"
         );
     }
 

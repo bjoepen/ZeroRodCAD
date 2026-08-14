@@ -19,3 +19,13 @@
 *.step binary
 *.stp binary
 *.3mf binary
+
+# Build 026 M1: these 4 patch files intentionally carry CRLF content lines,
+# matching the actual line endings of the upstream cadquery==2.8.0 files
+# they patch (scripts/apply-cadquery-novtk-patch.sh applies them verbatim
+# with `patch`, which requires the diff's context lines to match the target
+# byte-for-byte). The repo-wide `eol=lf` rule above silently normalized them
+# to LF in every commit until now — a real, previously undetected defect
+# that would have broken patch application on any fresh checkout. `-text`
+# disables all line-ending normalization for these specific files.
+docs/research/TE-001.1-CadQuery-NoVTK/patches/*.diff -text

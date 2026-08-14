@@ -34,9 +34,18 @@ analysis = Analysis(
         "OCP.BRepMesh",
         "OCP.STEPControl",
         "OCP.StlAPI",
-        "OCP.TKernel",
+        # Build 026 M1: "OCP.TKernel" and "cadquery.exporters" removed —
+        # investigated and confirmed OBSOLETE_HIDDEN_IMPORT
+        # (docs/migration/BUILD-026-DEPENDENCY-AUDIT.md): "OCP.TKernel" was
+        # never a real importable module (pybind11 never registers it; a
+        # copy-paste artifact from the legacy PySide6 spec), and
+        # "cadquery.exporters" was always the wrong module path (the real
+        # module is cadquery.occ_impl.exporters, already collected via
+        # "cadquery.occ_impl" below plus PyInstaller's own module-graph
+        # analysis of cadquery/__init__.py's `from .occ_impl import
+        # exporters`). Removal proven safe by a real rebuild + preview/
+        # report/export regression, not by inspection alone.
         "cadquery",
-        "cadquery.exporters",
         "cadquery.occ_impl",
         "casadi",
     ],

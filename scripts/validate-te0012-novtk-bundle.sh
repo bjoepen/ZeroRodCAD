@@ -8,60 +8,13 @@ REPORT_DIR="build/reports/te0012-novtk-bundle"
 BUNDLE_VENV=".venv-novtk-bundle"
 BUNDLE_PYTHON="${BUNDLE_VENV}/bin/python"
 APP_PATH="dist/ZeroRodCAD Desktop.app"
-POC_PATCH_SOURCE=".venv-novtk-poc/lib/python3.13/site-packages/cadquery"
-PATCH_TARGET="${BUNDLE_VENV}/lib/python3.13/site-packages/cadquery"
 
-echo "== TE-001.2: verifying Python 3.13 =="
-if ! command -v python3.13 >/dev/null 2>&1; then
-  echo "python3.13 not found on PATH" >&2
-  exit 1
-fi
-python3.13 -c "import sys; assert sys.version_info[:2] == (3, 13), sys.version" \
-  || { echo "python3.13 did not report version 3.13.x" >&2; exit 1; }
-
-echo "== TE-001.2: preparing isolated packaging venv (${BUNDLE_VENV}) =="
-if [ ! -x "${BUNDLE_PYTHON}" ]; then
-  python3.13 -m venv "${BUNDLE_VENV}"
-fi
-
-echo "== TE-001.2: verifying venv isolation (no system-site-packages) =="
-"${BUNDLE_PYTHON}" - <<'PY'
-import sys
-assert sys.prefix != sys.base_prefix, "venv is not isolated from the base interpreter"
-print("prefix:", sys.prefix)
-print("version:", sys.version)
-PY
-
-echo "== TE-001.2: installing pinned dependencies (skipped if cadquery already present) =="
-if ! "${BUNDLE_PYTHON}" -c "import cadquery" >/dev/null 2>&1; then
-  "${BUNDLE_PYTHON}" -m pip install --upgrade pip
-  "${BUNDLE_PYTHON}" -m pip install "cadquery-ocp-novtk==7.9.3.1.1"
-  "${BUNDLE_PYTHON}" -m pip install "cadquery==2.8.0" --no-deps
-  "${BUNDLE_PYTHON}" -m pip install \
-    "ezdxf>=1.3.0" "multimethod<2.0,>=1.11" "nlopt<3.0,>=2.9.0" "runtype" "casadi" \
-    "pyparsing>=3.0.0" "scipy" "numba"
-  "${BUNDLE_PYTHON}" -m pip install "PySide6>=6.7,<7" "PyInstaller>=6.16,<7"
-  "${BUNDLE_PYTHON}" -m pip install -e . --no-deps
-fi
-
-echo "== TE-001.2: applying TE-001.1 patch (reused verbatim, not redesigned) =="
-if [ ! -d "${POC_PATCH_SOURCE}" ]; then
-  echo "TE-001.1's patched cadquery copy (.venv-novtk-poc) was not found." >&2
-  echo "Run scripts/validate-te001-novtk.sh first to (re)create it, then re-run this script." >&2
-  exit 1
-fi
-cp "${POC_PATCH_SOURCE}/occ_impl/shapes.py" "${PATCH_TARGET}/occ_impl/shapes.py"
-cp "${POC_PATCH_SOURCE}/occ_impl/exporters/vtk.py" "${PATCH_TARGET}/occ_impl/exporters/vtk.py"
-cp "${POC_PATCH_SOURCE}/occ_impl/assembly.py" "${PATCH_TARGET}/occ_impl/assembly.py"
-cp "${POC_PATCH_SOURCE}/occ_impl/exporters/assembly.py" "${PATCH_TARGET}/occ_impl/exporters/assembly.py"
-"${BUNDLE_PYTHON}" - <<'PY'
-import sys
-sys.path.insert(0, ".")
-from tools.poc.novtk.vtk_import_blocker import install
-install()
-import cadquery
-print("TE-001.1 patch active: import cadquery succeeded under VTKImportBlocker ->", cadquery.__version__)
-PY
+echo "== TE-001.2: provisioning the shared No-VTK packaging venv (${BUNDLE_VENV}) =="
+# Build 026 M1: venv creation, pinned-dependency install, and the CadQuery
+# No-VTK patch application are now a single, reusable, reproducible script
+# (no longer an undocumented copy from .venv-novtk-poc — see
+# docs/migration/BUILD-026-M1-PRODUCTION-BUNDLE-HARDENING.md).
+scripts/provision-novtk-bundle-venv.sh "${BUNDLE_VENV}"
 
 echo "== TE-001.2: pre-build package audit =="
 "${BUNDLE_PYTHON}" -m pip list

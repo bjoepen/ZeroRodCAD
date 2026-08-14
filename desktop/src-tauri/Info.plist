@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Build 026 M1: LSRequiresCarbon=true is a tauri-bundler/cargo-bundle-lineage
+         default-template leftover (Carbon is a pre-OS X, non-arm64-capable API
+         family; this Rust/WebKit app cannot possibly require it). Tauri merges
+         this file's keys over its generated defaults, so this removes the stale
+         claim without hand-editing generated output. See
+         docs/migration/BUILD-026-M1-PRODUCTION-BUNDLE-HARDENING.md. -->
+    <key>LSRequiresCarbon</key>
+    <false/>
+</dict>
+</plist>
