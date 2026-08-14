@@ -1,11 +1,23 @@
 name: Productive build (Stage 1 — no signing)
 
-# Build 026 M1 CI Stage 1: proves the productive Tauri packaging pipeline
-# reproduces on a clean macOS runner, independent of this repository's own
-# development machine. Explicitly build-only — no Apple Developer
+# Build 026 Finalization CI Stage 1: proves the productive Tauri packaging
+# pipeline reproduces on a clean macOS runner, independent of this
+# repository's own development machine — using the exact same portable-
+# Python + No-VTK-patch provisioning mechanism as a local build (no
+# Homebrew, no `actions/setup-python`; scripts/provision-novtk-bundle-venv.sh
+# downloads and verifies the pinned astral-sh/python-build-standalone
+# CPython 3.13 itself). Explicitly build-only — no Apple Developer
 # credentials, no signing, no notarization, no secrets of any kind. Signing/
-# notarization CI stages are a later, separately authorized milestone (see
-# docs/migration/BUILD-026-RELEASE-WORKFLOW-ANALYSIS.md, "CI Recommendation").
+# notarization CI stages remain a later, separately authorized,
+# credential-gated step (see docs/migration/BUILD-026-RELEASE-WORKFLOW-ANALYSIS.md,
+# "CI Recommendation").
+#
+# NOTE: this workflow has not yet been observed running on a real hosted
+# GitHub Actions runner (this repository's development environment cannot
+# trigger real Actions execution) — it is a direct, structural translation
+# of the exact command sequence proven locally
+# (docs/migration/BUILD-026-M11-PORTABLE-PYTHON-EVALUATION.md,
+# docs/migration/BUILD-026-COMPLETION.md), not independently CI-verified.
 
 on:
   push:
@@ -19,10 +31,6 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -38,17 +46,17 @@ jobs:
         run: npm ci
         working-directory: desktop/frontend
 
-      - name: Provision the No-VTK packaging venv (from tracked repo state only)
+      - name: Provision the No-VTK packaging venv (pinned portable Python, no Homebrew)
         run: scripts/provision-novtk-bundle-venv.sh
 
-      - name: Build the productive .app (release)
+      - name: Build the productive .app + DMG (release)
         run: scripts/build-productive-desktop-app.sh release
 
       - name: Dependency-exclusion invariants (VTK/PySide6/Qt/numba/llvmlite/scipy = 0)
         run: |
           APP="desktop/src-tauri/target/release/bundle/macos/ZeroRodCAD.app"
           for pat in "*vtk*" "*pyside*" "*[Qq]t*" "*numba*" "*llvmlite*" "*scipy*"; do
-            matches=$(find "$APP" -iname "$pat" 2>/dev/null | grep -v "cadquery_ocp_novtk" || true)
+            matches=$(find "$APP" -iname "$pat" 2>/dev/null | grep -v "cadquery_ocp_novtk" | grep -v "scipy_openblas" || true)
             if [ -n "$matches" ]; then
               echo "unexpected match for '$pat':"
               echo "$matches"
@@ -57,9 +65,38 @@ jobs:
           done
           echo "0 VTK/PySide6/Qt/numba/llvmlite/scipy files in the built bundle"
 
+      - name: Mach-O deployment-target floor check (must be <= 11.1)
+        run: |
+          APP="desktop/src-tauri/target/release/bundle/macos/ZeroRodCAD.app"
+          python3 - "$APP" <<'PY'
+          import subprocess, sys, os, re
+          app = sys.argv[1]
+          max_minos = (0, 0)
+          for root, _, files in os.walk(app):
+              for name in files:
+                  path = os.path.join(root, name)
+                  if os.path.islink(path):
+                      continue
+                  out = subprocess.run(["file", path], capture_output=True, text=True).stdout
+                  if "Mach-O" not in out:
+                      continue
+                  otool_out = subprocess.run(["otool", "-l", path], capture_output=True, text=True).stdout
+                  m = re.search(r"LC_BUILD_VERSION.*?minos ([\d.]+)", otool_out, re.S)
+                  if not m:
+                      continue
+                  parts = tuple(int(x) for x in m.group(1).split("."))
+                  if parts > max_minos:
+                      max_minos = parts
+          print("max minos:", max_minos)
+          if max_minos > (11, 1):
+              print("FAIL: bundle floor exceeds 11.1", file=sys.stderr)
+              sys.exit(1)
+          PY
+
       - name: Bundle structure sanity check
         run: |
           APP="desktop/src-tauri/target/release/bundle/macos/ZeroRodCAD.app"
           test -x "$APP/Contents/MacOS/zerorod-desktop"
           test -x "$APP/Contents/Resources/zerorod-engine-onedir/zerorod-engine"
-          echo "productive .app built and structurally sane"
+          test -f "desktop/src-tauri/target/release/bundle/dmg"/*.dmg
+          echo "productive .app + DMG built and structurally sane"

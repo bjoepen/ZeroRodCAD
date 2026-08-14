@@ -26,13 +26,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": ["app", "dmg"],
     "icon": ["icons/icon.icns", "icons/icon.ico", "icons/icon.png"],
     "resources": {
       "resources/zerorod-engine-onedir/": "zerorod-engine-onedir/"
     },
     "macOS": {
-      "minimumSystemVersion": "26.0"
+      "minimumSystemVersion": "11.1"
     }
   }
 }

@@ -388,15 +388,27 @@ associations/Finder integration, signing/notarization, PySide6 removal.
 
 ### Build 026 – Production Packaging & macOS Integration
 
-- [ ] production bundle
-- [ ] final dependency audit
-- [ ] performance baseline
-- [ ] signing preparation
-- [ ] notarization preparation
-- [ ] release workflow
+- [x] production bundle — portable, checksum-pinned CPython 3.13 (`astral-sh/python-build-standalone`,
+  no Homebrew dependency), corrected metadata (identifier, version, `LSRequiresCarbon`), 0
+  PyInstaller hidden-import warnings
+- [x] final dependency audit — VTK/PySide6/Qt/numba/llvmlite/scipy = 0; full pin-status inventory
+  (`docs/migration/BUILD-026-COMPLETION.md`)
+- [x] performance baseline — no regression vs. Build 022–025 (~8% bundle-size growth, fully
+  explained; warm preview timing unchanged)
+- [x] signing preparation — nested-component signing script (correct order, never `--deep`),
+  notarization submission script, verification script; no real Developer ID credentials used
+- [x] notarization preparation — `notarytool`/`stapler` workflow scripted and documented; not
+  submitted
+- [x] release workflow — DMG (`ZeroRodCAD-0.1.0-macOS-arm64.dmg`), release manifest, checksums,
+  master gate `scripts/validate-build026.sh` (`BUILD-026 CONSISTENCY GATE: PASS`)
 
-Signing/notarization is planned only at the build-planning level here; no new signing/notarization
-subproject is started by this roadmap entry.
+Signing/notarization infrastructure is prepared but not exercised with real credentials — real
+Developer ID signing, notarization submission, and stapling remain an explicit, separate,
+credential-gated final release step (`docs/migration/BUILD-026-RELEASE-WORKFLOW.md`), requiring
+Project Owner authorization beyond this roadmap entry. Full record:
+[`docs/migration/BUILD-026-COMPLETION.md`](docs/migration/BUILD-026-COMPLETION.md).
+
+**Build 026: FINALIZATION ENGINEERING COMPLETE. Human Validation of the Release Candidate PENDING.**
 
 ### Post-Build-026 – PySide6 Retirement Decision
 
