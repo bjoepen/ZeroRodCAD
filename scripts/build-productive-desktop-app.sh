@@ -22,8 +22,10 @@ RESOURCES_DIR="desktop/src-tauri/resources/zerorod-engine-onedir"
 APP_PATH="desktop/src-tauri/target/${MODE}/bundle/macos/ZeroRodCAD.app"
 
 if [[ ! -x "${BUNDLE_PYTHON}" ]]; then
-  echo "${BUNDLE_VENV} not found. Run scripts/validate-te0012-novtk-bundle.sh first" \
-    "(it provisions the TE-001.1-patched, cadquery-ocp-novtk build environment)." >&2
+  echo "${BUNDLE_VENV} not found. Run scripts/provision-novtk-bundle-venv.sh first" \
+    "(it provisions the pinned, No-VTK-patched cadquery-ocp-novtk build environment" \
+    "reproducibly from tracked repository state — see" \
+    "docs/migration/BUILD-026-M1-PRODUCTION-BUNDLE-HARDENING.md)." >&2
   exit 1
 fi
 

@@ -1,0 +1,65 @@
+name: Productive build (Stage 1 — no signing)
+
+# Build 026 M1 CI Stage 1: proves the productive Tauri packaging pipeline
+# reproduces on a clean macOS runner, independent of this repository's own
+# development machine. Explicitly build-only — no Apple Developer
+# credentials, no signing, no notarization, no secrets of any kind. Signing/
+# notarization CI stages are a later, separately authorized milestone (see
+# docs/migration/BUILD-026-RELEASE-WORKFLOW-ANALYSIS.md, "CI Recommendation").
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+jobs:
+  build-productive:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.97.1"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: desktop/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: desktop/frontend
+
+      - name: Provision the No-VTK packaging venv (from tracked repo state only)
+        run: scripts/provision-novtk-bundle-venv.sh
+
+      - name: Build the productive .app (release)
+        run: scripts/build-productive-desktop-app.sh release
+
+      - name: Dependency-exclusion invariants (VTK/PySide6/Qt/numba/llvmlite/scipy = 0)
+        run: |
+          APP="desktop/src-tauri/target/release/bundle/macos/ZeroRodCAD.app"
+          for pat in "*vtk*" "*pyside*" "*[Qq]t*" "*numba*" "*llvmlite*" "*scipy*"; do
+            matches=$(find "$APP" -iname "$pat" 2>/dev/null | grep -v "cadquery_ocp_novtk" || true)
+            if [ -n "$matches" ]; then
+              echo "unexpected match for '$pat':"
+              echo "$matches"
+              exit 1
+            fi
+          done
+          echo "0 VTK/PySide6/Qt/numba/llvmlite/scipy files in the built bundle"
+
+      - name: Bundle structure sanity check
+        run: |
+          APP="desktop/src-tauri/target/release/bundle/macos/ZeroRodCAD.app"
+          test -x "$APP/Contents/MacOS/zerorod-desktop"
+          test -x "$APP/Contents/Resources/zerorod-engine-onedir/zerorod-engine"
+          echo "productive .app built and structurally sane"

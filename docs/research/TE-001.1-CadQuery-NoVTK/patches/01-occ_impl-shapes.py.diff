@@ -1,23 +1,23 @@
---- /private/tmp/claude-501/-Users-bernd-Projekte-ZeroRodCAD-App/385ca330-6d05-4728-9418-59c718113df9/scratchpad/te0011-cadquery-originals/occ_impl/shapes.py	2026-08-08 06:09:18
-+++ .venv-novtk-poc/lib/python3.13/site-packages/cadquery/occ_impl/shapes.py	2026-08-08 06:09:33
+--- a/occ_impl/shapes.py (unpatched cadquery==2.8.0)
++++ b/occ_impl/shapes.py (No-VTK patched, TE-001.1)
 @@ -17,9 +17,6 @@
  from io import BytesIO
-
+ 
  from warnings import warn
 -
 -from vtkmodules.vtkCommonDataModel import vtkPolyData
 -from vtkmodules.vtkFiltersCore import vtkTriangleFilter, vtkPolyDataNormals
-
+ 
  from OCP.ShapeBuild import ShapeBuild_ReShape
-
+ 
 @@ -293,9 +290,6 @@
-
+ 
  from OCP.BRepProj import BRepProj_Projection
  from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 -
 -from OCP.IVtkOCC import IVtkOCC_Shape, IVtkOCC_ShapeMesher
 -from OCP.IVtkVTK import IVtkVTK_ShapeData
-
+ 
  # for catching exceptions
  from OCP.Standard import Standard_NoSuchObject, Standard_Failure
 @@ -1681,6 +1675,16 @@
@@ -34,6 +34,6 @@
 +                "(e.g. use the 'cadquery-ocp' distribution instead of "
 +                "'cadquery-ocp-novtk') to use this feature."
 +            ) from exc
-
+ 
          vtk_shape = IVtkOCC_Shape(self.wrapped)
          shape_data = IVtkVTK_ShapeData()
